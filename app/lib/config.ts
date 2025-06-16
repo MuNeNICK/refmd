@@ -1,26 +1,34 @@
-// Server-side environment variables (without NEXT_PUBLIC_ prefix)
+import { env } from 'next-runtime-env';
+
 // These are read at runtime on the server
 const getServerConfig = () => {
   return {
-    apiUrl: process.env.API_URL || 'http://localhost:8888/api',
-    socketUrl: process.env.SOCKET_URL || 'http://localhost:8888',
-    siteUrl: process.env.SITE_URL || 'http://localhost:3000',
+    apiUrl: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8888/api',
+    socketUrl: process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:8888',
+    siteUrl: process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000',
   };
 };
 
 // Client-side configuration
 const getClientConfig = () => {
-  // If we have NEXT_PUBLIC_ variables, use them
-  if (process.env.NEXT_PUBLIC_API_URL) {
-    return {
-      apiUrl: process.env.NEXT_PUBLIC_API_URL,
-      socketUrl: process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:8888',
-      siteUrl: process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000',
-    };
-  }
-  
-  // Otherwise, use dynamic host detection for localhost
+  // Check if we're in the browser environment
   if (typeof window !== 'undefined') {
+    
+    const apiUrl = env('NEXT_PUBLIC_API_URL');
+    const socketUrl = env('NEXT_PUBLIC_SOCKET_URL');
+    const siteUrl = env('NEXT_PUBLIC_SITE_URL');
+    
+    
+    // If runtime env variables are available, use them
+    if (apiUrl) {
+      return {
+        apiUrl,
+        socketUrl: socketUrl || 'http://localhost:8888',
+        siteUrl: siteUrl || 'http://localhost:3000',
+      };
+    }
+    
+    // Otherwise, use dynamic host detection for localhost
     const host = window.location.hostname;
     const protocol = window.location.protocol;
     return {
@@ -30,11 +38,11 @@ const getClientConfig = () => {
     };
   }
   
-  // Fallback for SSR
+  // Fallback for SSR - these will be replaced at runtime on the client
   return {
-    apiUrl: 'http://localhost:8888/api',
-    socketUrl: 'http://localhost:8888',
-    siteUrl: 'http://localhost:3000',
+    apiUrl: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8888/api',
+    socketUrl: process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:8888',
+    siteUrl: process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000',
   };
 };
 

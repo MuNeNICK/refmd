@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { FileTreeProvider } from "@/components/providers/fileTreeProvider";
 import { AuthProvider } from "@/lib/auth/authContext";
 import { ThemeProvider } from "@/lib/contexts/theme-context";
+import { PublicEnvScript } from "next-runtime-env";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,6 +32,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="h-full" suppressHydrationWarning>
+      <head>
+        <PublicEnvScript />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased h-full`}
       >

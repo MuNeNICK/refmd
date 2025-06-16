@@ -33,6 +33,8 @@ export function getApiClient(): RefMDClient {
   if (!apiClient) {
     apiClient = createApiClient();
   }
+  // Always update the BASE URL in case it changed
+  apiClient.request.config.BASE = getApiUrl();
   return apiClient;
 }
 
@@ -106,6 +108,8 @@ export async function refreshAccessToken(): Promise<boolean> {
     const client = new RefMDClient({
       BASE: getApiUrl(),
     });
+    // Ensure the client uses the latest URL
+    client.request.config.BASE = getApiUrl();
     
     const response = await client.authentication.refreshToken({
       refresh_token: refreshToken,

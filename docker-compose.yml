@@ -28,6 +28,7 @@ services:
       - BCRYPT_COST=12
       - UPLOAD_MAX_SIZE=10485760
       - UPLOAD_DIR=/app/documents
+      - FRONTEND_URL=http://localhost:3000
     volumes:
       - ./documents:/app/documents
     depends_on:
@@ -39,9 +40,9 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - API_URL=http://localhost:8888/api
-      - SOCKET_URL=http://localhost:8888
-      - SITE_URL=http://localhost:3000
+      - NEXT_PUBLIC_API_URL=http://localhost:8888/api
+      - NEXT_PUBLIC_SOCKET_URL=http://localhost:8888
+      - NEXT_PUBLIC_SITE_URL=http://localhost:3000
     depends_on:
       - api
 

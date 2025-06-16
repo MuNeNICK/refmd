@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { getApiClient } from '@/lib/api';
+import { getSiteUrl } from '@/lib/config';
 import { 
   Dialog,
   DialogContent,
@@ -66,7 +67,7 @@ export function ShareDialog({ documentId, activeUsers = 0, trigger, open, onOpen
   const [loading, setLoading] = useState(false);
   const [linkExpiry, setLinkExpiry] = useState<string>('7d');
 
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || (typeof window !== 'undefined' ? window.location.origin : '');
+  const baseUrl = getSiteUrl();
 
   // Load existing share links
   const loadShareLinks = useCallback(async () => {
