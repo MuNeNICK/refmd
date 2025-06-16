@@ -44,9 +44,9 @@ services:
     ports:
       - "3000:3000"
     environment:
-      API_URL: http://172.26.100.11:8888/api
-      SOCKET_URL: http://172.26.100.11:8888
-      SITE_URL: http://172.26.100.11:3000
+      API_URL: http://localhost:8888/api
+      SOCKET_URL: http://localhost:8888
+      SITE_URL: http://localhost:3000
     depends_on:
       - backend
 
