@@ -22,6 +22,8 @@
     "@radix-ui/react-separator": "^1.1.7",
     "@radix-ui/react-slot": "^1.2.3",
     "@radix-ui/react-tooltip": "^1.1.6",
+    "@tanstack/react-query": "^5.80.7",
+    "@tanstack/react-virtual": "^3.13.10",
     "@types/papaparse": "^5.3.16",
     "@types/react-syntax-highlighter": "^15.5.13",
     "@types/unist": "^3.0.3",

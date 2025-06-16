@@ -31,7 +31,7 @@ interface FileTreeProps {
   className?: string;
 }
 
-export function FileTree({ onDocumentSelect, selectedDocumentId, className }: FileTreeProps) {
+function FileTreeComponent({ onDocumentSelect, selectedDocumentId, className }: FileTreeProps) {
   const { documents, expandedFolders, loading, toggleFolder, expandFolder, expandParentFolders, refreshDocuments, updateDocuments } = useFileTree();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState('');
@@ -1073,3 +1073,6 @@ export function FileTree({ onDocumentSelect, selectedDocumentId, className }: Fi
     </div>
   );
 }
+
+// Export memoized component
+export const FileTree = React.memo(FileTreeComponent);

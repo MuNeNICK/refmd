@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, memo, useCallback } from "react";
 import {
   Bold,
   Italic,
@@ -39,7 +39,7 @@ interface ToolbarButton {
   value?: number;
 }
 
-export function EditorToolbar({ 
+function EditorToolbarComponent({ 
   onCommand, 
   className, 
   syncScroll, 
@@ -70,7 +70,7 @@ export function EditorToolbar({
 
   const [showMore, setShowMore] = useState(false);
   
-  const renderButtons = (buttons: (ToolbarButton | "separator")[]) => {
+  const renderButtons = useCallback((buttons: (ToolbarButton | "separator")[]) => {
     return buttons.map((button, index) => {
       if (button === "separator") {
         return (
@@ -94,7 +94,7 @@ export function EditorToolbar({
         </Button>
       );
     });
-  };
+  }, [onCommand]);
 
   return (
     <>
@@ -227,3 +227,6 @@ export function EditorToolbar({
     </>
   );
 }
+
+// Export memoized component
+export const EditorToolbar = memo(EditorToolbarComponent);

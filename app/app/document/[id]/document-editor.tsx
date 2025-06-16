@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { MarkdownEditor } from "@/components/editor/markdown-editor";
+import { MonacoLoader as MarkdownEditor } from "@/components/editor/monaco-loader";
 import { PreviewPane } from "@/components/editor/preview-pane";
 import { ViewMode } from "@/components/layout/header";
 import type { Document } from '@/lib/api/client/models/Document';
@@ -100,7 +100,7 @@ export default function DocumentEditor({
         const newContent = yText.toString();
         setContent(newContent);
         onContentChange?.(newContent);
-      }, 100); // Reduced debounce to 100ms for faster saves
+      }, 300); // Debounce to 300ms for better performance
     };
 
     // Initial content

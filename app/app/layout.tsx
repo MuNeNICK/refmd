@@ -6,6 +6,7 @@ import { FileTreeProvider } from "@/components/providers/fileTreeProvider";
 import { AuthProvider } from "@/lib/auth/authContext";
 import { ThemeProvider } from "@/lib/contexts/theme-context";
 import { PublicEnvScript } from "next-runtime-env";
+import { QueryProvider } from "@/components/providers/query-provider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -39,12 +40,14 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased h-full`}
       >
         <ThemeProvider>
-          <AuthProvider>
-            <FileTreeProvider>
-              {children}
-              <Toaster />
-            </FileTreeProvider>
-          </AuthProvider>
+          <QueryProvider>
+            <AuthProvider>
+              <FileTreeProvider>
+                {children}
+                <Toaster />
+              </FileTreeProvider>
+            </AuthProvider>
+          </QueryProvider>
         </ThemeProvider>
       </body>
     </html>

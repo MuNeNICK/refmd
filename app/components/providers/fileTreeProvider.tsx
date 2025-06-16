@@ -1,6 +1,7 @@
 'use client';
 
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import React, { createContext, useContext, useState, useCallback } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/auth/authContext';
 import { getApiClient } from '@/lib/api';
 import type { Document } from '@/lib/api/client';
@@ -99,28 +100,24 @@ function buildTree(documents: DatabaseDocument[]): DocumentNode[] {
 
 export function FileTreeProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
-  const [documents, setDocuments] = useState<DocumentNode[]>([]);
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
-  const [loading, setLoading] = useState(true);
-  const [refreshTimeoutId] = useState<NodeJS.Timeout | null>(null);
+  const queryClient = useQueryClient();
   const api = getApiClient();
 
-  const fetchDocuments = useCallback(async () => {
-    if (!user) {
-      setDocuments([]);
-      setLoading(false);
-      return;
-    }
-
-    try {
+  // Use React Query for fetching documents
+  const { data: documents = [], isLoading: loading, refetch } = useQuery({
+    queryKey: ['documents', user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      
       const response = await api.documents.listDocuments();
       
       // Handle both array response and object with data property
-      const documents = Array.isArray(response) ? response : response.data;
+      const docs = Array.isArray(response) ? response : response.data;
       
-      if (documents && documents.length > 0) {
+      if (docs && docs.length > 0) {
         // Convert API documents to DatabaseDocument format, filtering out incomplete documents
-        const dbDocs: DatabaseDocument[] = documents
+        const dbDocs: DatabaseDocument[] = docs
           .filter(doc => doc.id && doc.title && doc.created_at && doc.updated_at)
           .map(doc => {
             const extDoc = doc as ExtendedDocument;
@@ -136,18 +133,18 @@ export function FileTreeProvider({ children }: { children: React.ReactNode }) {
             };
           });
         
-        const documentTree = buildTree(dbDocs);
-        setDocuments(documentTree);
-      } else {
-        setDocuments([]);
+        return buildTree(dbDocs);
       }
-    } catch (error) {
-      console.error('Failed to fetch documents:', error);
-      setDocuments([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [user, api]);
+      return [];
+    },
+    enabled: !!user,
+    staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
+    gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
+  });
+
+  const fetchDocuments = useCallback(async () => {
+    await refetch();
+  }, [refetch]);
 
   const toggleFolder = useCallback((folderId: string) => {
     setExpandedFolders(prev => {
@@ -191,34 +188,14 @@ export function FileTreeProvider({ children }: { children: React.ReactNode }) {
   }, [documents]);
 
   const refreshDocuments = useCallback(() => {
-    if (refreshTimeoutId) {
-      clearTimeout(refreshTimeoutId);
-    }
-    // Immediate refresh for move operations
-    fetchDocuments();
-  }, [fetchDocuments, refreshTimeoutId]);
+    // Invalidate and refetch the documents query
+    queryClient.invalidateQueries({ queryKey: ['documents', user?.id] });
+  }, [queryClient, user]);
 
   const updateDocuments = useCallback((newDocuments: DocumentNode[]) => {
-    setDocuments(newDocuments);
-  }, []);
-
-  useEffect(() => {
-    // Fetch documents when user is available
-    if (user) {
-      fetchDocuments();
-    } else {
-      setLoading(false);
-      setDocuments([]);
-    }
-  }, [fetchDocuments, user]);
-
-  useEffect(() => {
-    return () => {
-      if (refreshTimeoutId) {
-        clearTimeout(refreshTimeoutId);
-      }
-    };
-  }, [refreshTimeoutId]);
+    // Update the query cache directly
+    queryClient.setQueryData(['documents', user?.id], newDocuments);
+  }, [queryClient, user]);
 
   const value: FileTreeContextType = {
     documents,

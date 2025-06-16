@@ -2,8 +2,7 @@
 
 import React, { useRef, useState, useEffect, useCallback, useMemo, memo } from "react";
 import Image from "next/image";
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { CodeBlock } from '@/components/markdown/code-block';
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Menu, X } from "lucide-react";
@@ -48,6 +47,7 @@ function PreviewPaneComponent({
 }: PreviewPaneProps) {
   const [showFloatingToc, setShowFloatingToc] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const scrollRafId = useRef<number | null>(null);
   const tocButtonRef = useRef<HTMLButtonElement>(null);
   const floatingTocRef = useRef<HTMLDivElement>(null);
   
@@ -116,13 +116,31 @@ function PreviewPaneComponent({
   
   const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
     if (onScroll) {
-      const target = e.target as HTMLDivElement;
-      const scrollHeight = target.scrollHeight;
-      const clientHeight = target.clientHeight;
-      const scrollPercentage = target.scrollTop / (scrollHeight - clientHeight);
-      onScroll(target.scrollTop, scrollPercentage);
+      // Cancel previous animation frame
+      if (scrollRafId.current !== null) {
+        cancelAnimationFrame(scrollRafId.current);
+      }
+      
+      // Throttle with requestAnimationFrame
+      scrollRafId.current = requestAnimationFrame(() => {
+        const target = e.target as HTMLDivElement;
+        const scrollHeight = target.scrollHeight;
+        const clientHeight = target.clientHeight;
+        const scrollPercentage = target.scrollTop / (scrollHeight - clientHeight);
+        onScroll(target.scrollTop, scrollPercentage);
+        scrollRafId.current = null;
+      });
     }
   }, [onScroll]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (scrollRafId.current !== null) {
+        cancelAnimationFrame(scrollRafId.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (scrollPercentage !== undefined && actualPreviewRef.current) {
@@ -268,29 +286,9 @@ function PreviewPaneComponent({
                           }
                           
                           return !inline && match ? (
-                            <SyntaxHighlighter
-                              language={match[1]}
-                              style={oneDark}
-                              PreTag="div"
-                              customStyle={{
-                                margin: 0,
-                                padding: 0,
-                                borderRadius: '0.5rem',
-                                fontSize: '0.875rem',
-                                backgroundColor: 'transparent'
-                              }}
-                              codeTagProps={{
-                                style: {
-                                  textShadow: 'none',
-                                  fontFamily: 'inherit',
-                                  backgroundColor: 'transparent',
-                                  padding: 0,
-                                  margin: 0
-                                }
-                              }}
-                            >
+                            <CodeBlock language={match[1]}>
                               {String(children).replace(/\n$/, '')}
-                            </SyntaxHighlighter>
+                            </CodeBlock>
                           ) : (
                             <code className={className} {...props}>
                               {children}
