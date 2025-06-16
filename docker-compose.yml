@@ -1,0 +1,49 @@
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: refmd
+      POSTGRES_USER: refmd
+      POSTGRES_PASSWORD: refmd
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U refmd"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    image: ghcr.io/munenick/refmd:api
+    ports:
+      - "8888:8888"
+    environment:
+      - DATABASE_URL=postgresql://refmd:refmd@postgres:5432/refmd
+      - PORT=8888
+      - JWT_SECRET=dev-secret-key-change-in-production
+      - JWT_EXPIRY=3600
+      - REFRESH_TOKEN_EXPIRY=604800
+      - BCRYPT_COST=12
+      - UPLOAD_MAX_SIZE=10485760
+      - UPLOAD_DIR=/app/documents
+    volumes:
+      - ./documents:/app/documents
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  app:
+    image: ghcr.io/munenick/refmd:app
+    ports:
+      - "3000:3000"
+    environment:
+      - API_URL=http://localhost:8888/api
+      - SOCKET_URL=http://localhost:8888
+      - SITE_URL=http://localhost:3000
+    depends_on:
+      - api
+
+volumes:
+  postgres_data:

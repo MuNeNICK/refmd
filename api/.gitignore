@@ -1,0 +1,7 @@
+# Generated files
+/target/
+.env*
+!.env.example
+
+# Logs
+*.log

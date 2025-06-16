@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE documents\n            SET \n                crdt_state = $2,\n                updated_at = NOW(),\n                last_edited_at = NOW()\n            WHERE id = $1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Bytea"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "86dc4b97074960ff25148cdc30ace7549ff9e2372cd6b7f1891ebd9f07ab867c"
+}

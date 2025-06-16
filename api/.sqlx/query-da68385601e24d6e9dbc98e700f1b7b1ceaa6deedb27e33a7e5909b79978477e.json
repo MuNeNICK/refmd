@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE document_updates \n            SET update_data = $2, state_vector = $3, created_at = $4\n            WHERE document_id = $1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Bytea",
+        "Bytea",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "da68385601e24d6e9dbc98e700f1b7b1ceaa6deedb27e33a7e5909b79978477e"
+}

@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT EXISTS(\n                SELECT 1 FROM documents WHERE id = $1 AND owner_id = $2\n                UNION\n                SELECT 1 FROM document_permissions \n                WHERE document_id = $1 AND user_id = $2 AND permission >= $3\n            ) as \"exists!\"\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "exists!",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "9454034e03e20c185f3fa3701acaf4e751dc2026bbc9e840ac6c673143b75cd2"
+}

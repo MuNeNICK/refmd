@@ -1,0 +1,65 @@
+[package]
+name = "refmd-api"
+version = "0.1.0"
+edition = "2021"
+
+
+[dependencies]
+# Web framework
+axum = { version = "0.7", features = ["multipart"] }
+axum-extra = { version = "0.9", features = ["typed-header", "multipart"] }
+tower = "0.4"
+tower-http = { version = "0.5", features = ["cors", "trace"] }
+
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+
+# Database
+sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "postgres", "uuid", "chrono", "migrate", "bigdecimal"] }
+
+# CRDT
+yrs = "0.21"
+y-sync = "0.4"
+
+# Socket.IO
+socketioxide = "0.10"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Authentication
+jsonwebtoken = "9"
+argon2 = "0.5"
+
+# Utils
+uuid = { version = "1.6", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+anyhow = "1.0"
+bytes = "1.5"
+base64 = "0.21"
+dotenvy = "0.15"
+dashmap = "6.0"
+parking_lot = "0.12"
+rand = "0.8"
+hex = "0.4"
+
+# File handling
+mime_guess = "2.0"
+multer = "3.0"
+tree_magic_mini = "3.0"
+zip = "0.6"
+
+# HTTP client (for testing)
+reqwest = { version = "0.11", features = ["json"] }
+
+[dev-dependencies]
+tokio-test = "0.4"
+hex = "0.4"
+
+[build-dependencies]
+# OpenAPI code generation
+prettyplease = "0.2"
+syn = { version = "2.0", features = ["full", "extra-traits"] }
