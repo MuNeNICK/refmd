@@ -84,8 +84,7 @@ export default function DocumentEditor({
   useEffect(() => {
     if (!doc) return;
     
-    // Get Y.Text directly from doc
-    const yText = doc.getText('content');
+    const yText = getText();
     if (!yText) return;
 
     // Debounce content updates to improve performance
@@ -99,20 +98,15 @@ export default function DocumentEditor({
       
       timeoutId = setTimeout(() => {
         const newContent = yText.toString();
-        // Only update if content actually changed
-        if (newContent !== content) {
-          setContent(newContent);
-          onContentChange?.(newContent);
-        }
+        setContent(newContent);
+        onContentChange?.(newContent);
       }, 300); // Debounce to 300ms for better performance
     };
 
-    // Initial content - only set if yText has content
+    // Initial content
     const initialContent = yText.toString();
-    if (initialContent) {
-      setContent(initialContent);
-      onContentChange?.(initialContent);
-    }
+    setContent(initialContent);
+    onContentChange?.(initialContent);
 
     // Listen for changes
     yText.observe(updateContent);
@@ -120,10 +114,14 @@ export default function DocumentEditor({
     return () => {
       if (timeoutId) {
         clearTimeout(timeoutId);
+        // Force immediate content update on unmount
+        const finalContent = yText.toString();
+        setContent(finalContent);
+        onContentChange?.(finalContent);
       }
       yText.unobserve(updateContent);
     };
-  }, [doc]); // Remove onContentChange and content from dependencies
+  }, [doc, getText, onContentChange]);
 
   // Update connection status
   useEffect(() => {

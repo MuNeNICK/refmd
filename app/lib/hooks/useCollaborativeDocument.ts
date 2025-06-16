@@ -35,7 +35,6 @@ export function useCollaborativeDocument({
   const [provider, setProvider] = useState<SocketIOProvider | null>(null);
   const [awareness, setAwareness] = useState<Awareness | null>(null);
   const initializingRef = useRef(false);
-  const cleanupTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (!socket || !documentId) {
@@ -43,7 +42,7 @@ export function useCollaborativeDocument({
     }
 
     // Prevent double initialization in development
-    if (initializingRef.current) {
+    if (initializingRef.current || provider) {
       return;
     }
     
@@ -108,40 +107,34 @@ export function useCollaborativeDocument({
     // Cleanup
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
-      
-      // Clear any pending cleanup timeout
-      if (cleanupTimeoutRef.current) {
-        clearTimeout(cleanupTimeoutRef.current);
-      }
-      
       // Store references to clean up
       const providerToCleanup = newProvider;
+      const awarenessToCleanup = newAwareness;
       const docToCleanup = newDoc;
       
       // Small delay to prevent immediate cleanup in StrictMode double mount
-      cleanupTimeoutRef.current = setTimeout(() => {
+      setTimeout(() => {
         // Only cleanup if the current state still points to these instances
         if (provider === providerToCleanup && providerToCleanup) {
-          // Provider.destroy() already handles awareness cleanup
-          providerToCleanup.destroy();
+          (providerToCleanup as SocketIOProvider).destroy();
           setProvider(null);
-          setAwareness(null); // Just clear the state without destroying
+        }
+        if (awareness === awarenessToCleanup && awarenessToCleanup) {
+          (awarenessToCleanup as Awareness).destroy();
+          setAwareness(null);
         }
         if (doc === docToCleanup && docToCleanup) {
-          docToCleanup.destroy();
+          (docToCleanup as Y.Doc).destroy();
           setDoc(null);
         }
         initializingRef.current = false;
-        cleanupTimeoutRef.current = null;
       }, 100);
     };
-  }, [socket, documentId, onSync, onConnectionError, shareToken]); // Remove provider, awareness, doc from deps
+  }, [socket, documentId, onSync, onConnectionError, provider, awareness, doc, shareToken]);
 
   const getText = useCallback(() => {
-    // Use the current doc directly from state, not from the callback dependency
-    const currentDoc = doc;
-    if (!currentDoc) return null;
-    return currentDoc.getText('content');
+    if (!doc) return null;
+    return doc.getText('content');
   }, [doc]);
 
   

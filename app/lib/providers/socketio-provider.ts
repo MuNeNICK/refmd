@@ -424,7 +424,7 @@ export class SocketIOProvider extends Observable<string> {
     // Flush any remaining updates before destroying
     this.flushPendingUpdates();
     
-    // Clean up timer
+    // Clean up
     if (this.resyncTimer) {
       clearInterval(this.resyncTimer);
     }
@@ -439,17 +439,16 @@ export class SocketIOProvider extends Observable<string> {
     this._joiningInProgress = false;
     this._synced = false;
     
-    // Remove doc update handler
-    if (this._docUpdateHandler && this.doc) {
+    // Remove all listeners
+    if (this._docUpdateHandler) {
       this.doc.off('update', this._docUpdateHandler);
       this._docUpdateHandler = undefined;
     }
-    
-    // Remove awareness update handler before destroying awareness
-    if (this._awarenessUpdateHandler && this.awareness) {
+    if (this._awarenessUpdateHandler) {
       this.awareness.off('update', this._awarenessUpdateHandler);
       this._awarenessUpdateHandler = undefined;
     }
+    this.awareness.destroy();
     
     // Remove socket listeners
     this.socket.off('connect');
@@ -461,12 +460,6 @@ export class SocketIOProvider extends Observable<string> {
     this.socket.off('error');
     this.socket.off('sync-error');
     
-    // Destroy awareness after removing all listeners
-    if (this.awareness) {
-      this.awareness.destroy();
-    }
-    
-    // Call parent destroy last
     super.destroy();
   }
 }
