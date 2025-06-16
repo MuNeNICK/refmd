@@ -16,7 +16,7 @@ services:
       retries: 5
 
   api:
-    image: ghcr.io/munenick/refmd:api
+    image: ghcr.io/munenick/refmd-api:latest
     ports:
       - "8888:8888"
     environment:
@@ -35,7 +35,7 @@ services:
         condition: service_healthy
 
   app:
-    image: ghcr.io/munenick/refmd:app
+    image: ghcr.io/munenick/refmd-app:latest
     ports:
       - "3000:3000"
     environment:
