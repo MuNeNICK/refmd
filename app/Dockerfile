@@ -53,9 +53,6 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 # Copy public folder if it exists
 # COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 
-# Create documents directory with proper permissions
-RUN mkdir -p ./documents && chown -R nextjs:nodejs ./documents && chmod -R 755 ./documents
-
 USER nextjs
 
 EXPOSE 3000
