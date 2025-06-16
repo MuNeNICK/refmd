@@ -3,9 +3,9 @@
 import React, { lazy, Suspense } from 'react';
 
 // Dynamically import syntax highlighter to reduce bundle size
-const SyntaxHighlighter = lazy(() => 
-  import('react-syntax-highlighter').then(mod => ({ 
-    default: mod.Prism 
+const SyntaxHighlighter = lazy(() =>
+  import('react-syntax-highlighter').then(mod => ({
+    default: mod.Prism
   }))
 );
 
@@ -33,15 +33,28 @@ export function CodeBlock({ language, children, className }: CodeBlockProps) {
       <SyntaxHighlighter
         language={language}
         style={oneDark}
+        PreTag="div"
         customStyle={{
           margin: 0,
-          borderRadius: '0.375rem',
+          padding: 0,
+          borderRadius: '0.5rem',
           fontSize: '0.875rem',
+          backgroundColor: 'transparent',
+        }}
+        codeTagProps={{
+          style: {
+            textShadow: 'none',
+            fontFamily: 'inherit',
+            backgroundColor: 'transparent',
+            padding: 0,
+            margin: 0,
+          },
         }}
         className={className}
       >
         {children}
       </SyntaxHighlighter>
+
     </Suspense>
   );
 }
