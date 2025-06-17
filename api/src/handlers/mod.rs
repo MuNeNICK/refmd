@@ -5,6 +5,7 @@ use crate::state::AppState;
 pub mod auth;
 pub mod documents;
 pub mod files;
+pub mod scraps;
 pub mod shares;
 pub mod user;
 pub mod socketio;
@@ -15,6 +16,7 @@ pub fn routes(state: Arc<AppState>) -> Router {
         .nest("/users", user::routes(state.clone()))
         .nest("/documents", documents::routes(state.clone()))
         .nest("/files", files::routes(state.clone()))
+        .nest("/scraps", scraps::routes(state.clone()))
         .nest("/shares", shares::routes(state.clone()))
         .nest("/socketio", socketio::routes(state))
 }
