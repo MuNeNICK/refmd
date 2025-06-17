@@ -128,7 +128,7 @@
   body {
     @apply bg-background text-foreground;
   }
-  
+
   @keyframes slide-in-from-right {
     from {
       transform: translateX(100%);
@@ -137,64 +137,64 @@
       transform: translateX(0);
     }
   }
-  
+
   .animate-in {
     animation-duration: 200ms;
     animation-fill-mode: both;
   }
-  
+
   .slide-in-from-right {
     animation-name: slide-in-from-right;
   }
-  
+
   .prose {
     @apply max-w-none text-foreground leading-relaxed;
   }
-  
+
   .prose h1 {
     @apply text-4xl font-bold mb-6 mt-8 pb-3 border-b-2 border-border;
   }
-  
+
   .prose h2 {
     @apply text-3xl font-semibold mb-4 mt-6 pb-2 border-b border-border;
   }
-  
+
   .prose h3 {
     @apply text-2xl font-semibold mb-3 mt-4;
   }
-  
+
   .prose h4 {
     @apply text-xl font-medium mb-2 mt-3;
   }
-  
+
   .prose h5 {
     @apply text-lg font-medium mb-2 mt-3;
   }
-  
+
   .prose h6 {
     @apply text-base font-medium mb-2 mt-3;
   }
-  
+
   .prose p {
     @apply mb-4 leading-7;
   }
-  
+
   .prose ul {
     @apply list-disc list-outside mb-4 ml-6 space-y-1;
   }
-  
+
   .prose ol {
     @apply list-decimal list-outside mb-4 ml-6 space-y-1;
   }
-  
+
   .prose li {
     @apply leading-7;
   }
-  
+
   .prose pre {
     @apply mb-4 overflow-x-auto bg-gray-900 text-gray-100 p-4 rounded-lg;
   }
-  
+
   .prose pre code {
     @apply whitespace-pre-wrap break-words bg-transparent;
   }
@@ -203,35 +203,35 @@
   .prose pre code .token.comment {
     @apply text-gray-500 italic;
   }
-  
+
   .prose pre code .token.string {
     @apply text-green-400;
   }
-  
+
   .prose pre code .token.number {
     @apply text-blue-400;
   }
-  
+
   .prose pre code .token.keyword {
     @apply text-purple-400 font-semibold;
   }
-  
+
   .prose pre code .token.function {
     @apply text-yellow-400;
   }
-  
+
   .prose pre code .token.variable {
     @apply text-red-400;
   }
-  
+
   .prose pre code .token.operator {
     @apply text-gray-300;
   }
-  
+
   .prose pre code .token.punctuation {
     @apply text-gray-400;
   }
-  
+
   .prose :not(pre) > code {
     @apply bg-muted px-1.5 py-0.5 rounded text-sm font-mono break-words;
   }
@@ -250,19 +250,19 @@
     -moz-osx-font-smoothing: grayscale !important;
     text-rendering: optimizeLegibility !important;
   }
-  
+
   .prose blockquote {
     @apply border-l-4 border-primary/30 pl-4 italic mb-4 text-muted-foreground;
   }
-  
+
   .prose .table-wrapper {
     @apply overflow-x-auto mb-4 -mx-4 px-4;
   }
-  
+
   .prose table {
     @apply w-full border-collapse overflow-hidden rounded-lg min-w-max table-auto;
   }
-  
+
   .prose th,
   .prose td {
     @apply border border-border px-4 py-2 text-left;
@@ -272,62 +272,62 @@
     min-width: 100px;
     max-width: 300px;
   }
-  
+
   .prose th {
     @apply bg-muted/50 font-semibold;
   }
-  
+
   .prose tr:hover {
     @apply bg-muted/20;
   }
-  
+
   @media (max-width: 768px) {
     .prose th,
     .prose td {
       @apply px-2 py-1 text-sm;
     }
   }
-  
+
   .prose img {
     @apply max-w-full h-auto rounded-lg shadow-md my-4;
   }
-  
+
   .prose a {
     @apply text-primary underline underline-offset-2 hover:text-primary/80 transition-colors;
   }
-  
+
   /* File attachment specific styles */
   .prose .file-attachment {
     @apply no-underline;
   }
-  
+
   .prose hr {
     @apply border-t border-border my-8;
   }
-  
+
   .prose strong {
     @apply font-semibold text-foreground;
   }
-  
+
   .prose em {
     @apply italic;
   }
-  
+
   .prose mark {
     @apply bg-yellow-200 dark:bg-yellow-900/50 px-1 rounded;
   }
-  
+
   .prose ul ul,
   .prose ol ol,
   .prose ul ol,
   .prose ol ul {
     @apply ml-4 mt-1;
   }
-  
+
   .prose :first-child {
     @apply mt-0;
   }
-  
+
   .prose :last-child {
     @apply mb-0;
   }
@@ -340,28 +340,28 @@
     -webkit-user-select: text !important;
     user-select: text !important;
   }
-  
+
   .monaco-editor .view-line {
     -webkit-user-select: text !important;
     user-select: text !important;
     -webkit-touch-callout: default !important;
   }
-  
+
   .monaco-editor .cursors-layer {
     display: block !important;
   }
-  
+
   /* Improve touch targets */
   .monaco-editor .margin-view-overlays,
   .monaco-editor .view-overlays {
     pointer-events: none;
   }
-  
+
   .monaco-editor .view-line span {
     -webkit-user-select: text !important;
     user-select: text !important;
   }
-  
+
   /* Fix iOS tap delay */
   .monaco-editor * {
     -webkit-tap-highlight-color: transparent;
@@ -692,5 +692,14 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
 }
 

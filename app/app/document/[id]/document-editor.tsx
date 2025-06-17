@@ -261,8 +261,8 @@ export default function DocumentEditor({
 
   return (
     <>
-      <div className="h-full flex flex-col" ref={editorContainerRef}>
-        <div className="flex-1 min-h-0">
+      <div className="h-full flex flex-col overflow-hidden" ref={editorContainerRef}>
+        <div className="flex-1 min-h-0 overflow-hidden">
           {viewMode === "editor" && (
             <MarkdownEditor
               doc={doc}
@@ -296,7 +296,7 @@ export default function DocumentEditor({
           )}
           
           {viewMode === "split" && (
-            <PanelGroup direction="horizontal" className="h-full">
+            <PanelGroup direction="horizontal" className="h-full w-full">
               <Panel defaultSize={50} minSize={30}>
                 <MarkdownEditor
                   doc={doc}

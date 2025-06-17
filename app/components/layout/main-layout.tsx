@@ -6,6 +6,7 @@ import { FileTree } from './file-tree';
 import { Header } from './header';
 import { cn } from '@/lib/utils';
 import type { ViewMode } from '@/components/layout/header';
+import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -44,16 +45,15 @@ export default function MainLayout({
   isViewOnly = false
 }: MainLayoutProps) {
   const router = useRouter();
-  const [sidebarOpen, setSidebarOpen] = React.useState(false);
 
   const handleDocumentSelect = useCallback((documentId: string) => {
     router.push(`/document/${documentId}`);
   }, [router]);
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden">
-      {/* Fixed Header */}
-      <div className="flex-shrink-0">
+    <SidebarProvider defaultOpen={true}>
+      <div className="flex flex-col h-screen w-screen overflow-hidden">
+        {/* Fixed Header - Full width at top */}
         <Header 
           viewMode={viewMode}
           saveStatus={saveStatus}
@@ -66,44 +66,28 @@ export default function MainLayout({
           onShare={onShare}
           onDownload={onDownload}
           showEditorFeatures={showEditorFeatures}
-          onToggleSidebar={() => setSidebarOpen(true)}
           hideSidebarToggle={hideFileTree}
           isViewOnly={isViewOnly}
         />
-      </div>
-      
-      {/* Main Content Area */}
-      <div className="flex flex-1 min-h-0 relative">
-        {/* Mobile Sidebar Overlay */}
-        {sidebarOpen && (
-          <div 
-            className="fixed inset-0 bg-background/80 backdrop-blur-sm z-30 lg:hidden"
-            onClick={() => setSidebarOpen(false)}
-          />
-        )}
         
-        {/* Sidebar */}
-        {!hideFileTree && (
-          <div className={cn(
-            "fixed inset-y-0 left-0 z-40 w-64 border-r bg-sidebar backdrop-blur-sm transition-transform duration-200 lg:relative lg:translate-x-0",
-            sidebarOpen ? "translate-x-0" : "-translate-x-full"
-          )}>
+        {/* Main content area with sidebar - Below header */}
+        <div className="flex flex-1 w-full overflow-hidden">
+          {/* Sidebar */}
+          {!hideFileTree && (
             <FileTree
-              onDocumentSelect={(documentId) => {
-                handleDocumentSelect(documentId);
-                setSidebarOpen(false);
-              }}
+              onDocumentSelect={handleDocumentSelect}
               selectedDocumentId={selectedDocumentId}
-              className="h-full"
             />
-          </div>
-        )}
-        
-        {/* Scrollable Content Area */}
-        <div className="flex-1 min-w-0 bg-background overflow-hidden">
-          {children}
+          )}
+          
+          {/* Content Area - SidebarInset wraps the content and handles spacing */}
+          <SidebarInset className="flex-1 overflow-hidden">
+            <main className="h-full w-full overflow-hidden">
+              {children}
+            </main>
+          </SidebarInset>
         </div>
       </div>
-    </div>
+    </SidebarProvider>
   );
 }
