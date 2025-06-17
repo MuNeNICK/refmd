@@ -11,6 +11,7 @@ interface AuthenticatedImageProps {
   width?: number | string;
   height?: number | string;
   style?: React.CSSProperties;
+  token?: string;
 }
 
 function AuthenticatedImageComponent({ 
@@ -19,7 +20,8 @@ function AuthenticatedImageComponent({
   className = '', 
   width,
   height,
-  style = {}
+  style = {},
+  token
 }: AuthenticatedImageProps) {
   const [imageSrc, setImageSrc] = useState<string>('');
   const [loading, setLoading] = useState(true);
@@ -32,7 +34,14 @@ function AuthenticatedImageComponent({
       try {
         const { accessToken } = getTokens();
         
-        const response = await fetch(src, {
+        // If there's a share token, append it to the URL
+        let fetchUrl = src;
+        if (token) {
+          const separator = src.includes('?') ? '&' : '?';
+          fetchUrl = `${src}${separator}token=${token}`;
+        }
+        
+        const response = await fetch(fetchUrl, {
           headers: accessToken ? {
             'Authorization': `Bearer ${accessToken}`
           } : {}
@@ -68,7 +77,7 @@ function AuthenticatedImageComponent({
     return () => {
       cancelled = true;
     };
-  }, [src]);
+  }, [src, token]);
 
   if (loading) {
     return (

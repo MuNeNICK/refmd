@@ -34,6 +34,7 @@ interface PreviewPaneProps {
   viewMode?: ViewMode;
   previewRef?: React.RefObject<HTMLDivElement>;
   contentStats?: { wordCount: number; charCount: number };
+  token?: string;
 }
 
 function PreviewPaneComponent({ 
@@ -43,7 +44,8 @@ function PreviewPaneComponent({
   documentId,
   viewMode = "preview",
   previewRef,
-  contentStats
+  contentStats,
+  token
 }: PreviewPaneProps) {
   const [showFloatingToc, setShowFloatingToc] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -223,6 +225,7 @@ function PreviewPaneComponent({
                                 height={typeof height === 'number' ? height : undefined}
                                 className="max-w-full h-auto rounded-md shadow-md"
                                 style={{ width: 'auto', height: 'auto' }}
+                                token={token}
                               />
                             );
                           }
@@ -242,7 +245,7 @@ function PreviewPaneComponent({
                           );
                         },
                         a: ({ href, children, ...props }) => (
-                          <FileAttachment href={href || '#'} documentId={documentId} {...props}>
+                          <FileAttachment href={href || '#'} documentId={documentId} token={token} {...props}>
                             {children}
                           </FileAttachment>
                         ),

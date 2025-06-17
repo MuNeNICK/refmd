@@ -12,6 +12,7 @@ interface FileAttachmentProps {
   children: React.ReactNode;
   className?: string;
   documentId?: string;
+  token?: string;
 }
 
 // Get file extension from URL or filename
@@ -93,7 +94,7 @@ const getFileIcon = (extension: string) => {
 };
 
 
-export function FileAttachment({ href, children, className, documentId }: FileAttachmentProps) {
+export function FileAttachment({ href, children, className, documentId, token }: FileAttachmentProps) {
   // Convert relative paths to API paths for file links
   let processedHref = href;
   const apiBaseUrl = getApiUrl();
@@ -191,8 +192,15 @@ export function FileAttachment({ href, children, className, documentId }: FileAt
             const { getTokens } = await import('@/lib/api');
             const { accessToken } = getTokens();
             
+            // If there's a share token, append it to the URL
+            let fetchUrl = processedHref;
+            if (token) {
+              const separator = processedHref.includes('?') ? '&' : '?';
+              fetchUrl = `${processedHref}${separator}token=${token}`;
+            }
+            
             // Fetch file with authentication
-            const response = await fetch(processedHref, {
+            const response = await fetch(fetchUrl, {
               headers: accessToken ? {
                 'Authorization': `Bearer ${accessToken}`
               } : {}

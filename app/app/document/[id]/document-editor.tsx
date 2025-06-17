@@ -291,6 +291,7 @@ export default function DocumentEditor({
               documentId={documentId}
               viewMode={viewMode}
               contentStats={{ wordCount: 0, charCount: 0 }}
+              token={token}
             />
           )}
           
@@ -326,6 +327,7 @@ export default function DocumentEditor({
                     documentId={documentId}
                     viewMode={viewMode}
                     contentStats={{ wordCount: 0, charCount: 0 }}
+                    token={token}
                   />
                 </div>
               </Panel>
