@@ -107,30 +107,24 @@ export function Header({
       >
         {/* Left side - Logo and title */}
         <div className="flex items-center gap-3">
-          {onToggleSidebar && !hideSidebarToggle ? (
-            <>
-              {/* Mobile: Toggle sidebar button */}
-              <button 
-                onClick={onToggleSidebar}
-                className="flex items-center gap-2 hover:bg-accent rounded-md p-1 transition-colors lg:hidden"
-                title="Open file tree"
-              >
-                <FileText className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
-                <h1 className="text-lg sm:text-xl font-semibold">RefMD</h1>
-              </button>
-              
-              {/* Desktop: Normal link */}
-              <Link href="/dashboard" className="hidden lg:flex items-center gap-2">
-                <FileText className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
-                <h1 className="text-lg sm:text-xl font-semibold">RefMD</h1>
-              </Link>
-            </>
-          ) : (
-            <Link href="/dashboard" className="flex items-center gap-2">
-              <FileText className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
-              <h1 className="text-lg sm:text-xl font-semibold">RefMD</h1>
-            </Link>
+          {/* Mobile: Menu button (file tree toggle) */}
+          {onToggleSidebar && !hideSidebarToggle && (
+            <Button 
+              onClick={onToggleSidebar}
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9 lg:hidden"
+              title="Open file tree"
+            >
+              <Menu className="h-4 w-4" />
+            </Button>
           )}
+          
+          {/* Logo - link on all devices */}
+          <Link href="/dashboard" className="flex items-center gap-2">
+            <FileText className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+            <h1 className="text-lg sm:text-xl font-semibold">RefMD</h1>
+          </Link>
           {!showEditorFeatures && (
             <span className="text-sm text-muted-foreground hidden lg:inline">
               Collaborative Markdown Editor
@@ -195,42 +189,42 @@ export function Header({
               {/* View mode buttons - Hidden on mobile, disabled for view-only */}
               {!isViewOnly && (
                 <div className="hidden md:flex items-center rounded-md border">
-                  <button
+                  <Button
                     onClick={() => onViewModeChange?.("editor")}
+                    variant="ghost"
+                    size="sm"
                     className={cn(
-                      "p-2 transition-colors",
-                      viewMode === "editor" 
-                        ? "bg-accent text-accent-foreground" 
-                        : "hover:bg-accent/50"
+                      "h-8 px-2 rounded-none rounded-l-md",
+                      viewMode === "editor" && "bg-accent text-accent-foreground"
                     )}
                     title="Editor only"
                   >
                     <FileCode className="h-4 w-4" />
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     onClick={() => onViewModeChange?.("split")}
+                    variant="ghost"
+                    size="sm"
                     className={cn(
-                      "p-2 transition-colors border-x",
-                      viewMode === "split" 
-                        ? "bg-accent text-accent-foreground" 
-                        : "hover:bg-accent/50"
+                      "h-8 px-2 rounded-none border-x",
+                      viewMode === "split" && "bg-accent text-accent-foreground"
                     )}
                     title="Split view"
                   >
                     <Columns className="h-4 w-4" />
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     onClick={() => onViewModeChange?.("preview")}
+                    variant="ghost"
+                    size="sm"
                     className={cn(
-                      "p-2 transition-colors",
-                      viewMode === "preview" 
-                        ? "bg-accent text-accent-foreground" 
-                        : "hover:bg-accent/50"
+                      "h-8 px-2 rounded-none rounded-r-md",
+                      viewMode === "preview" && "bg-accent text-accent-foreground"
                     )}
                     title="Preview only"
                   >
                     <Eye className="h-4 w-4" />
-                  </button>
+                  </Button>
                 </div>
               )}
 
@@ -245,33 +239,39 @@ export function Header({
               <div className="hidden md:block w-px h-6 bg-border mx-1" />
               
               {/* Desktop actions */}
-              <button
+              <Button
                 onClick={onShare}
-                className="hidden lg:block p-2 rounded-md hover:bg-accent hover:text-accent-foreground transition-colors"
+                variant="ghost"
+                size="icon"
+                className="hidden lg:flex h-9 w-9"
                 title="Share"
               >
                 <Share2 className="h-4 w-4" />
-              </button>
+              </Button>
               
-              <button
+              <Button
                 onClick={onDownload}
-                className="hidden lg:block p-2 rounded-md hover:bg-accent hover:text-accent-foreground transition-colors"
+                variant="ghost"
+                size="icon"
+                className="hidden lg:flex h-9 w-9"
                 title="Download"
               >
                 <Download className="h-4 w-4" />
-              </button>
+              </Button>
 
               <div className="hidden sm:block w-px h-6 bg-border mx-1" />
             </div>
           )}
           
-          <button
+          <Button
             onClick={toggleTheme}
-            className="p-2 rounded-md hover:bg-accent hover:text-accent-foreground transition-colors"
+            variant="ghost"
+            size="icon"
+            className="h-9 w-9"
             title={mounted ? (isDarkMode ? "Light mode" : "Dark mode") : "Toggle theme"}
           >
             {mounted ? (isDarkMode ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />) : <Sun className="h-4 w-4" />}
-          </button>
+          </Button>
 
           {/* GitHub link - only when not showing editor features */}
           {!showEditorFeatures && (
@@ -290,45 +290,53 @@ export function Header({
           {user && (
             <div className="flex items-center gap-1">
               <div className="hidden sm:block w-px h-6 bg-border mx-1" />
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                    <Avatar className="h-8 w-8">
-                      <AvatarFallback className="text-xs">
-                        {(user?.name?.[0] || user?.email?.[0] || 'U').toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-56" align="end" forceMount>
-                  <DropdownMenuLabel className="font-normal">
-                    <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-medium leading-none">
-                        {user?.name || 'User'}
-                      </p>
-                      <p className="text-xs leading-none text-muted-foreground">
-                        {user?.email}
-                      </p>
-                    </div>
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleSignOut}>
-                    <LogOut className="mr-2 h-4 w-4" />
-                    <span>Sign out</span>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              {/* Desktop: Dropdown menu */}
+              <div className="hidden md:block">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                      <Avatar className="h-8 w-8">
+                        <AvatarFallback className="text-xs">
+                          {(user?.name?.[0] || user?.email?.[0] || 'U').toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-56" align="end" forceMount>
+                    <DropdownMenuLabel className="font-normal">
+                      <div className="flex flex-col space-y-1">
+                        <p className="text-sm font-medium leading-none">
+                          {user?.name || 'User'}
+                        </p>
+                        <p className="text-xs leading-none text-muted-foreground">
+                          {user?.email}
+                        </p>
+                      </div>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleSignOut}>
+                      <LogOut className="mr-2 h-4 w-4" />
+                      <span>Sign out</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+              {/* Mobile: Avatar that opens mobile menu */}
+              <Button 
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                variant="ghost" 
+                className="relative h-8 w-8 rounded-full md:hidden"
+              >
+                <Avatar className="h-8 w-8">
+                  <AvatarFallback className="text-xs">
+                    {(user?.name?.[0] || user?.email?.[0] || 'U').toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+              </Button>
             </div>
           )}
           
-          {/* Mobile menu button */}
-          <button
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="p-2 rounded-md hover:bg-accent hover:text-accent-foreground transition-colors md:hidden"
-            title="Menu"
-          >
-            <Menu className="h-4 w-4" />
-          </button>
+          {/* Mobile menu button removed - functionality moved to logo */}
         </div>
       </header>
       
@@ -342,12 +350,14 @@ export function Header({
           <div className="fixed inset-y-0 right-0 w-64 bg-background border-l shadow-xl z-50 md:hidden">
             <div className="flex items-center justify-between p-4 border-b">
               <h2 className="text-lg font-semibold">Menu</h2>
-              <button
+              <Button
                 onClick={() => setMobileMenuOpen(false)}
-                className="p-1 hover:bg-accent rounded-md transition-colors"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
               >
                 <X className="h-5 w-5" />
-              </button>
+              </Button>
             </div>
             
             <div className="p-4 space-y-4">
@@ -356,51 +366,28 @@ export function Header({
                 <div>
                   <h3 className="text-sm font-medium mb-2">View Mode</h3>
                   <div className="space-y-1">
-                    <button
+                    <Button
                       onClick={() => {
                         onViewModeChange?.("editor");
                         setMobileMenuOpen(false);
                       }}
-                      className={cn(
-                        "w-full flex items-center gap-2 p-2 rounded-md transition-colors",
-                        viewMode === "editor" 
-                          ? "bg-accent text-accent-foreground" 
-                          : "hover:bg-accent/50"
-                      )}
+                      variant={viewMode === "editor" ? "secondary" : "ghost"}
+                      className="w-full justify-start"
                     >
-                      <FileCode className="h-4 w-4" />
-                      <span>Editor</span>
-                    </button>
-                    <button
-                      onClick={() => {
-                        onViewModeChange?.("split");
-                        setMobileMenuOpen(false);
-                      }}
-                      className={cn(
-                        "w-full flex items-center gap-2 p-2 rounded-md transition-colors",
-                        viewMode === "split" 
-                          ? "bg-accent text-accent-foreground" 
-                          : "hover:bg-accent/50"
-                      )}
-                    >
-                      <Columns className="h-4 w-4" />
-                      <span>Split View</span>
-                    </button>
-                    <button
+                      <FileCode className="h-4 w-4 mr-2" />
+                      Editor
+                    </Button>
+                    <Button
                       onClick={() => {
                         onViewModeChange?.("preview");
                         setMobileMenuOpen(false);
                       }}
-                      className={cn(
-                        "w-full flex items-center gap-2 p-2 rounded-md transition-colors",
-                        viewMode === "preview" 
-                          ? "bg-accent text-accent-foreground" 
-                          : "hover:bg-accent/50"
-                      )}
+                      variant={viewMode === "preview" ? "secondary" : "ghost"}
+                      className="w-full justify-start"
                     >
-                      <Eye className="h-4 w-4" />
-                      <span>Preview</span>
-                    </button>
+                      <Eye className="h-4 w-4 mr-2" />
+                      Preview
+                    </Button>
                   </div>
                 </div>
               )}
@@ -420,26 +407,28 @@ export function Header({
                 <div className="border-t pt-4">
                   <h3 className="text-sm font-medium mb-2">Actions</h3>
                   <div className="space-y-1">
-                    <button
+                    <Button
                       onClick={() => {
                         onShare?.();
                         setMobileMenuOpen(false);
                       }}
-                      className="w-full flex items-center gap-2 p-2 rounded-md hover:bg-accent hover:text-accent-foreground transition-colors"
+                      variant="ghost"
+                      className="w-full justify-start"
                     >
-                      <Share2 className="h-4 w-4" />
-                      <span>Share</span>
-                    </button>
-                    <button
+                      <Share2 className="h-4 w-4 mr-2" />
+                      Share
+                    </Button>
+                    <Button
                       onClick={() => {
                         onDownload?.();
                         setMobileMenuOpen(false);
                       }}
-                      className="w-full flex items-center gap-2 p-2 rounded-md hover:bg-accent hover:text-accent-foreground transition-colors"
+                      variant="ghost"
+                      className="w-full justify-start"
                     >
-                      <Download className="h-4 w-4" />
-                      <span>Download</span>
-                    </button>
+                      <Download className="h-4 w-4 mr-2" />
+                      Download
+                    </Button>
                   </div>
                 </div>
               )}
