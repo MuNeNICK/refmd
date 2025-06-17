@@ -172,7 +172,7 @@ export const FileNode = memo(function FileNode({
     </SidebarMenuItem>
   );
 },
-// カスタム比較関数で不要な再レンダリングを防ぐ
+// Prevent unnecessary re-renders with custom comparison function
 (prevProps, nextProps) => {
   return (
     prevProps.node.id === nextProps.node.id &&

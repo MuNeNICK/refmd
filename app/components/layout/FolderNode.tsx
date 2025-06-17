@@ -298,13 +298,13 @@ export const FolderNode = memo(function FolderNode({
         open={showDeleteDialog}
         onOpenChange={setShowDeleteDialog}
         title={node.title}
-        description={`「${node.title}」フォルダとその中のすべてのファイルが削除されます。この操作は取り消せません。`}
+        description={`The "${node.title}" folder and all files inside it will be deleted. This action cannot be undone.`}
         onConfirm={handleDelete}
       />
     </SidebarMenuItem>
   );
 },
-// カスタム比較関数で不要な再レンダリングを防ぐ
+// Prevent unnecessary re-renders with custom comparison function
 (prevProps, nextProps) => {
   return (
     prevProps.node.id === nextProps.node.id &&

@@ -272,7 +272,7 @@ function FileTreeComponent({ onDocumentSelect, selectedDocumentId }: FileTreePro
     }
   }, [refreshDocuments, expandFolder]);
 
-  // ドラッグ&ドロップのフックを使用
+  // Use drag & drop hook
   const {
     dragState,
     handleDragStart,
@@ -286,10 +286,10 @@ function FileTreeComponent({ onDocumentSelect, selectedDocumentId }: FileTreePro
     onFileUpload: handleFileUpload,
   });
 
-  // ファイルの上にドロップした場合の処理を追加
+  // Add handling for dropping on files
   const handleDrop = useCallback((e: React.DragEvent, targetId?: string, targetType?: 'file' | 'folder', parentId?: string) => {
     if (targetType === 'file' && parentId !== undefined) {
-      // ファイルの上にドロップした場合は、そのファイルの親フォルダに移動
+      // When dropped on a file, move to the file's parent folder
       originalHandleDrop(e, parentId, 'folder');
     } else {
       originalHandleDrop(e, targetId, targetType);

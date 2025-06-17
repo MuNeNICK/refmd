@@ -69,7 +69,7 @@ export function useFileTreeDrag({ onMove, onFileUpload }: UseFileTreeDragProps) 
       return;
     }
 
-    // 内部ドラッグの場合（text/plainタイプがある場合）
+    // For internal drag (when text/plain type exists)
     const hasInternalDrag = e.dataTransfer?.types.includes('text/plain');
     
     if (nodeType === 'folder' && hasInternalDrag) {
@@ -147,7 +147,7 @@ export function useFileTreeDrag({ onMove, onFileUpload }: UseFileTreeDragProps) 
     const hasFiles = e.dataTransfer.types.includes('Files');
     e.dataTransfer.dropEffect = hasFiles ? 'copy' : 'move';
     
-    // フォルダーの上でドラッグオーバーしている場合、ドロップターゲットを設定
+    // When dragging over a folder, set drop target
     if (nodeId && nodeType === 'folder') {
       const hasInternalDrag = e.dataTransfer?.types.includes('text/plain');
       if (hasFiles || hasInternalDrag) {
