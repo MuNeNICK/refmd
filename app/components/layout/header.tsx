@@ -20,7 +20,6 @@ import {
   Download, 
   Moon, 
   Sun,
-  Menu,
   Github,
   Columns,
   FileCode,

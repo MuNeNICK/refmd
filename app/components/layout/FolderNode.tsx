@@ -41,7 +41,6 @@ interface FolderNodeProps {
   isDropTarget: boolean;
   hasChildDropTarget: boolean;
   onToggle: (id: string) => void;
-  onSelect: (id: string) => void;
   onRename: (id: string, newTitle: string) => void;
   onDelete: (id: string) => void;
   onCreateNew: (parentId: string, isFolder: boolean) => void;
@@ -62,7 +61,6 @@ export const FolderNode = memo(function FolderNode({
   isDropTarget,
   hasChildDropTarget,
   onToggle,
-  onSelect,
   onRename,
   onDelete,
   onCreateNew,

@@ -4,7 +4,6 @@ import React, { useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { FileTree } from './file-tree';
 import { Header } from './header';
-import { cn } from '@/lib/utils';
 import type { ViewMode } from '@/components/layout/header';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 

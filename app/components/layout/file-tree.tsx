@@ -332,7 +332,6 @@ function FileTreeComponent({ onDocumentSelect, selectedDocumentId }: FileTreePro
           isDropTarget={isDropTarget}
           hasChildDropTarget={childHasDropTarget}
           onToggle={toggleFolder}
-          onSelect={onDocumentSelect}
           onRename={renameDocument}
           onDelete={deleteDocument}
           onCreateNew={createNewDocument}

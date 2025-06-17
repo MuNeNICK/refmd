@@ -22,7 +22,7 @@ export function useFileTreeDrag({ onMove, onFileUpload }: UseFileTreeDragProps) 
     isExternalDrag: false,
   });
 
-  const dragTimeoutRef = useRef<NodeJS.Timeout>();
+  const dragTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
   const handleDragStart = useCallback((e: React.DragEvent, nodeId: string) => {
     setDragState({

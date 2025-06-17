@@ -310,7 +310,7 @@ function PreviewPaneComponent({
                 } catch {
                   return <div>Error rendering markdown</div>;
                 }
-              }, [content, headingComponents, documentId])}
+              }, [content, headingComponents, documentId, token])}
             </div>
           </div>
           {/* Table of Contents - only show in preview mode, not in split mode */}
