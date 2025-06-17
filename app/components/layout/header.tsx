@@ -270,7 +270,7 @@ export function Header({
             className="p-2 rounded-md hover:bg-accent hover:text-accent-foreground transition-colors"
             title={mounted ? (isDarkMode ? "Light mode" : "Dark mode") : "Toggle theme"}
           >
-            {mounted ? (isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />) : <Moon className="h-4 w-4" />}
+            {mounted ? (isDarkMode ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />) : <Sun className="h-4 w-4" />}
           </button>
 
           {/* GitHub link - only when not showing editor features */}
