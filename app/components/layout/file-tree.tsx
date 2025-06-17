@@ -4,7 +4,6 @@ import React, { useCallback} from 'react';
 import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
-  Sidebar,
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
@@ -12,7 +11,6 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuSkeleton,
-  SidebarRail,
 } from '@/components/ui/sidebar';
 import { useFileTree } from '@/components/providers/fileTreeProvider';
 import { useRouter } from 'next/navigation';
@@ -369,96 +367,94 @@ function FileTreeComponent({ onDocumentSelect, selectedDocumentId }: FileTreePro
 
   if (loading) {
     return (
-      <Sidebar variant="sidebar" collapsible="offcanvas" className="top-14 h-[calc(100vh-3.5rem)]">
-          <SidebarHeader className="px-2 border-b">
-            <div className="flex items-center justify-between py-2">
-              <span className="text-sm font-medium text-foreground">Files</span>
-              <FileTreeActions
-                onCreateDocument={() => {}}
-                onCreateFolder={() => {}}
-                onExport={() => {}}
-                onSync={() => {}}
-                onRefresh={() => {}}
-              />
-            </div>
-          </SidebarHeader>
-          <SidebarContent>
-            <SidebarGroup>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {Array.from({ length: 8 }).map((_, i) => (
-                    <SidebarMenuItem key={i}>
-                      <SidebarMenuSkeleton showIcon />
-                    </SidebarMenuItem>
-                  ))}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-          </SidebarContent>
-          <SidebarRail />
-      </Sidebar>
+      <div className="h-full flex flex-col">
+        <SidebarHeader className="px-2 py-2 border-b">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium text-foreground">Files</span>
+            <FileTreeActions
+              onCreateDocument={() => {}}
+              onCreateFolder={() => {}}
+              onExport={() => {}}
+              onSync={() => {}}
+              onRefresh={() => {}}
+            />
+          </div>
+        </SidebarHeader>
+        <SidebarContent>
+          <SidebarGroup>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <SidebarMenuItem key={i}>
+                    <SidebarMenuSkeleton showIcon />
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        </SidebarContent>
+      </div>
     );
   }
 
   return (
-    <Sidebar variant="sidebar" collapsible="offcanvas" className="top-14 h-[calc(100vh-3.5rem)]">
-        <SidebarHeader className="px-2 border-b">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium">Files</span>
-            <FileTreeActions
-              onCreateDocument={() => createNewDocument(undefined, false)}
-              onCreateFolder={() => createNewDocument(undefined, true)}
-              onExport={exportDocuments}
-              onSync={syncDocuments}
-              onRefresh={refreshDocuments}
-            />
+    <div className="h-full flex flex-col">
+      <SidebarHeader className="px-2 py-2 border-b">
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium">Files</span>
+          <FileTreeActions
+            onCreateDocument={() => createNewDocument(undefined, false)}
+            onCreateFolder={() => createNewDocument(undefined, true)}
+            onExport={exportDocuments}
+            onSync={syncDocuments}
+            onRefresh={refreshDocuments}
+          />
+        </div>
+      </SidebarHeader>
+
+      <SidebarContent
+        className="relative"
+        onDragOver={handleDragOver}
+        onDragEnter={(e) => handleDragEnter(e, '', 'folder')}
+        onDragLeave={handleDragLeave}
+        onDrop={(e) => handleDrop(e, undefined, undefined)}
+      >
+        {/* Root drop zone overlay */}
+        {((dragState.draggedItem && dragState.dropTarget === '') || (dragState.isExternalDrag && dragState.dropTarget === '')) && (
+          <div className="absolute inset-0 bg-primary/5 border-l-2 border-l-primary z-0 pointer-events-none" />
+        )}
+
+        {/* External file drop feedback */}
+        {dragState.isExternalDrag && !dragState.dropTarget && (
+          <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
+            <p className="text-primary font-medium">Drop files here to add to root</p>
           </div>
-        </SidebarHeader>
+        )}
 
-        <SidebarContent
-          className="relative"
-          onDragOver={handleDragOver}
-          onDragEnter={(e) => handleDragEnter(e, '', 'folder')}
-          onDragLeave={handleDragLeave}
-          onDrop={(e) => handleDrop(e, undefined, undefined)}
-        >
-          {/* Root drop zone overlay */}
-          {((dragState.draggedItem && dragState.dropTarget === '') || (dragState.isExternalDrag && dragState.dropTarget === '')) && (
-            <div className="absolute inset-0 bg-primary/5 border-l-2 border-l-primary z-0 pointer-events-none" />
-          )}
-
-          {/* External file drop feedback */}
-          {dragState.isExternalDrag && !dragState.dropTarget && (
-            <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
-              <p className="text-primary font-medium">Drop files here to add to root</p>
-            </div>
-          )}
-
-          <SidebarGroup>
-            <SidebarGroupContent>
-              {documents.length === 0 ? (
-                <div className="text-center py-8">
-                  <p className="text-sm text-muted-foreground mb-2">No documents yet</p>
-                  <p className="text-xs text-muted-foreground mb-4">Drop files here or create a new document</p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => createNewDocument(undefined, false)}
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Create your first document
-                  </Button>
-                </div>
-              ) : (
-                <SidebarMenu className="gap-0.5">
-                  {documents.map(node => renderNode(node))}
-                </SidebarMenu>
-              )}
-            </SidebarGroupContent>
-          </SidebarGroup>
-        </SidebarContent>
-        <SidebarRail />
-    </Sidebar>
+        <SidebarGroup>
+          <SidebarGroupContent>
+            {documents.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-sm text-muted-foreground mb-2">No documents yet</p>
+                <p className="text-xs text-muted-foreground mb-4">Drop files here or create a new document</p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => createNewDocument(undefined, false)}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create your first document
+                </Button>
+              </div>
+            ) : (
+              <SidebarMenu className="gap-0.5">
+                {documents.map(node => renderNode(node))}
+              </SidebarMenu>
+            )}
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+    </div>
   );
 }
 
