@@ -22,6 +22,7 @@ import {
   TooltipTrigger 
 } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import { DeleteConfirmationDialog } from '@/components/ui/delete-confirmation-dialog';
 
 interface DocumentNode {
   id: string;
@@ -74,6 +75,7 @@ export const FolderNode = memo(function FolderNode({
 }: FolderNodeProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editingTitle, setEditingTitle] = useState(node.title);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const handleToggle = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
@@ -106,10 +108,9 @@ export const FolderNode = memo(function FolderNode({
   }, [handleSaveRename, handleCancelRename]);
 
   const handleDelete = useCallback(() => {
-    if (confirm(`Are you sure you want to delete "${node.title}"?`)) {
-      onDelete(node.id);
-    }
-  }, [node.title, node.id, onDelete]);
+    onDelete(node.id);
+    setShowDeleteDialog(false);
+  }, [node.id, onDelete]);
 
   const handleCreateDocument = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
@@ -241,7 +242,7 @@ export const FolderNode = memo(function FolderNode({
                     Rename
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    onClick={handleDelete}
+                    onClick={() => setShowDeleteDialog(true)}
                     className="text-red-600"
                   >
                     <Trash2 className="h-4 w-4 mr-2" />
@@ -292,6 +293,14 @@ export const FolderNode = memo(function FolderNode({
           )}
         </SidebarMenuSub>
       )}
+
+      <DeleteConfirmationDialog
+        open={showDeleteDialog}
+        onOpenChange={setShowDeleteDialog}
+        title={node.title}
+        description={`「${node.title}」フォルダとその中のすべてのファイルが削除されます。この操作は取り消せません。`}
+        onConfirm={handleDelete}
+      />
     </SidebarMenuItem>
   );
 },

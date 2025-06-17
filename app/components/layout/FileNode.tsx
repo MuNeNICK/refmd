@@ -15,6 +15,7 @@ import {
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
+import { DeleteConfirmationDialog } from '@/components/ui/delete-confirmation-dialog';
 
 interface DocumentNode {
   id: string;
@@ -61,6 +62,7 @@ export const FileNode = memo(function FileNode({
 }: FileNodeProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editingTitle, setEditingTitle] = useState(node.title);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const handleStartRename = useCallback(() => {
     setIsEditing(true);
@@ -88,10 +90,9 @@ export const FileNode = memo(function FileNode({
   }, [handleSaveRename, handleCancelRename]);
 
   const handleDelete = useCallback(() => {
-    if (confirm(`Are you sure you want to delete "${node.title}"?`)) {
-      onDelete(node.id);
-    }
-  }, [node.title, node.id, onDelete]);
+    onDelete(node.id);
+    setShowDeleteDialog(false);
+  }, [node.id, onDelete]);
 
   const handleSelect = useCallback(() => {
     onSelect(node.id);
@@ -150,7 +151,7 @@ export const FileNode = memo(function FileNode({
                   Rename
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  onClick={handleDelete}
+                  onClick={() => setShowDeleteDialog(true)}
                   className="text-red-600"
                 >
                   <Trash2 className="h-4 w-4 mr-2" />
@@ -161,6 +162,13 @@ export const FileNode = memo(function FileNode({
           </div>
         )}
       </div>
+
+      <DeleteConfirmationDialog
+        open={showDeleteDialog}
+        onOpenChange={setShowDeleteDialog}
+        title={node.title}
+        onConfirm={handleDelete}
+      />
     </SidebarMenuItem>
   );
 },
