@@ -124,7 +124,7 @@ export function Header({
 
         {/* Center - Document info and realtime status (only for editor) */}
         {showEditorFeatures && (
-          <div className="absolute left-1/2 transform -translate-x-1/2 flex items-center gap-2 text-sm text-muted-foreground">
+          <div className="hidden sm:flex absolute left-1/2 transform -translate-x-1/2 items-center gap-2 text-sm text-muted-foreground">
             <span className="hidden xl:inline">{documentTitle || 'Untitled Document'}</span>
             
             {/* Save status */}
@@ -157,8 +157,11 @@ export function Header({
             {isRealtimeConnected && realtimeUserCount > 1 && (
               <div className="flex items-center gap-1">
                 <Users className="w-3 h-3 text-blue-500" />
-                <span className="text-xs text-blue-600 dark:text-blue-400">
+                <span className="text-xs text-blue-600 dark:text-blue-400 hidden md:inline">
                   {realtimeUserCount} {realtimeUserCount === 1 ? 'person' : 'people'} editing
+                </span>
+                <span className="text-xs text-blue-600 dark:text-blue-400 md:hidden">
+                  {realtimeUserCount}
                 </span>
               </div>
             )}
@@ -167,6 +170,33 @@ export function Header({
               <span className="text-xs hidden xl:inline">
                 {new Date(lastSaved).toLocaleTimeString()}
               </span>
+            )}
+          </div>
+        )}
+        
+        {/* Mobile status indicators - shown inline on mobile */}
+        {showEditorFeatures && (
+          <div className="flex sm:hidden items-center gap-2 text-sm text-muted-foreground mx-2">
+            {/* Save status icon only */}
+            <span className={cn("text-xs px-1.5 py-0.5 rounded", statusClassName)}>
+              {saveStatus === "saving" ? "..." : saveStatus === "error" ? "!" : "✓"}
+            </span>
+            
+            {/* Connection icon */}
+            {isRealtimeConnected ? (
+              <Wifi className="w-3 h-3 text-green-500" />
+            ) : (
+              <WifiOff className="w-3 h-3 text-red-500" />
+            )}
+            
+            {/* User count icon with number only */}
+            {isRealtimeConnected && realtimeUserCount > 1 && (
+              <div className="flex items-center gap-0.5">
+                <Users className="w-3 h-3 text-blue-500" />
+                <span className="text-xs text-blue-600 dark:text-blue-400">
+                  {realtimeUserCount}
+                </span>
+              </div>
             )}
           </div>
         )}

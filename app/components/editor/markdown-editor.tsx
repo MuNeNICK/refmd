@@ -607,7 +607,7 @@ export function MarkdownEditor({
           onMount={handleEditorMount}
           options={{
             automaticLayout: true,
-            fontSize: 14,
+            fontSize: 16,
             fontFamily: "'JetBrains Mono', 'Fira Code', Consolas, monospace",
           }}
           loading={

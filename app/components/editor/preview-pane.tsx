@@ -167,10 +167,14 @@ function PreviewPaneComponent({
       )}
       <div className="flex-1 overflow-auto" ref={actualPreviewRef} onScroll={handleScroll}>
         <div className={cn(
-          "max-w-full mx-auto flex gap-8 p-8"
+          "w-full mx-auto flex gap-8 p-4 sm:p-6 md:p-8",
+          viewMode === "preview" && "max-w-6xl"
         )}>
           <div className="flex-1 min-w-0 overflow-hidden">
-            <div className="prose prose-neutral dark:prose-invert max-w-none markdown-preview break-words overflow-wrap-anywhere">
+            <div className={cn(
+              "prose prose-neutral dark:prose-invert markdown-preview break-words overflow-wrap-anywhere",
+              viewMode === "preview" ? "max-w-3xl mx-auto" : "max-w-none"
+            )}>
               {useMemo(() => {
                 try {
                   return (
