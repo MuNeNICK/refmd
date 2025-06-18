@@ -120,6 +120,12 @@ export function Header({
               Collaborative Markdown Editor
             </span>
           )}
+          {/* Show document title when not showing editor features but title is provided */}
+          {!showEditorFeatures && documentTitle && (
+            <span className="text-sm font-medium text-foreground ml-2 hidden sm:inline">
+              • {documentTitle}
+            </span>
+          )}
         </div>
 
         {/* Center - Document info and realtime status (only for editor) */}

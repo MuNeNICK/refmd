@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useCallback, memo } from 'react';
-import { ChevronRight, ChevronDown, Folder, FolderOpen, Plus, Edit, Trash2, MoreHorizontal } from 'lucide-react';
+import { ChevronRight, ChevronDown, Folder, FolderOpen, Plus, Edit, Trash2, MoreHorizontal, StickyNote } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { 
   SidebarMenuItem, 
@@ -27,7 +27,7 @@ import { DeleteConfirmationDialog } from '@/components/ui/delete-confirmation-di
 interface DocumentNode {
   id: string;
   title: string;
-  type: 'file' | 'folder';
+  type: 'file' | 'folder' | 'scrap';
   parent_id?: string;
   children?: DocumentNode[];
   created_at?: string;
@@ -44,7 +44,7 @@ interface FolderNodeProps {
   onToggle: (id: string) => void;
   onRename: (id: string, newTitle: string) => void;
   onDelete: (id: string) => void;
-  onCreateNew: (parentId: string, isFolder: boolean) => void;
+  onCreateNew: (parentId: string, isFolder: boolean, isScrap?: boolean) => void;
   onDragStart: (e: React.DragEvent, id: string) => void;
   onDragEnd: (e: React.DragEvent) => void;
   onDragEnter: (e: React.DragEvent, id: string, type: 'file' | 'folder') => void;
@@ -114,12 +114,17 @@ export const FolderNode = memo(function FolderNode({
 
   const handleCreateDocument = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
-    onCreateNew(node.id, false);
+    onCreateNew(node.id, false, false);
   }, [node.id, onCreateNew]);
 
   const handleCreateFolder = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
-    onCreateNew(node.id, true);
+    onCreateNew(node.id, true, false);
+  }, [node.id, onCreateNew]);
+
+  const handleCreateScrap = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    onCreateNew(node.id, false, true);
   }, [node.id, onCreateNew]);
 
   const shouldShowDropHighlight = isDropTarget || (hasChildDropTarget && isExpanded);
@@ -236,6 +241,10 @@ export const FolderNode = memo(function FolderNode({
                   <DropdownMenuItem onClick={handleCreateFolder}>
                     <Folder className="h-4 w-4 mr-2" />
                     New Folder
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleCreateScrap}>
+                    <StickyNote className="h-4 w-4 mr-2" />
+                    New Scrap
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={handleStartRename}>
                     <Edit className="h-4 w-4 mr-2" />

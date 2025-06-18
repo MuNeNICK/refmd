@@ -23,6 +23,7 @@ export namespace Document {
     export enum type {
         DOCUMENT = 'document',
         FOLDER = 'folder',
+        SCRAP = 'scrap',
     }
 }
 
