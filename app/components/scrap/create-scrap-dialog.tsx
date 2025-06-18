@@ -58,21 +58,21 @@ export function CreateScrapDialog({
         {trigger || (
           <Button variant="outline" size="sm">
             <StickyNote className="h-4 w-4 mr-2" />
-            新規スクラップ
+            New Scrap
           </Button>
         )}
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>新規スクラップ作成</DialogTitle>
+          <DialogTitle>Create New Scrap</DialogTitle>
           <DialogDescription>
-            スクラップはスレッド形式でメモや知見を記録できる機能です
+            Scrap is a feature that allows you to record notes and insights in thread format
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="title" className="text-right">
-              タイトル
+              Title
             </Label>
             <Input
               id="title"
@@ -80,7 +80,7 @@ export function CreateScrapDialog({
               onChange={(e) => setTitle(e.target.value)}
               onKeyDown={handleKeyDown}
               className="col-span-3"
-              placeholder="スクラップのタイトル"
+              placeholder="Scrap title"
               disabled={isLoading}
               autoFocus
             />
@@ -93,14 +93,14 @@ export function CreateScrapDialog({
             onClick={() => setOpen(false)}
             disabled={isLoading}
           >
-            キャンセル
+            Cancel
           </Button>
           <Button
             type="button"
             onClick={handleCreate}
             disabled={!title.trim() || isLoading}
           >
-            {isLoading ? '作成中...' : '作成'}
+            {isLoading ? 'Creating...' : 'Create'}
           </Button>
         </DialogFooter>
       </DialogContent>

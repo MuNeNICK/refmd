@@ -33,28 +33,28 @@ export function CodeBlock({ language, children, className }: CodeBlockProps) {
       <SyntaxHighlighter
         language={language}
         style={oneDark}
-        PreTag="div"
+        PreTag="pre"
         customStyle={{
-          margin: 0,
-          padding: 0,
-          borderRadius: '0.5rem',
+          margin: '0 0 1rem 0',
+          padding: '1rem',
+          backgroundColor: 'rgb(31, 41, 55)',
           fontSize: '0.875rem',
-          backgroundColor: 'transparent',
+          lineHeight: '1.5',
+          borderRadius: '0.5rem',
+          overflow: 'auto',
         }}
         codeTagProps={{
           style: {
             textShadow: 'none',
-            fontFamily: 'inherit',
-            backgroundColor: 'transparent',
-            padding: 0,
-            margin: 0,
+            fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace',
+            fontSize: '0.875rem',
+            lineHeight: '1.5',
           },
         }}
-        className={className}
+        className={`syntax-highlighter ${className || ''}`}
       >
         {children}
       </SyntaxHighlighter>
-
     </Suspense>
   );
 }

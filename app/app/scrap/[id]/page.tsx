@@ -1,8 +1,8 @@
 import { notFound } from 'next/navigation';
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
-import { ScrapPageClient } from './scrap-page-client';
-import { RefMDClient } from '@/lib/api/client';
+import { ScrapPageClient } from './page-client';
+import { RefMDClient, ApiError } from '@/lib/api/client';
 import { getApiUrl } from '@/lib/config';
 
 interface PageProps {
@@ -29,39 +29,39 @@ export default async function ScrapPage({ params }: PageProps) {
   try {
     const scrapData = await client.scraps.getScrap(id);
     return <ScrapPageClient initialData={scrapData} scrapId={id} />;
-  } catch (error) {
+  } catch (error: any) {
     console.error('Failed to fetch scrap:', error);
-    if (error instanceof Error) {
-      console.error('Error details:', {
-        message: error.message,
-        stack: error.stack,
-        name: error.name
-      });
-      
-      // Handle specific error cases
-      if (error.message.includes('401') || error.message.includes('403')) {
-        redirect('/');
-      }
-      
-      // For now, create a mock scrap to test the UI
-      if (error.message.includes('500')) {
-        const mockScrap = {
-          scrap: {
-            id,
-            title: 'Test Scrap',
-            owner_id: '00000000-0000-0000-0000-000000000000',
-            file_path: null,
-            parent_id: null,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            last_edited_by: null,
-            last_edited_at: null,
-          },
-          posts: []
-        };
-        return <ScrapPageClient initialData={mockScrap} scrapId={id} />;
-      }
+    
+    // Check if it's an ApiError with status property
+    if (error.status === 401 || error.status === 403) {
+      redirect('/');
     }
+    
+    // Check if it's an ApiError with status 404
+    if (error.status === 404) {
+      notFound();
+    }
+    
+    // For development/debugging - remove this in production
+    if (error.status === 500) {
+      const mockScrap = {
+        scrap: {
+          id,
+          title: 'Test Scrap',
+          owner_id: '00000000-0000-0000-0000-000000000000',
+          file_path: null,
+          parent_id: null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          last_edited_by: null,
+          last_edited_at: null,
+        },
+        posts: []
+      };
+      return <ScrapPageClient initialData={mockScrap} scrapId={id} />;
+    }
+    
+    // Default to not found for other errors
     notFound();
   }
 }

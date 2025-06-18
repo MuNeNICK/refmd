@@ -313,7 +313,7 @@ function FileTreeComponent({ onDocumentSelect, selectedDocumentId }: FileTreePro
     return checkRecursively(node.children);
   }, [dragState.dropTarget]);
 
-  // ノードのレンダリング関数
+  // Node rendering function
   const renderNode = useCallback((node: DocumentNode, parentId?: string) => {
     const isExpanded = expandedFolders.has(node.id);
     const isSelected = selectedDocumentId === node.id;

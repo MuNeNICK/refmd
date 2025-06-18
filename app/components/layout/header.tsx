@@ -115,18 +115,19 @@ export function Header({
             <FileText className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
             <h1 className="text-lg sm:text-xl font-semibold">RefMD</h1>
           </Link>
-          {!showEditorFeatures && (
+          {!showEditorFeatures && !documentTitle && (
             <span className="text-sm text-muted-foreground hidden lg:inline">
               Collaborative Markdown Editor
             </span>
           )}
-          {/* Show document title when not showing editor features but title is provided */}
-          {!showEditorFeatures && documentTitle && (
-            <span className="text-sm font-medium text-foreground ml-2 hidden sm:inline">
-              • {documentTitle}
-            </span>
-          )}
         </div>
+
+        {/* Center - Document title for scrap pages */}
+        {!showEditorFeatures && documentTitle && (
+          <div className="absolute left-1/2 transform -translate-x-1/2 hidden sm:block">
+            <span className="text-sm text-muted-foreground">{documentTitle}</span>
+          </div>
+        )}
 
         {/* Center - Document info and realtime status (only for editor) */}
         {showEditorFeatures && (

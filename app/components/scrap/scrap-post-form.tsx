@@ -1,10 +1,15 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { X } from 'lucide-react';
+import { X, ImageIcon, Eye, Edit } from 'lucide-react';
+import { useScrapFileUpload } from '@/lib/hooks/useScrapFileUpload';
+import { useDropzone } from 'react-dropzone';
+import { ScrapMarkdown } from './scrap-markdown';
+import { ScrapToolbar } from './scrap-toolbar';
+import { applyMarkdownFormat } from '@/lib/utils/markdown-formatting';
 
 interface ScrapPostFormProps {
   initialContent?: string;
@@ -13,6 +18,8 @@ interface ScrapPostFormProps {
   isLoading?: boolean;
   placeholder?: string;
   submitLabel?: string;
+  documentId?: string; // Optional document ID for file association
+  autoFocus?: boolean;
 }
 
 export function ScrapPostForm({
@@ -20,11 +27,88 @@ export function ScrapPostForm({
   onSubmit,
   onCancel,
   isLoading = false,
-  placeholder = '投稿を入力...',
-  submitLabel = '投稿'
+  placeholder = 'Enter a post...',
+  submitLabel = 'Post',
+  documentId,
+  autoFocus = false
 }: ScrapPostFormProps) {
   const [content, setContent] = useState(initialContent);
+  const [isPreviewMode, setIsPreviewMode] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+
+  // Get cursor position in textarea
+  const getCursorPosition = useCallback(() => {
+    return textareaRef.current?.selectionStart || content.length;
+  }, [content]);
+
+  // Insert text at cursor position
+  const insertTextAtCursor = useCallback((text: string) => {
+    if (!textareaRef.current) return;
+    
+    const textarea = textareaRef.current;
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const newContent = content.substring(0, start) + text + content.substring(end);
+    
+    setContent(newContent);
+    
+    // Set cursor position after inserted text
+    setTimeout(() => {
+      textarea.focus();
+      const newCursorPos = start + text.length;
+      textarea.setSelectionRange(newCursorPos, newCursorPos);
+    }, 0);
+  }, [content]);
+
+  // Apply markdown formatting
+  const handleMarkdownFormat = useCallback((format: string) => {
+    if (!textareaRef.current) return;
+    
+    const textarea = textareaRef.current;
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = content.substring(start, end);
+    
+    const result = applyMarkdownFormat(format, selectedText);
+    if (!result) return;
+    
+    const { formattedText, cursorOffset } = result;
+    const newContent = content.substring(0, start) + formattedText + content.substring(end);
+    setContent(newContent);
+    
+    // Set cursor position
+    setTimeout(() => {
+      textarea.focus();
+      if (selectedText) {
+        // If text was selected, place cursor at end of formatted text
+        textarea.setSelectionRange(start + formattedText.length, start + formattedText.length);
+      } else {
+        // If no text selected, place cursor at appropriate position for typing
+        textarea.setSelectionRange(start + cursorOffset, start + cursorOffset);
+      }
+    }, 0);
+  }, [content]);
+
+  // File upload hook
+  const { handleFileUpload, triggerFileUpload, fileInputRef, fileInputProps } = useScrapFileUpload({
+    documentId,
+    onInsertText: insertTextAtCursor,
+    getCursorPosition
+  });
+
+  // Drag and drop hook
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop: handleFileUpload,
+    accept: {
+      'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.webp'],
+      'application/pdf': ['.pdf'],
+      'text/*': ['.txt', '.md']
+    },
+    multiple: true,
+    noClick: true, // Don't trigger file dialog on textarea click
+    noKeyboard: true // Don't trigger on keyboard events
+  });
 
   useEffect(() => {
     // Auto-resize textarea
@@ -33,6 +117,16 @@ export function ScrapPostForm({
       textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
     }
   }, [content]);
+
+  useEffect(() => {
+    setIsDragging(isDragActive);
+  }, [isDragActive]);
+
+  useEffect(() => {
+    if (autoFocus && textareaRef.current) {
+      textareaRef.current.focus();
+    }
+  }, [autoFocus]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,27 +145,90 @@ export function ScrapPostForm({
   };
 
   return (
-    <Card className="p-4">
+    <Card className="p-4 shadow-none">
       <form onSubmit={handleSubmit}>
         <div className="space-y-3">
-          <Textarea
-            ref={textareaRef}
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={placeholder}
-            className="min-h-[100px] resize-none"
-            disabled={isLoading}
-          />
+          {/* Mode toggle buttons */}
+          <div className="flex items-center gap-1 border-b pb-2">
+            <Button
+              type="button"
+              variant={!isPreviewMode ? "secondary" : "ghost"}
+              size="sm"
+              onClick={() => setIsPreviewMode(false)}
+              className="h-7 px-2 text-xs"
+            >
+              <Edit className="h-3 w-3 mr-1" />
+              Write
+            </Button>
+            <Button
+              type="button"
+              variant={isPreviewMode ? "secondary" : "ghost"}
+              size="sm"
+              onClick={() => setIsPreviewMode(true)}
+              className="h-7 px-2 text-xs"
+              disabled={!content.trim()}
+            >
+              <Eye className="h-3 w-3 mr-1" />
+              Preview
+            </Button>
+          </div>
+
+          {/* Content area */}
+          {!isPreviewMode ? (
+            <div 
+              {...getRootProps()} 
+              className={`relative ${isDragging ? 'ring-2 ring-primary ring-offset-2' : ''}`}
+            >
+              <input {...getInputProps()} />
+              <Textarea
+                ref={textareaRef}
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder={placeholder}
+                className="min-h-[100px] resize-none"
+                disabled={isLoading}
+              />
+              {isDragging && (
+                <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center rounded-md">
+                  <div className="text-center">
+                    <ImageIcon className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground">Drop to upload files</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="min-h-[100px] p-3 rounded-md border bg-muted/20">
+              {content.trim() ? (
+                <div className="prose prose-sm max-w-none w-full">
+                  <ScrapMarkdown content={content} documentId={documentId} />
+                </div>
+              ) : (
+                <p className="text-muted-foreground text-sm">Nothing to preview</p>
+              )}
+            </div>
+          )}
           
           <div className="flex justify-between items-center">
-            <div className="text-xs text-muted-foreground">
-              Markdown記法が使えます • 
-              <kbd className="px-1 py-0.5 text-xs bg-muted rounded">Ctrl</kbd>+
-              <kbd className="px-1 py-0.5 text-xs bg-muted rounded">Enter</kbd> で送信
+            <div className="flex items-center gap-1">
+              {!isPreviewMode && (
+                <ScrapToolbar
+                  onFormatClick={handleMarkdownFormat}
+                  onFileUpload={triggerFileUpload}
+                  disabled={isLoading}
+                />
+              )}
             </div>
             
-            <div className="flex gap-2">
+            <div className="flex items-center gap-2">
+              {!isPreviewMode && (
+                <div className="text-xs text-muted-foreground hidden sm:block">
+                  <kbd className="px-1 py-0.5 text-xs bg-muted rounded">Ctrl</kbd>+
+                  <kbd className="px-1 py-0.5 text-xs bg-muted rounded">Enter</kbd> to send
+                </div>
+              )}
+              
               {onCancel && (
                 <Button
                   type="button"
@@ -81,7 +238,7 @@ export function ScrapPostForm({
                   disabled={isLoading}
                 >
                   <X className="h-4 w-4 mr-1" />
-                  キャンセル
+                  Cancel
                 </Button>
               )}
               
@@ -90,12 +247,13 @@ export function ScrapPostForm({
                 size="sm"
                 disabled={!content.trim() || isLoading}
               >
-                {isLoading ? '送信中...' : submitLabel}
+                {isLoading ? 'Sending...' : submitLabel}
               </Button>
             </div>
           </div>
         </div>
       </form>
+      <input ref={fileInputRef} {...fileInputProps} />
     </Card>
   );
 }

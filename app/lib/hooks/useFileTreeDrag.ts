@@ -74,7 +74,7 @@ export function useFileTreeDrag({ onMove, onFileUpload }: UseFileTreeDragProps) 
     
     if (nodeType === 'folder' && hasInternalDrag) {
       setDragState(prev => {
-        // 自分自身にドロップしようとしている場合は無視
+        // Ignore if trying to drop on itself
         if (prev.draggedItem !== nodeId) {
           return {
             ...prev,
