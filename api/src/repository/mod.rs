@@ -6,5 +6,4 @@ pub mod share;
 
 pub use document::DocumentRepository;
 pub use user::UserRepository;
-pub use scrap::ScrapRepository;
 pub use share::ShareRepository;

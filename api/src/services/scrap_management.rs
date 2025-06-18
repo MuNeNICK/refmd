@@ -45,6 +45,9 @@ impl ScrapService {
 
         let content = ScrapParser::generate_scrap_content(&document.title, &[], &metadata);
 
+        // Initialize CRDT with initial content
+        self.crdt_service.update_document_content(document.id, &content).await?;
+
         // Save to file
         self.document_service
             .save_to_file_with_content(&document, &content)
@@ -54,14 +57,22 @@ impl ScrapService {
     }
 
     pub async fn get_scrap(&self, id: Uuid, user_id: Uuid) -> Result<ScrapWithPosts> {
+        tracing::debug!("Getting scrap: id={}, user_id={}", id, user_id);
+        
         // Check access permission
         let has_access = ScrapRepository::check_scrap_access(&*self.pool, id, user_id).await?;
         if !has_access {
+            tracing::warn!("Access denied for scrap: id={}, user_id={}", id, user_id);
             return Err(Error::Forbidden);
         }
 
+        tracing::debug!("Fetching scrap document from database");
         let document = ScrapRepository::get_scrap_by_id(&*self.pool, id).await?;
+        
+        tracing::debug!("Fetching scrap posts from database");
         let posts = ScrapRepository::get_scrap_posts(&*self.pool, id).await?;
+        
+        tracing::debug!("Successfully fetched scrap with {} posts", posts.len());
 
         Ok(ScrapWithPosts {
             scrap: self.document_to_scrap(document),
@@ -84,7 +95,10 @@ impl ScrapService {
 
         // Update file if title changed
         if let Some(_file_path) = &document.file_path {
+            // Get content from CRDT
             let content = self.crdt_service.get_document_content(document.id).await?;
+            
+            // Save to file
             self.document_service
                 .save_to_file_with_content(&document, &content)
                 .await?;
@@ -141,9 +155,17 @@ impl ScrapService {
 
         // Update file
         let document = ScrapRepository::get_scrap_by_id(&*self.pool, scrap_id).await?;
-        if let Some(_) = &document.file_path {
+        if let Some(_file_path) = &document.file_path {
+            // Get current content from CRDT
             let content = self.crdt_service.get_document_content(document.id).await?;
+            
+            // Add post to content
             let new_content = ScrapParser::add_post_to_content(&content, &post)?;
+            
+            // Update CRDT
+            self.crdt_service.update_document_content(document.id, &new_content).await?;
+            
+            // Save to file
             self.document_service
                 .save_to_file_with_content(&document, &new_content)
                 .await?;
@@ -193,8 +215,16 @@ impl ScrapService {
         // Update file
         let document = ScrapRepository::get_scrap_by_id(&*self.pool, scrap_id).await?;
         if let Some(_) = &document.file_path {
+            // Get current content from CRDT
             let content = self.crdt_service.get_document_content(document.id).await?;
+            
+            // Update post in content
             let new_content = ScrapParser::update_post_in_content(&content, post_id, &request.content)?;
+            
+            // Update CRDT
+            self.crdt_service.update_document_content(document.id, &new_content).await?;
+            
+            // Save to file
             self.document_service
                 .save_to_file_with_content(&document, &new_content)
                 .await?;
@@ -215,8 +245,16 @@ impl ScrapService {
         // Update file
         let document = ScrapRepository::get_scrap_by_id(&*self.pool, scrap_id).await?;
         if let Some(_) = &document.file_path {
+            // Get current content from CRDT
             let content = self.crdt_service.get_document_content(document.id).await?;
+            
+            // Delete post from content
             let new_content = ScrapParser::delete_post_from_content(&content, post_id)?;
+            
+            // Update CRDT
+            self.crdt_service.update_document_content(document.id, &new_content).await?;
+            
+            // Save to file
             self.document_service
                 .save_to_file_with_content(&document, &new_content)
                 .await?;

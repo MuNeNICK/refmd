@@ -268,7 +268,7 @@ impl ScrapRepository {
         let result = sqlx::query(
             r#"
             SELECT 1 FROM documents d
-            LEFT JOIN shares s ON d.id = s.document_id
+            LEFT JOIN share_links s ON d.id = s.document_id
             WHERE d.id = $1 AND d.type = 'scrap'
             AND (d.owner_id = $2 OR s.id IS NOT NULL)
             "#,

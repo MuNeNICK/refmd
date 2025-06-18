@@ -135,6 +135,16 @@ impl CrdtService {
         Ok(update)
     }
 
+    /// Update document content (alias for set_document_content without returning update)
+    pub async fn update_document_content(
+        &self,
+        document_id: Uuid,
+        content: &str,
+    ) -> Result<()> {
+        self.set_document_content(document_id, content).await?;
+        Ok(())
+    }
+
     /// Get updates since a timestamp
     pub async fn get_updates_since(
         &self,
