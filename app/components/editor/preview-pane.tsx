@@ -44,7 +44,6 @@ function PreviewPaneComponent({
   documentId,
   viewMode = "preview",
   previewRef,
-  contentStats,
   token
 }: PreviewPaneProps) {
   const [showFloatingToc, setShowFloatingToc] = useState(false);
