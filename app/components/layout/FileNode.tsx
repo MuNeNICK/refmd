@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useCallback, memo } from 'react';
-import { File, Edit, Trash2, MoreHorizontal, StickyNote } from 'lucide-react';
+import { FileText, Edit, Trash2, MoreHorizontal, NotebookText } from 'lucide-react';
 import { 
   SidebarMenuItem, 
   SidebarMenuButton, 
@@ -116,9 +116,9 @@ export const FileNode = memo(function FileNode({
         {isEditing ? (
           <div className="flex items-center w-full px-2">
             {node.type === 'scrap' ? (
-              <StickyNote className="h-4 w-4 mr-2 text-muted-foreground" />
+              <NotebookText className="h-4 w-4 mr-2 text-muted-foreground" />
             ) : (
-              <File className="h-4 w-4 mr-2 text-muted-foreground" />
+              <FileText className="h-4 w-4 mr-2 text-muted-foreground" />
             )}
             <Input
               value={editingTitle}
@@ -140,9 +140,9 @@ export const FileNode = memo(function FileNode({
               onClick={handleSelect}
             >
               {node.type === 'scrap' ? (
-                <StickyNote className="h-4 w-4 text-muted-foreground" />
+                <NotebookText className="h-4 w-4 text-muted-foreground" />
               ) : (
-                <File className="h-4 w-4 text-muted-foreground" />
+                <FileText className="h-4 w-4 text-muted-foreground" />
               )}
               <span className="truncate font-medium">{node.title}</span>
             </SidebarMenuButton>

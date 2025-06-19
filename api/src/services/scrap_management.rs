@@ -184,6 +184,23 @@ impl ScrapService {
         ScrapRepository::get_scrap_posts(&*self.pool, scrap_id).await
     }
 
+    // Public access methods (for shared scraps)
+    pub async fn get_scrap_public(&self, id: Uuid) -> Result<ScrapWithPosts> {
+        tracing::debug!("Getting public scrap: id={}", id);
+        
+        let document = ScrapRepository::get_scrap_by_id(&*self.pool, id).await?;
+        let posts = ScrapRepository::get_scrap_posts(&*self.pool, id).await?;
+        
+        Ok(ScrapWithPosts {
+            scrap: self.document_to_scrap(document),
+            posts,
+        })
+    }
+
+    pub async fn get_posts_public(&self, scrap_id: Uuid) -> Result<Vec<ScrapPost>> {
+        ScrapRepository::get_scrap_posts(&*self.pool, scrap_id).await
+    }
+
     pub async fn update_post(
         &self,
         scrap_id: Uuid,

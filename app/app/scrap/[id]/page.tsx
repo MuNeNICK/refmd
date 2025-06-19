@@ -9,25 +9,46 @@ interface PageProps {
   params: Promise<{
     id: string;
   }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
-export default async function ScrapPage({ params }: PageProps) {
+export default async function ScrapPage({ params, searchParams }: PageProps) {
   const resolvedParams = await params;
   const { id } = resolvedParams;
+  const resolvedSearchParams = await searchParams;
+  const token = resolvedSearchParams.token as string | undefined;
+  
   const cookieStore = await cookies();
   const authCookie = cookieStore.get('auth-token');
 
-  if (!authCookie?.value) {
+  // If no auth cookie and no share token, redirect to login
+  if (!authCookie?.value && !token) {
     redirect('/');
   }
 
   const client = new RefMDClient({
     BASE: getApiUrl(),
-    TOKEN: authCookie.value,
+    TOKEN: authCookie?.value,
   });
 
   try {
-    const scrapData = await client.scraps.getScrap(id);
+    // Try to fetch scrap with token if provided
+    let scrapData;
+    if (token) {
+      // Fetch with share token
+      const response = await fetch(`${getApiUrl()}/scraps/${id}?token=${token}`);
+      if (!response.ok) {
+        if (response.status === 404) {
+          notFound();
+        }
+        throw new Error('Failed to fetch scrap');
+      }
+      scrapData = await response.json();
+    } else {
+      // Fetch with auth
+      scrapData = await client.scraps.getScrap(id);
+    }
+    
     return <ScrapPageClient initialData={scrapData} scrapId={id} />;
   } catch (error: any) {
     console.error('Failed to fetch scrap:', error);

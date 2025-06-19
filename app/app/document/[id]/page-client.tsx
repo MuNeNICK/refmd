@@ -189,7 +189,8 @@ export default function PageClient({ documentId, initialDocument, token }: PageC
       <ShareDialog 
         open={shareDialogOpen} 
         onOpenChange={setShareDialogOpen}
-        documentId={documentId}
+        resourceId={documentId}
+        resourceType="document"
       />
     </>
   );

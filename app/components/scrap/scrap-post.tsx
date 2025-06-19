@@ -40,6 +40,7 @@ export function ScrapPostComponent({
   const [showComments, setShowComments] = useState(true);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const isOwner = currentUserId === post.author_id;
+  const canEdit = !!currentUserId; // Can edit if authenticated
 
   // First parse metadata from the original content
   const { content: contentWithoutMetadata, metadata } = useMemo(
@@ -146,21 +147,23 @@ export function ScrapPostComponent({
               {post.author_name?.charAt(0).toUpperCase() || 'U'}
             </AvatarFallback>
           </Avatar>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 text-sm text-muted-foreground">
             <span className="font-medium">{post.author_name || 'Unknown'}</span>
-            <span>•</span>
-            <time dateTime={post.created_at} suppressHydrationWarning>
-              {typeof window !== 'undefined' ? formatDistanceToNow(new Date(post.created_at), {
-                addSuffix: true,
-                locale: ja,
-              }) : ''}
-            </time>
-            {post.updated_at && post.updated_at !== post.created_at && (
-              <>
-                <span>•</span>
-                <span className="text-xs">Edited</span>
-              </>
-            )}
+            <div className="flex items-center gap-2 text-xs sm:text-sm">
+              <span className="hidden sm:inline">•</span>
+              <time dateTime={post.created_at} suppressHydrationWarning>
+                {typeof window !== 'undefined' ? formatDistanceToNow(new Date(post.created_at), {
+                  addSuffix: true,
+                  locale: ja,
+                }) : ''}
+              </time>
+              {post.updated_at && post.updated_at !== post.created_at && (
+                <>
+                  <span>•</span>
+                  <span className="text-xs">Edited</span>
+                </>
+              )}
+            </div>
           </div>
         </div>
         
@@ -176,8 +179,8 @@ export function ScrapPostComponent({
               {comments.length}
             </Button>
           )}
-          {/* Pin button - available to all users */}
-          {currentUserId && !isEditing && (
+          {/* Pin button - available to all authenticated users */}
+          {canEdit && !isEditing && (
             <Button
               variant="ghost"
               size="sm"
@@ -248,7 +251,7 @@ export function ScrapPostComponent({
                 </div>
               )}
               
-              {currentUserId && (
+              {canEdit && (
                 <AddCommentForm
                   onSubmit={handleAddComment}
                   isLoading={isUpdating}

@@ -896,6 +896,7 @@ paths:
       operationId: getScrap
       security:
         - bearerAuth: []
+        - {}
       parameters:
         - name: id
           in: path
@@ -903,6 +904,12 @@ paths:
           schema:
             type: string
             format: uuid
+        - name: token
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Share token for accessing the scrap
       responses:
         '200':
           description: Scrap with posts
@@ -975,12 +982,12 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
-  /scraps/{id}/posts:
-    get:
+  /scraps/{id}/share:
+    post:
       tags:
         - Scraps
-      summary: Get scrap posts
-      operationId: getScrapPosts
+      summary: Create share link for scrap
+      operationId: createScrapShare
       security:
         - bearerAuth: []
       parameters:
@@ -990,6 +997,132 @@ paths:
           schema:
             type: string
             format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ShareDocumentRequest'
+      responses:
+        '201':
+          description: Share link created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ShareResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /scraps/{id}/shares:
+    get:
+      tags:
+        - Scraps
+      summary: List share links for scrap
+      operationId: listScrapShares
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: List of share links
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                        token:
+                          type: string
+                        document_id:
+                          type: string
+                          format: uuid
+                        permission_level:
+                          type: string
+                        created_by:
+                          type: string
+                          format: uuid
+                        expires_at:
+                          type: string
+                          format: date-time
+                          nullable: true
+                        created_at:
+                          type: string
+                          format: date-time
+                        url:
+                          type: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /scraps/shares/{token}:
+    delete:
+      tags:
+        - Scraps
+      summary: Delete scrap share link
+      operationId: deleteScrapShare
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Share link deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /scraps/{id}/posts:
+    get:
+      tags:
+        - Scraps
+      summary: Get scrap posts
+      operationId: getScrapPosts
+      security:
+        - bearerAuth: []
+        - {}
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: token
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Share token for accessing the scrap posts
       responses:
         '200':
           description: List of posts

@@ -1,17 +1,18 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import type { ScrapWithPosts, ScrapPost } from '@/lib/api/client';
 import MainLayout from '@/components/layout/main-layout';
 import { ScrapPostForm } from '@/components/scrap/scrap-post-form';
 import { ScrapPostComponent } from '@/components/scrap/scrap-post';
 import { Button } from '@/components/ui/button';
-import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { ArrowUpDown, ArrowUp, ArrowDown, Share2 } from 'lucide-react';
 import { useAuth } from '@/lib/auth/authContext';
 import { getApiClient } from '@/lib/api';
 import { ScrapMetadataParser } from '@/lib/utils/scrap-metadata-parser';
+import { ShareDialog } from '@/components/collaboration/share-dialog';
 
 interface ScrapPageClientProps {
   initialData: ScrapWithPosts;
@@ -20,6 +21,7 @@ interface ScrapPageClientProps {
 
 export function ScrapPageClient({ initialData, scrapId }: ScrapPageClientProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { accessToken, user } = useAuth();
   const [scrapData, setScrapData] = useState<ScrapWithPosts>(initialData);
   // Remove isAddingPost state as form will always be visible
@@ -27,9 +29,16 @@ export function ScrapPageClient({ initialData, scrapId }: ScrapPageClientProps) 
   const [editingPostId, setEditingPostId] = useState<string | null>(null);
   const [deletingPostId, setDeletingPostId] = useState<string | null>(null);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc'); // Default to newest first
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
 
   // Use the singleton API client with automatic token management
   const client = getApiClient();
+  
+  // Check if accessing via share token
+  const shareToken = searchParams.get('token');
+  // For now, allow editing if there's a share token (backend will validate permissions)
+  // In a production app, you might want to fetch the actual permission level
+  const isViewOnly = false;
   
 
   // Real-time updates (to be implemented later)
@@ -42,7 +51,27 @@ export function ScrapPageClient({ initialData, scrapId }: ScrapPageClientProps) 
 
     setIsLoading(true);
     try {
-      const newPost = await client.scraps.createScrapPost(scrapId, { content });
+      let newPost;
+      if (shareToken) {
+        // Use direct API call with share token
+        const response = await fetch(`${client.request.config.BASE}/scraps/${scrapId}/posts?token=${shareToken}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {})
+          },
+          body: JSON.stringify({ content })
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to create post');
+        }
+        
+        newPost = await response.json();
+      } else {
+        newPost = await client.scraps.createScrapPost(scrapId, { content });
+      }
+      
       setScrapData(prev => ({
         ...prev,
         posts: [...prev.posts, newPost]
@@ -67,7 +96,26 @@ export function ScrapPageClient({ initialData, scrapId }: ScrapPageClientProps) 
     }
     
     try {
-      const updatedPost = await client.scraps.updateScrapPost(scrapId, postId, { content });
+      let updatedPost;
+      if (shareToken) {
+        // Use direct API call with share token
+        const response = await fetch(`${client.request.config.BASE}/scraps/${scrapId}/posts/${postId}?token=${shareToken}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {})
+          },
+          body: JSON.stringify({ content })
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to update post');
+        }
+        
+        updatedPost = await response.json();
+      } else {
+        updatedPost = await client.scraps.updateScrapPost(scrapId, postId, { content });
+      }
       
       setScrapData(prev => ({
         ...prev,
@@ -97,7 +145,22 @@ export function ScrapPageClient({ initialData, scrapId }: ScrapPageClientProps) 
 
     setDeletingPostId(postId);
     try {
-      await client.scraps.deleteScrapPost(scrapId, postId);
+      if (shareToken) {
+        // Use direct API call with share token
+        const response = await fetch(`${client.request.config.BASE}/scraps/${scrapId}/posts/${postId}?token=${shareToken}`, {
+          method: 'DELETE',
+          headers: {
+            ...(accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {})
+          }
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to delete post');
+        }
+      } else {
+        await client.scraps.deleteScrapPost(scrapId, postId);
+      }
+      
       setScrapData(prev => ({
         ...prev,
         posts: prev.posts.filter(post => post.id !== postId)
@@ -139,17 +202,23 @@ export function ScrapPageClient({ initialData, scrapId }: ScrapPageClientProps) 
       documentTitle={scrapData.scrap.title}
       selectedDocumentId={scrapId}
       showEditorFeatures={false}
+      isViewOnly={isViewOnly}
+      hideFileTree={!!shareToken}
+      onShare={!isViewOnly && user ? () => setShareDialogOpen(true) : undefined}
     >
       <div className="flex flex-col h-full overflow-y-auto">
         <div className="max-w-4xl mx-auto w-full p-6">
           <div className="space-y-4 pb-6">
-            {/* Add post form - always visible at the top */}
-            <ScrapPostForm
-              onSubmit={handleAddPost}
-              isLoading={isLoading}
-              placeholder="Enter a new post..."
-              documentId={scrapData.scrap.id}
-            />
+            
+            {/* Add post form - only visible if authenticated */}
+            {!isViewOnly && user && (
+              <ScrapPostForm
+                onSubmit={handleAddPost}
+                isLoading={isLoading}
+                placeholder="Enter a new post..."
+                documentId={scrapData.scrap.id}
+              />
+            )}
 
             {/* Sort button and Posts header */}
             {scrapData.posts.length > 0 && (
@@ -201,6 +270,14 @@ export function ScrapPageClient({ initialData, scrapId }: ScrapPageClientProps) 
           </div>
         </div>
       </div>
+      
+      {/* Share Dialog */}
+      <ShareDialog
+        resourceId={scrapId}
+        resourceType="scrap"
+        open={shareDialogOpen}
+        onOpenChange={setShareDialogOpen}
+      />
     </MainLayout>
   );
 }

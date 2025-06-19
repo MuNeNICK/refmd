@@ -290,6 +290,22 @@ export function Header({
             </div>
           )}
           
+          {/* Share button for non-editor pages (like scrap) */}
+          {!showEditorFeatures && onShare && (
+            <div className="flex items-center gap-1 sm:gap-2">
+              <Button
+                onClick={onShare}
+                variant="ghost"
+                size="icon"
+                className="hidden lg:flex h-9 w-9"
+                title="Share"
+              >
+                <Share2 className="h-4 w-4" />
+              </Button>
+              <div className="hidden sm:block w-px h-6 bg-border mx-1" />
+            </div>
+          )}
+          
           <Button
             onClick={toggleTheme}
             variant="ghost"
@@ -429,33 +445,37 @@ export function Header({
                 </div>
               )}
               
-              {/* Actions section (only for editor) */}
-              {showEditorFeatures && (
+              {/* Actions section */}
+              {(showEditorFeatures || onShare) && (
                 <div className="border-t pt-4">
                   <h3 className="text-sm font-medium mb-2">Actions</h3>
                   <div className="space-y-1">
-                    <Button
-                      onClick={() => {
-                        onShare?.();
-                        setMobileMenuOpen(false);
-                      }}
-                      variant="ghost"
-                      className="w-full justify-start"
-                    >
-                      <Share2 className="h-4 w-4 mr-2" />
-                      Share
-                    </Button>
-                    <Button
-                      onClick={() => {
-                        onDownload?.();
-                        setMobileMenuOpen(false);
-                      }}
-                      variant="ghost"
-                      className="w-full justify-start"
-                    >
-                      <Download className="h-4 w-4 mr-2" />
-                      Download
-                    </Button>
+                    {onShare && (
+                      <Button
+                        onClick={() => {
+                          onShare();
+                          setMobileMenuOpen(false);
+                        }}
+                        variant="ghost"
+                        className="w-full justify-start"
+                      >
+                        <Share2 className="h-4 w-4 mr-2" />
+                        Share
+                      </Button>
+                    )}
+                    {showEditorFeatures && onDownload && (
+                      <Button
+                        onClick={() => {
+                          onDownload();
+                          setMobileMenuOpen(false);
+                        }}
+                        variant="ghost"
+                        className="w-full justify-start"
+                      >
+                        <Download className="h-4 w-4 mr-2" />
+                        Download
+                      </Button>
+                    )}
                   </div>
                 </div>
               )}
