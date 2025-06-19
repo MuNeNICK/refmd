@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useCallback, memo } from 'react';
-import { File, Edit, Trash2, MoreHorizontal } from 'lucide-react';
+import { FileText, Edit, Trash2, MoreHorizontal, NotebookText } from 'lucide-react';
 import { 
   SidebarMenuItem, 
   SidebarMenuButton, 
@@ -20,7 +20,7 @@ import { DeleteConfirmationDialog } from '@/components/ui/delete-confirmation-di
 interface DocumentNode {
   id: string;
   title: string;
-  type: 'file' | 'folder';
+  type: 'file' | 'folder' | 'scrap';
   parent_id?: string;
   children?: DocumentNode[];
   created_at?: string;
@@ -33,15 +33,15 @@ interface FileNodeProps {
   isSelected: boolean;
   isDragging: boolean;
   isDropTarget: boolean;
-  onSelect: (id: string) => void;
+  onSelect: (id: string, type: 'file' | 'folder' | 'scrap') => void;
   onRename: (id: string, newTitle: string) => void;
   onDelete: (id: string) => void;
   onDragStart: (e: React.DragEvent, id: string) => void;
   onDragEnd: (e: React.DragEvent) => void;
-  onDragEnter: (e: React.DragEvent, id: string, type: 'file' | 'folder') => void;
+  onDragEnter: (e: React.DragEvent, id: string, type: 'file' | 'folder' | 'scrap') => void;
   onDragLeave: (e: React.DragEvent) => void;
-  onDrop: (e: React.DragEvent, id: string, type: 'file' | 'folder', parentId?: string) => void;
-  onDragOver: (e: React.DragEvent, nodeId?: string, nodeType?: 'file' | 'folder') => void;
+  onDrop: (e: React.DragEvent, id: string, type: 'file' | 'folder' | 'scrap', parentId?: string) => void;
+  onDragOver: (e: React.DragEvent, nodeId?: string, nodeType?: 'file' | 'folder' | 'scrap') => void;
 }
 
 export const FileNode = memo(function FileNode({
@@ -95,8 +95,8 @@ export const FileNode = memo(function FileNode({
   }, [node.id, onDelete]);
 
   const handleSelect = useCallback(() => {
-    onSelect(node.id);
-  }, [node.id, onSelect]);
+    onSelect(node.id, node.type);
+  }, [node.id, node.type, onSelect]);
 
   return (
     <SidebarMenuItem>
@@ -115,7 +115,11 @@ export const FileNode = memo(function FileNode({
       >
         {isEditing ? (
           <div className="flex items-center w-full px-2">
-            <File className="h-4 w-4 mr-2 text-muted-foreground" />
+            {node.type === 'scrap' ? (
+              <NotebookText className="h-4 w-4 mr-2 text-muted-foreground" />
+            ) : (
+              <FileText className="h-4 w-4 mr-2 text-muted-foreground" />
+            )}
             <Input
               value={editingTitle}
               onChange={(e) => setEditingTitle(e.target.value)}
@@ -135,7 +139,11 @@ export const FileNode = memo(function FileNode({
               )}
               onClick={handleSelect}
             >
-              <File className="h-4 w-4 text-muted-foreground" />
+              {node.type === 'scrap' ? (
+                <NotebookText className="h-4 w-4 text-muted-foreground" />
+              ) : (
+                <FileText className="h-4 w-4 text-muted-foreground" />
+              )}
               <span className="truncate font-medium">{node.title}</span>
             </SidebarMenuButton>
 

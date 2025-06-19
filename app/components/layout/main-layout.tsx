@@ -68,8 +68,12 @@ export default function MainLayout({
     }
   }, [sidebarOpen, isMobile]);
 
-  const handleDocumentSelect = useCallback((documentId: string) => {
-    router.push(`/document/${documentId}`);
+  const handleDocumentSelect = useCallback((documentId: string, documentType?: 'file' | 'folder' | 'scrap') => {
+    if (documentType === 'scrap') {
+      router.push(`/scrap/${documentId}`);
+    } else if (documentType !== 'folder') {
+      router.push(`/document/${documentId}`);
+    }
   }, [router]);
 
   const handlePanelResize = useCallback((sizes: number[]) => {
@@ -135,7 +139,7 @@ export default function MainLayout({
               <>
               <Panel 
                 ref={sidebarPanelRef}
-                defaultSize={13}
+                defaultSize={sidebarOpen ? 13 : 0}
                 minSize={sidebarOpen ? 3 : 0} 
                 maxSize={sidebarOpen ? 40 : 0} 
                 className="overflow-hidden"

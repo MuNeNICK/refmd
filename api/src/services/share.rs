@@ -55,8 +55,15 @@ impl ShareService {
 
         self.share_repository.create_share_link(&share_link).await?;
 
-        // Generate share URL
-        let url = format!("{}/document/{}?token={}", self.frontend_url, document_id, token);
+        // Generate share URL based on document type
+        let doc = self.document_repository.get_by_id(document_id).await?
+            .ok_or_else(|| Error::NotFound("Document not found".to_string()))?;
+        
+        let url = if doc.r#type == "scrap" {
+            format!("{}/scrap/{}?token={}", self.frontend_url, document_id, token)
+        } else {
+            format!("{}/document/{}?token={}", self.frontend_url, document_id, token)
+        };
 
         Ok(ShareResponse {
             token,
@@ -139,10 +146,18 @@ impl ShareService {
 
         let shares = self.share_repository.get_document_share_links(document_id).await?;
         
+        // Get document type to generate correct URLs
+        let doc = self.document_repository.get_by_id(document_id).await?
+            .ok_or_else(|| Error::NotFound("Document not found".to_string()))?;
+        
         // Add URLs to shares
         let shares_with_urls = shares.into_iter()
             .map(|share| {
-                let url = format!("{}/document/{}?token={}", self.frontend_url, document_id, share.token);
+                let url = if doc.r#type == "scrap" {
+                    format!("{}/scrap/{}?token={}", self.frontend_url, document_id, share.token)
+                } else {
+                    format!("{}/document/{}?token={}", self.frontend_url, document_id, share.token)
+                };
                 (share, url)
             })
             .collect();

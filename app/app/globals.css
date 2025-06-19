@@ -191,64 +191,37 @@
     @apply leading-7;
   }
 
-  .prose pre {
+  /* Style pre elements that don't have syntax highlighting */
+  .prose pre:not(:has(.syntax-highlighter)) {
     @apply mb-4 overflow-x-auto bg-gray-900 text-gray-100 p-4 rounded-lg;
   }
 
-  .prose pre code {
+  /* Remove padding when pre contains syntax highlighter */
+  .prose pre:has(.syntax-highlighter) {
+    @apply p-0 bg-transparent m-0;
+  }
+
+  /* Remove prose styles from syntax highlighter */
+  .prose .syntax-highlighter {
+    margin: 0 !important;
+  }
+
+  /* Code styling for non-highlighted blocks */
+  .prose pre:not(:has(.syntax-highlighter)) code {
     @apply whitespace-pre-wrap break-words bg-transparent;
   }
 
-  /* Basic syntax highlighting */
-  .prose pre code .token.comment {
-    @apply text-gray-500 italic;
-  }
-
-  .prose pre code .token.string {
-    @apply text-green-400;
-  }
-
-  .prose pre code .token.number {
-    @apply text-blue-400;
-  }
-
-  .prose pre code .token.keyword {
-    @apply text-purple-400 font-semibold;
-  }
-
-  .prose pre code .token.function {
-    @apply text-yellow-400;
-  }
-
-  .prose pre code .token.variable {
-    @apply text-red-400;
-  }
-
-  .prose pre code .token.operator {
-    @apply text-gray-300;
-  }
-
-  .prose pre code .token.punctuation {
-    @apply text-gray-400;
-  }
+  /* Remove basic syntax highlighting - handled by react-syntax-highlighter */
 
   .prose :not(pre) > code {
     @apply bg-muted px-1.5 py-0.5 rounded text-sm font-mono break-words;
   }
 
-  /* Remove text shadow and outline from code blocks */
-  .prose pre,
-  .prose pre code,
-  .prose code,
-  .react-syntax-highlighter,
-  .react-syntax-highlighter code,
-  .react-syntax-highlighter span {
+  /* Clean text rendering for syntax highlighter */
+  .syntax-highlighter,
+  .syntax-highlighter * {
     text-shadow: none !important;
-    -webkit-text-stroke: none !important;
-    outline: none !important;
-    -webkit-font-smoothing: antialiased !important;
-    -moz-osx-font-smoothing: grayscale !important;
-    text-rendering: optimizeLegibility !important;
+    -webkit-font-smoothing: antialiased;
   }
 
   .prose blockquote {

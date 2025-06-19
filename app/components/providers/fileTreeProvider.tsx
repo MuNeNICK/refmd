@@ -9,7 +9,7 @@ import type { Document } from '@/lib/api/client';
 interface DocumentNode {
   id: string;
   title: string;
-  type: 'file' | 'folder';
+  type: 'file' | 'folder' | 'scrap';
   children?: DocumentNode[];
   created_at?: string;
   updated_at?: string;
@@ -33,6 +33,7 @@ interface DatabaseDocument {
   id: string;
   title: string;
   is_folder: boolean;
+  type?: 'document' | 'folder' | 'scrap';
   parent_id?: string;
   created_at: string;
   updated_at: string;
@@ -53,10 +54,20 @@ function buildTree(documents: DatabaseDocument[]): DocumentNode[] {
   const nodeMap = new Map<string, DocumentNode>();
   
   documents.forEach(doc => {
+    // Determine the type based on the 'type' field from the database
+    let nodeType: 'file' | 'folder' | 'scrap';
+    if (doc.type === 'scrap') {
+      nodeType = 'scrap';
+    } else if (doc.type === 'folder' || doc.is_folder) {
+      nodeType = 'folder';
+    } else {
+      nodeType = 'file';
+    }
+    
     nodeMap.set(doc.id, {
       id: doc.id,
       title: doc.title,
-      type: doc.is_folder ? 'folder' : 'file',
+      type: nodeType,
       children: [],
       created_at: doc.created_at,
       updated_at: doc.updated_at
@@ -127,6 +138,7 @@ export function FileTreeProvider({ children }: { children: React.ReactNode }) {
               id: doc.id!,
               title: doc.title!,
               is_folder: isFolder,
+              type: extDoc.type as 'document' | 'folder' | 'scrap' | undefined,
               parent_id: extDoc.parent_id,
               created_at: doc.created_at!,
               updated_at: doc.updated_at!

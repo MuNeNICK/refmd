@@ -1,6 +1,7 @@
 pub mod document;
 pub mod user;
 pub mod file;
+pub mod scrap;
 pub mod share;
 
 pub use document::DocumentRepository;

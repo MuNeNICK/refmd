@@ -19,11 +19,8 @@ export type OpenAPIConfig = {
     ENCODE_PATH?: ((path: string) => string) | undefined;
 };
 
-// Import getApiUrl from config - will be set dynamically
-import { getApiUrl } from '../../../config';
-
 export const OpenAPI: OpenAPIConfig = {
-    BASE: typeof window !== 'undefined' ? getApiUrl() : 'http://localhost:8888/api',
+    BASE: 'http://localhost:8888/api',
     VERSION: '1.1.0',
     WITH_CREDENTIALS: false,
     CREDENTIALS: 'include',

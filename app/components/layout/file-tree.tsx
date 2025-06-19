@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback} from 'react';
+import React, { useCallback } from 'react';
 import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -24,7 +24,7 @@ import { useFileTreeDrag } from '@/lib/hooks/useFileTreeDrag';
 interface DocumentNode {
   id: string;
   title: string;
-  type: 'file' | 'folder';
+  type: 'file' | 'folder' | 'scrap';
   parent_id?: string;
   children?: DocumentNode[];
   created_at?: string;
@@ -32,7 +32,7 @@ interface DocumentNode {
 }
 
 interface FileTreeProps {
-  onDocumentSelect: (documentId: string) => void;
+  onDocumentSelect: (documentId: string, documentType?: 'file' | 'folder' | 'scrap') => void;
   selectedDocumentId?: string;
 }
 
@@ -47,13 +47,13 @@ function FileTreeComponent({ onDocumentSelect, selectedDocumentId }: FileTreePro
     }
   }, [selectedDocumentId, expandParentFolders, loading]);
 
-  const createNewDocument = useCallback(async (parentId?: string, isFolder: boolean = false) => {
+  const createNewDocument = useCallback(async (parentId?: string, isFolder: boolean = false, isScrap: boolean = false) => {
     try {
       const api = getApiClient();
       const response = await api.documents.createDocument({
-        title: isFolder ? 'New Folder' : 'New Document',
+        title: isFolder ? 'New Folder' : isScrap ? 'New Scrap' : 'New Document',
         content: '',
-        type: isFolder ? Document.type.FOLDER : Document.type.DOCUMENT,
+        type: isFolder ? Document.type.FOLDER : isScrap ? Document.type.SCRAP : Document.type.DOCUMENT,
         parent_id: parentId || null,
       });
 
@@ -62,7 +62,9 @@ function FileTreeComponent({ onDocumentSelect, selectedDocumentId }: FileTreePro
         expandFolder(parentId);
       }
 
-      if (!isFolder && response.id) {
+      if (isScrap && response.id) {
+        router.push(`/scrap/${response.id}`);
+      } else if (!isFolder && response.id) {
         router.push(`/document/${response.id}`);
       }
     } catch (error) {
@@ -287,12 +289,12 @@ function FileTreeComponent({ onDocumentSelect, selectedDocumentId }: FileTreePro
   });
 
   // Add handling for dropping on files
-  const handleDrop = useCallback((e: React.DragEvent, targetId?: string, targetType?: 'file' | 'folder', parentId?: string) => {
+  const handleDrop = useCallback((e: React.DragEvent, targetId?: string, targetType?: 'file' | 'folder' | 'scrap', parentId?: string) => {
     if (targetType === 'file' && parentId !== undefined) {
       // When dropped on a file, move to the file's parent folder
-      originalHandleDrop(e, parentId, 'folder');
-    } else {
-      originalHandleDrop(e, targetId, targetType);
+      originalHandleDrop(e, parentId, 'folder', undefined);
+    } else if (targetId && targetType) {
+      originalHandleDrop(e, targetId, targetType, parentId);
     }
   }, [originalHandleDrop]);
 
@@ -311,7 +313,7 @@ function FileTreeComponent({ onDocumentSelect, selectedDocumentId }: FileTreePro
     return checkRecursively(node.children);
   }, [dragState.dropTarget]);
 
-  // ノードのレンダリング関数
+  // Node rendering function
   const renderNode = useCallback((node: DocumentNode, parentId?: string) => {
     const isExpanded = expandedFolders.has(node.id);
     const isSelected = selectedDocumentId === node.id;
@@ -352,7 +354,7 @@ function FileTreeComponent({ onDocumentSelect, selectedDocumentId }: FileTreePro
         isSelected={isSelected}
         isDragging={isDragging}
         isDropTarget={false}
-        onSelect={onDocumentSelect}
+        onSelect={(id, type) => onDocumentSelect(id, type)}
         onRename={renameDocument}
         onDelete={deleteDocument}
         onDragStart={handleDragStart}
@@ -374,6 +376,7 @@ function FileTreeComponent({ onDocumentSelect, selectedDocumentId }: FileTreePro
             <FileTreeActions
               onCreateDocument={() => {}}
               onCreateFolder={() => {}}
+              onCreateScrap={() => {}}
               onExport={() => {}}
               onSync={() => {}}
               onRefresh={() => {}}
@@ -403,8 +406,9 @@ function FileTreeComponent({ onDocumentSelect, selectedDocumentId }: FileTreePro
         <div className="flex items-center justify-between">
           <span className="text-sm font-medium">Files</span>
           <FileTreeActions
-            onCreateDocument={() => createNewDocument(undefined, false)}
-            onCreateFolder={() => createNewDocument(undefined, true)}
+            onCreateDocument={() => createNewDocument(undefined, false, false)}
+            onCreateFolder={() => createNewDocument(undefined, true, false)}
+            onCreateScrap={() => createNewDocument(undefined, false, true)}
             onExport={exportDocuments}
             onSync={syncDocuments}
             onRefresh={refreshDocuments}

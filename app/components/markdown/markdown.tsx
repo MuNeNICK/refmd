@@ -14,10 +14,11 @@ import { remarkAlert } from '@/lib/remark-alert'
 import { remarkEmbed } from '@/lib/remark-embed'
 import { remarkMark, remarkRuby } from '@/lib/remark-extended'
 import { remarkBlockquoteTags } from '@/lib/remark-blockquote-tags'
+import { CodeBlock } from '@/components/markdown/code-block'
 
 interface MarkdownProps {
   content: string
-  components: import('react-markdown').Components
+  components?: import('react-markdown').Components
 }
 
 // Memoize plugin arrays to prevent recreation on every render
@@ -38,6 +39,60 @@ const FULL_REMARK_PLUGINS = [
 const FULL_REHYPE_PLUGINS = [rehypeRaw, rehypeKatex]
 const SAFE_REHYPE_PLUGINS = [rehypeKatex]
 const MINIMAL_REMARK_PLUGINS = [remarkGfm]
+
+// Default components with code highlighting
+const DEFAULT_COMPONENTS: import('react-markdown').Components = {
+  code({ node, className, children, ...props }) {
+    const match = /language-(\w+)/.exec(className || '')
+    
+    // Check if it's an inline code element
+    // In react-markdown v8+, inline code is when the parent is not 'pre'
+    const isInline = !node || (node.position?.start.line === node.position?.end.line)
+    
+    // Inline code
+    if (isInline) {
+      return (
+        <code className="bg-muted px-1 py-0.5 rounded text-sm" {...props}>
+          {children}
+        </code>
+      )
+    }
+    
+    // Code block with or without language
+    return (
+      <CodeBlock language={match?.[1]} className="not-prose">
+        {String(children).replace(/\n$/, '')}
+      </CodeBlock>
+    )
+  },
+  pre({ children, ...props }) {
+    // If the pre element already contains a CodeBlock component (from the code function above),
+    // just return the children without wrapping
+    const hasCodeBlock = React.Children.toArray(children).some(
+      child => {
+        if (!React.isValidElement(child)) return false;
+        
+        // Check if it's a CodeBlock component
+        if (child.type === CodeBlock) return true;
+        
+        // Check if it has the 'not-prose' className
+        const childProps = child.props as { className?: string };
+        return childProps.className?.includes('not-prose') ?? false;
+      }
+    );
+    
+    if (hasCodeBlock) {
+      return <>{children}</>;
+    }
+    
+    // Otherwise, render pre blocks with consistent styling
+    return (
+      <pre {...props}>
+        {children}
+      </pre>
+    )
+  }
+}
 
 function MarkdownComponent({ content, components }: MarkdownProps) {
   const [renderingMode, setRenderingMode] = useState<'full' | 'safe' | 'minimal'>('full')
@@ -86,6 +141,7 @@ function MarkdownComponent({ content, components }: MarkdownProps) {
   
   // Memoize enhanced components to prevent recreation
   const enhancedComponents = useMemo(() => ({
+    ...DEFAULT_COMPONENTS,
     ...components,
     // Filter out unrecognized tags
     'anonymous': () => null,
@@ -125,7 +181,7 @@ function MarkdownComponent({ content, components }: MarkdownProps) {
         <ReactMarkdown 
           remarkPlugins={FULL_REMARK_PLUGINS}
           rehypePlugins={SAFE_REHYPE_PLUGINS}
-          components={components}
+          components={enhancedComponents}
         >
           {sanitizedContent}
         </ReactMarkdown>

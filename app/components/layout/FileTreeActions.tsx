@@ -1,7 +1,7 @@
 "use client";
 
 import React, { memo, useCallback } from 'react';
-import { Plus, Folder, Download, RefreshCw } from 'lucide-react';
+import { Plus, Folder, Download, RefreshCw, NotebookText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { 
   DropdownMenu, 
@@ -19,6 +19,7 @@ import {
 interface FileTreeActionsProps {
   onCreateDocument: () => void;
   onCreateFolder: () => void;
+  onCreateScrap?: () => void;
   onExport: (format: 'json' | 'markdown') => void;
   onSync: (direction: 'to-file' | 'from-file') => void;
   onRefresh: () => void;
@@ -27,6 +28,7 @@ interface FileTreeActionsProps {
 export const FileTreeActions = memo(function FileTreeActions({
   onCreateDocument,
   onCreateFolder,
+  onCreateScrap,
   onExport,
   onSync,
   onRefresh,
@@ -84,6 +86,26 @@ export const FileTreeActions = memo(function FileTreeActions({
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
+
+      {onCreateScrap && (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6"
+                onClick={onCreateScrap}
+              >
+                <NotebookText className="h-3 w-3 text-muted-foreground" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>New scrap</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      )}
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>

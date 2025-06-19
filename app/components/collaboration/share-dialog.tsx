@@ -36,7 +36,8 @@ interface ShareLink {
 }
 
 interface ShareDialogProps {
-  documentId: string;
+  resourceId: string;
+  resourceType: 'document' | 'scrap';
   activeUsers?: number;
   trigger?: React.ReactNode;
   open?: boolean;
@@ -55,14 +56,14 @@ const PERMISSION_LABELS = {
   admin: 'Admin',
 };
 
-export function ShareDialog({ documentId, activeUsers = 0, trigger, open, onOpenChange }: ShareDialogProps) {
+export function ShareDialog({ resourceId, resourceType, activeUsers = 0, trigger, open, onOpenChange }: ShareDialogProps) {
   const [internalIsOpen, setInternalIsOpen] = useState(false);
   const api = getApiClient();
   
   // Use controlled state if provided, otherwise use internal state
   const isOpen = open !== undefined ? open : internalIsOpen;
   const setIsOpen = onOpenChange || setInternalIsOpen;
-  const [permissionLevel, setPermissionLevel] = useState<string>('edit');
+  const [permissionLevel, setPermissionLevel] = useState<string>(resourceType === 'document' ? 'edit' : 'view');
   const [shareLinks, setShareLinks] = useState<ShareLink[]>([]);
   const [loading, setLoading] = useState(false);
   const [linkExpiry, setLinkExpiry] = useState<string>('7d');
@@ -74,7 +75,9 @@ export function ShareDialog({ documentId, activeUsers = 0, trigger, open, onOpen
     try {
       const response = await api.request.request({
         method: 'GET',
-        url: `/shares/documents/${documentId}/shares`,
+        url: resourceType === 'document' 
+          ? `/shares/documents/${resourceId}/shares`
+          : `/scraps/${resourceId}/shares`,
       });
       const data = response as { data: Array<{ id: string; token: string; permission_level: string; expires_at?: string; max_uses?: number; used_count?: number; url?: string }> };
       if (data?.data) {
@@ -85,14 +88,14 @@ export function ShareDialog({ documentId, activeUsers = 0, trigger, open, onOpen
           expires_at: share.expires_at,
           max_uses: share.max_uses,
           used_count: share.used_count || 0,
-          url: share.url || `${baseUrl}/document/${documentId}?token=${share.token}`
+          url: share.url || `${baseUrl}/${resourceType}/${resourceId}?token=${share.token}`
         }));
         setShareLinks(links);
       }
     } catch {
       // Failed to load share links
     }
-  }, [api.request, documentId, baseUrl]);
+  }, [api.request, resourceId, resourceType, baseUrl]);
 
   // Create share link
   const createShareLink = async () => {
@@ -117,10 +120,12 @@ export function ShareDialog({ documentId, activeUsers = 0, trigger, open, onOpen
 
       const result = await api.request.request({
         method: 'POST',
-        url: `/shares/documents/${documentId}/share`,
+        url: resourceType === 'document'
+          ? `/shares/documents/${resourceId}/share`
+          : `/scraps/${resourceId}/share`,
         body: requestBody,
         mediaType: 'application/json',
-      }) as { data: { token: string } };
+      }) as { data: { token: string; url?: string } };
       
       // Add the share link to the list with full URL
       if (result.data && result.data.token) {
@@ -130,9 +135,14 @@ export function ShareDialog({ documentId, activeUsers = 0, trigger, open, onOpen
           permission_level: permissionLevel,
           expires_at: requestBody.expires_at,
           used_count: 0,
-          url: `${baseUrl}/document/${documentId}?token=${result.data.token}`
+          url: `${baseUrl}/${resourceType}/${resourceId}?token=${result.data.token}`
         };
-        setShareLinks([...shareLinks, shareLink]);
+        if (resourceType === 'scrap') {
+          // For scraps, reload to get server-generated URL
+          await loadShareLinks();
+        } else {
+          setShareLinks([...shareLinks, shareLink]);
+        }
       }
       
       toast.success('Share link created');
@@ -158,7 +168,9 @@ export function ShareDialog({ documentId, activeUsers = 0, trigger, open, onOpen
     try {
       await api.request.request({
         method: 'DELETE',
-        url: `/shares/${token}`,
+        url: resourceType === 'document'
+          ? `/shares/${token}`
+          : `/scraps/shares/${token}`,
       });
       toast.success('Share link deleted');
       setShareLinks(shareLinks.filter(link => link.token !== token));
@@ -184,10 +196,10 @@ export function ShareDialog({ documentId, activeUsers = 0, trigger, open, onOpen
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Users className="h-5 w-5" />
-            Share Document
+            Share {resourceType === 'document' ? 'Document' : 'Scrap'}
           </DialogTitle>
           <DialogDescription>
-            Create share links to give others access to this document
+            Create share links to give others access to this {resourceType}
           </DialogDescription>
         </DialogHeader>
 

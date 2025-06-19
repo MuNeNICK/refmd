@@ -30,14 +30,14 @@ impl DocumentService {
         }
         
         // Validate document type
-        if doc_type != "document" && doc_type != "folder" {
+        if doc_type != "document" && doc_type != "folder" && doc_type != "scrap" {
             return Err(Error::BadRequest("Invalid document type".to_string()));
         }
         
         let document = self.document_repo.create(owner_id, title, content, doc_type, parent_id).await?;
         
         // Save to file if it's a document (not a folder)
-        if doc_type == "document" {
+        if doc_type == "document" || doc_type == "scrap" {
             self.save_to_file(&document).await?;
         }
         
@@ -184,7 +184,7 @@ impl DocumentService {
     
     // Save document content to file
     pub async fn save_to_file_with_content(&self, document: &Document, content: &str) -> Result<()> {
-        // Only save documents, not folders
+        // Only save documents and scraps, not folders
         if document.r#type == "folder" {
             return Ok(());
         }
@@ -200,8 +200,26 @@ impl DocumentService {
         }
         
         // Format content with frontmatter
-        let formatted_content = format!(
-            r#"---
+        let formatted_content = if document.r#type == "scrap" {
+            format!(
+                r#"---
+id: {}
+title: {}
+type: scrap
+created_at: {}
+updated_at: {}
+---
+
+{}"#,
+                document.id,
+                document.title,
+                document.created_at.format("%Y-%m-%d %H:%M:%S UTC"),
+                document.updated_at.format("%Y-%m-%d %H:%M:%S UTC"),
+                content
+            )
+        } else {
+            format!(
+                r#"---
 id: {}
 title: {}
 created_at: {}
@@ -209,12 +227,13 @@ updated_at: {}
 ---
 
 {}"#,
-            document.id,
-            document.title,
-            document.created_at.format("%Y-%m-%d %H:%M:%S UTC"),
-            document.updated_at.format("%Y-%m-%d %H:%M:%S UTC"),
-            content
-        );
+                document.id,
+                document.title,
+                document.created_at.format("%Y-%m-%d %H:%M:%S UTC"),
+                document.updated_at.format("%Y-%m-%d %H:%M:%S UTC"),
+                content
+            )
+        };
         
         // Write to file with retry
         tracing::info!("Writing to file: {:?}", file_path);
@@ -257,7 +276,7 @@ updated_at: {}
     
     // Save document content to file (using CRDT)
     pub async fn save_to_file(&self, document: &Document) -> Result<()> {
-        // Only save documents, not folders
+        // Only save documents and scraps, not folders
         if document.r#type == "folder" {
             return Ok(());
         }
@@ -276,8 +295,26 @@ updated_at: {}
         }
         
         // Format content with frontmatter
-        let formatted_content = format!(
-            r#"---
+        let formatted_content = if document.r#type == "scrap" {
+            format!(
+                r#"---
+id: {}
+title: {}
+type: scrap
+created_at: {}
+updated_at: {}
+---
+
+{}"#,
+                document.id,
+                document.title,
+                document.created_at.format("%Y-%m-%d %H:%M:%S UTC"),
+                document.updated_at.format("%Y-%m-%d %H:%M:%S UTC"),
+                content
+            )
+        } else {
+            format!(
+                r#"---
 id: {}
 title: {}
 created_at: {}
@@ -285,12 +322,13 @@ updated_at: {}
 ---
 
 {}"#,
-            document.id,
-            document.title,
-            document.created_at.format("%Y-%m-%d %H:%M:%S UTC"),
-            document.updated_at.format("%Y-%m-%d %H:%M:%S UTC"),
-            content
-        );
+                document.id,
+                document.title,
+                document.created_at.format("%Y-%m-%d %H:%M:%S UTC"),
+                document.updated_at.format("%Y-%m-%d %H:%M:%S UTC"),
+                content
+            )
+        };
         
         // Write to file with retry
         tracing::info!("Writing to file: {:?}", file_path);

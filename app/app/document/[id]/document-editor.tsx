@@ -235,7 +235,8 @@ export default function DocumentEditor({
   
   const { handleFileUpload, triggerFileUpload, fileInputRef, fileInputProps } = useFileUpload({
     documentId,
-    onInsertText: insertTextAtCursor
+    onInsertText: insertTextAtCursor,
+    insertMode: 'individual'
   });
   
   // Drag and drop functionality

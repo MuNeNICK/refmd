@@ -160,7 +160,8 @@ export default function DocumentClient({ documentId, initialDocument, token }: D
       <ShareDialog 
         open={shareDialogOpen} 
         onOpenChange={setShareDialogOpen}
-        documentId={documentId}
+        resourceId={documentId}
+        resourceType="document"
       />
     </MainLayout>
   );

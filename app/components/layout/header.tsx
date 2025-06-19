@@ -115,28 +115,31 @@ export function Header({
             <FileText className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
             <h1 className="text-lg sm:text-xl font-semibold">RefMD</h1>
           </Link>
-          {!showEditorFeatures && (
+          {!showEditorFeatures && !documentTitle && (
             <span className="text-sm text-muted-foreground hidden lg:inline">
               Collaborative Markdown Editor
             </span>
           )}
         </div>
 
-        {/* Center - Document info and realtime status (only for editor) */}
-        {showEditorFeatures && (
+
+        {/* Center - Document info and realtime status (for editor and other pages with realtime features) */}
+        {(showEditorFeatures || (isRealtimeConnected !== undefined && documentTitle)) && (
           <div className="hidden sm:flex absolute left-1/2 transform -translate-x-1/2 items-center gap-2 text-sm text-muted-foreground">
             <span className="hidden xl:inline">{documentTitle || 'Untitled Document'}</span>
             
-            {/* Save status */}
-            <span className={cn("text-xs px-1.5 sm:px-2 py-0.5 sm:py-1 rounded flex items-center gap-1", statusClassName)}>
-              {saveStatus === "saving" && (
-                <div className="w-2 h-2 bg-current rounded-full animate-pulse" />
-              )}
-              <span className="hidden sm:inline">{statusText}</span>
-              <span className="sm:hidden">
-                {saveStatus === "saving" ? "..." : saveStatus === "error" ? "!" : "✓"}
+            {/* Save status - only for editor features */}
+            {showEditorFeatures && (
+              <span className={cn("text-xs px-1.5 sm:px-2 py-0.5 sm:py-1 rounded flex items-center gap-1", statusClassName)}>
+                {saveStatus === "saving" && (
+                  <div className="w-2 h-2 bg-current rounded-full animate-pulse" />
+                )}
+                <span className="hidden sm:inline">{statusText}</span>
+                <span className="sm:hidden">
+                  {saveStatus === "saving" ? "..." : saveStatus === "error" ? "!" : "✓"}
+                </span>
               </span>
-            </span>
+            )}
             
             {/* Realtime connection status */}
             <div className="flex items-center gap-1">
@@ -158,7 +161,7 @@ export function Header({
               <div className="flex items-center gap-1">
                 <Users className="w-3 h-3 text-blue-500" />
                 <span className="text-xs text-blue-600 dark:text-blue-400 hidden md:inline">
-                  {realtimeUserCount} {realtimeUserCount === 1 ? 'person' : 'people'} editing
+                  {realtimeUserCount} people online
                 </span>
                 <span className="text-xs text-blue-600 dark:text-blue-400 md:hidden">
                   {realtimeUserCount}
@@ -166,7 +169,8 @@ export function Header({
               </div>
             )}
             
-            {lastSaved && saveStatus === "saved" && (
+            {/* Last saved time - only for editor features */}
+            {showEditorFeatures && lastSaved && saveStatus === "saved" && (
               <span className="text-xs hidden xl:inline">
                 {new Date(lastSaved).toLocaleTimeString()}
               </span>
@@ -175,12 +179,14 @@ export function Header({
         )}
         
         {/* Mobile status indicators - shown inline on mobile */}
-        {showEditorFeatures && (
+        {(showEditorFeatures || (isRealtimeConnected !== undefined && documentTitle)) && (
           <div className="flex sm:hidden items-center gap-2 text-sm text-muted-foreground mx-2">
-            {/* Save status icon only */}
-            <span className={cn("text-xs px-1.5 py-0.5 rounded", statusClassName)}>
-              {saveStatus === "saving" ? "..." : saveStatus === "error" ? "!" : "✓"}
-            </span>
+            {/* Save status icon only - only for editor features */}
+            {showEditorFeatures && (
+              <span className={cn("text-xs px-1.5 py-0.5 rounded", statusClassName)}>
+                {saveStatus === "saving" ? "..." : saveStatus === "error" ? "!" : "✓"}
+              </span>
+            )}
             
             {/* Connection icon */}
             {isRealtimeConnected ? (
@@ -279,6 +285,22 @@ export function Header({
                 <Download className="h-4 w-4" />
               </Button>
 
+              <div className="hidden sm:block w-px h-6 bg-border mx-1" />
+            </div>
+          )}
+          
+          {/* Share button for non-editor pages (like scrap) */}
+          {!showEditorFeatures && onShare && (
+            <div className="flex items-center gap-1 sm:gap-2">
+              <Button
+                onClick={onShare}
+                variant="ghost"
+                size="icon"
+                className="hidden lg:flex h-9 w-9"
+                title="Share"
+              >
+                <Share2 className="h-4 w-4" />
+              </Button>
               <div className="hidden sm:block w-px h-6 bg-border mx-1" />
             </div>
           )}
@@ -422,33 +444,37 @@ export function Header({
                 </div>
               )}
               
-              {/* Actions section (only for editor) */}
-              {showEditorFeatures && (
+              {/* Actions section */}
+              {(showEditorFeatures || onShare) && (
                 <div className="border-t pt-4">
                   <h3 className="text-sm font-medium mb-2">Actions</h3>
                   <div className="space-y-1">
-                    <Button
-                      onClick={() => {
-                        onShare?.();
-                        setMobileMenuOpen(false);
-                      }}
-                      variant="ghost"
-                      className="w-full justify-start"
-                    >
-                      <Share2 className="h-4 w-4 mr-2" />
-                      Share
-                    </Button>
-                    <Button
-                      onClick={() => {
-                        onDownload?.();
-                        setMobileMenuOpen(false);
-                      }}
-                      variant="ghost"
-                      className="w-full justify-start"
-                    >
-                      <Download className="h-4 w-4 mr-2" />
-                      Download
-                    </Button>
+                    {onShare && (
+                      <Button
+                        onClick={() => {
+                          onShare();
+                          setMobileMenuOpen(false);
+                        }}
+                        variant="ghost"
+                        className="w-full justify-start"
+                      >
+                        <Share2 className="h-4 w-4 mr-2" />
+                        Share
+                      </Button>
+                    )}
+                    {showEditorFeatures && onDownload && (
+                      <Button
+                        onClick={() => {
+                          onDownload();
+                          setMobileMenuOpen(false);
+                        }}
+                        variant="ghost"
+                        className="w-full justify-start"
+                      >
+                        <Download className="h-4 w-4 mr-2" />
+                        Download
+                      </Button>
+                    )}
                   </div>
                 </div>
               )}

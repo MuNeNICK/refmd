@@ -2,13 +2,19 @@
 
 import { useCallback, useRef } from "react";
 import { getApiClient } from '@/lib/api';
+import { toast } from "sonner";
 
 interface UseFileUploadProps {
-  documentId: string;
+  documentId?: string; // Optional for scrap posts
   onInsertText: (text: string) => void;
+  insertMode?: 'batch' | 'individual'; // Batch for scraps, individual for documents
 }
 
-export function useFileUpload({ documentId, onInsertText }: UseFileUploadProps) {
+export function useFileUpload({ 
+  documentId, 
+  onInsertText, 
+  insertMode = 'individual'
+}: UseFileUploadProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileUpload = useCallback(async (files: File[]) => {
@@ -21,42 +27,68 @@ export function useFileUpload({ documentId, onInsertText }: UseFileUploadProps) 
         // Upload file to server
         const result = await api.files.uploadFile({
           file,
-          document_id: documentId,
+          document_id: documentId || undefined,
         });
 
         uploadedFiles.push(result.data);
       }
       
-      // Insert markdown for uploaded files with relative paths
-      for (const uploadedFile of uploadedFiles) {
-        // Use the URL from the response
-        const fileUrl = uploadedFile?.url;
-        const fileName = uploadedFile?.filename;
-        const mimeType = uploadedFile?.mime_type;
+      if (insertMode === 'batch') {
+        // Build markdown for all uploaded files and insert as batch (for scraps)
+        const markdownParts: string[] = [];
         
-        // Encode the filename part of the URL to handle spaces and special characters
-        const encodedUrl = fileUrl?.startsWith('./attachments/') 
-          ? `./attachments/${encodeURIComponent(fileUrl.substring(14))}`
-          : fileUrl;
-        
-        if (mimeType?.startsWith("image/")) {
-          const imageMarkdown = `![${fileName}](${encodedUrl})\n`;
-          onInsertText(imageMarkdown);
-        } else if (mimeType === "text/plain" || fileName?.endsWith(".md")) {
-          // For text files, we could optionally read and embed content
-          const linkMarkdown = `[${fileName}](${encodedUrl})\n`;
-          onInsertText(linkMarkdown);
-        } else if (mimeType === "application/pdf") {
-          const linkMarkdown = `[📄 ${fileName}](${encodedUrl})\n`;
-          onInsertText(linkMarkdown);
-        } else {
-          const linkMarkdown = `[${fileName}](${encodedUrl})\n`;
-          onInsertText(linkMarkdown);
+        for (const uploadedFile of uploadedFiles) {
+          const fileUrl = uploadedFile?.url;
+          const fileName = uploadedFile?.filename;
+          const mimeType = uploadedFile?.mime_type;
+          
+          // Encode the filename part of the URL to handle spaces and special characters
+          const encodedUrl = fileUrl?.startsWith('./attachments/') 
+            ? `./attachments/${encodeURIComponent(fileUrl.substring(14))}`
+            : fileUrl;
+          
+          if (mimeType?.startsWith("image/")) {
+            markdownParts.push(`![${fileName}](${encodedUrl})`);
+          } else {
+            markdownParts.push(`[${fileName}](${encodedUrl})`);
+          }
         }
+        
+        // Insert all markdown at once with proper spacing
+        if (markdownParts.length > 0) {
+          const markdown = markdownParts.join('\n') + '\n';
+          onInsertText(markdown);
+        }
+      } else {
+        // Insert markdown for uploaded files individually (for documents)
+        for (const uploadedFile of uploadedFiles) {
+          const fileUrl = uploadedFile?.url;
+          const fileName = uploadedFile?.filename;
+          const mimeType = uploadedFile?.mime_type;
+          
+          // Encode the filename part of the URL to handle spaces and special characters
+          const encodedUrl = fileUrl?.startsWith('./attachments/') 
+            ? `./attachments/${encodeURIComponent(fileUrl.substring(14))}`
+            : fileUrl;
+          
+          if (mimeType?.startsWith("image/")) {
+            const imageMarkdown = `![${fileName}](${encodedUrl})\n`;
+            onInsertText(imageMarkdown);
+          } else {
+            const linkMarkdown = `[${fileName}](${encodedUrl})\n`;
+            onInsertText(linkMarkdown);
+          }
+        }
+      }
+      
+      if (uploadedFiles.length > 0) {
+        toast.success(`Uploaded ${uploadedFiles.length} file${uploadedFiles.length > 1 ? 's' : ''}`);
       }
       
     } catch (error) {
       console.error('File upload error:', error);
+      toast.error('Failed to upload files');
+      
       // Fallback to base64 for images if server upload fails
       for (const file of files) {
         if (file.type.startsWith("image/")) {
@@ -70,7 +102,7 @@ export function useFileUpload({ documentId, onInsertText }: UseFileUploadProps) 
         }
       }
     }
-  }, [documentId, onInsertText]);
+  }, [documentId, onInsertText, insertMode]);
 
   const triggerFileUpload = useCallback(() => {
     fileInputRef.current?.click();
@@ -91,7 +123,7 @@ export function useFileUpload({ documentId, onInsertText }: UseFileUploadProps) 
     fileInputProps: {
       type: 'file' as const,
       multiple: true,
-      accept: 'image/*,.pdf,.txt,.md',
+      accept: '*/*',
       style: { display: 'none' },
       onChange: handleFileInputChange,
     },

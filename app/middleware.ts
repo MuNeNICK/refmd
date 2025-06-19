@@ -7,15 +7,15 @@ export function middleware(request: NextRequest) {
   const publicRoutes = ['/auth/signin', '/auth/signup', '/']
   const isPublicRoute = publicRoutes.includes(pathname)
   
-  // Check if this is a shared document with token
-  const isSharedDocument = pathname.startsWith('/document/') && searchParams.has('token')
+  // Check if this is a shared resource (document or scrap) with token
+  const isSharedResource = (pathname.startsWith('/document/') || pathname.startsWith('/scrap/')) && searchParams.has('token')
   
   // Get authentication token from cookies
   const token = request.cookies.get('auth-token')?.value
   
   // If user is not authenticated and trying to access protected route
-  // BUT allow access if it's a shared document with token
-  if (!token && !isPublicRoute && !isSharedDocument) {
+  // BUT allow access if it's a shared resource with token
+  if (!token && !isPublicRoute && !isSharedResource) {
     const signInUrl = new URL('/auth/signin', request.url)
     return NextResponse.redirect(signInUrl)
   }

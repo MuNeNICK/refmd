@@ -12,6 +12,7 @@ export namespace CreateDocumentRequest {
     export enum type {
         DOCUMENT = 'document',
         FOLDER = 'folder',
+        SCRAP = 'scrap',
     }
 }
 

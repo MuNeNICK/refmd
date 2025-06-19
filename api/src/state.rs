@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use sqlx::PgPool;
 use crate::config::Config;
 use crate::crdt::{DocumentManager, AwarenessManager, DocumentPersistence};
-use crate::services::{crdt::CrdtService, file::FileService, share::ShareService};
+use crate::services::{crdt::CrdtService, document::DocumentService, file::FileService, share::ShareService};
 use crate::repository::{DocumentRepository, ShareRepository, UserRepository};
 
 #[derive(Clone)]
@@ -14,6 +14,7 @@ pub struct AppState {
     pub awareness_manager: Arc<AwarenessManager>,
     pub document_persistence: Arc<DocumentPersistence>,
     pub crdt_service: Arc<CrdtService>,
+    pub document_service: Arc<DocumentService>,
     pub file_service: Arc<FileService>,
     pub share_service: Arc<ShareService>,
     pub document_repository: Arc<DocumentRepository>,
@@ -36,6 +37,16 @@ impl AppState {
         
         // Create storage directory from config
         let storage_path = PathBuf::from(&config.upload_dir);
+        
+        // Create document repository first
+        let document_repository = Arc::new(DocumentRepository::new(db_pool.clone()));
+        
+        // Create document service
+        let document_service = Arc::new(DocumentService::new(
+            document_repository.clone(),
+            storage_path.clone(),
+            crdt_service.clone(),
+        ));
         let frontend_url = config.frontend_url.clone().unwrap_or_else(|| "http://localhost:3000".to_string());
         
         let file_service = Arc::new(FileService::new(
@@ -50,8 +61,7 @@ impl AppState {
             frontend_url,
         ));
         
-        // Create repositories
-        let document_repository = Arc::new(DocumentRepository::new(db_pool.clone()));
+        // Create other repositories
         let share_repository = Arc::new(ShareRepository::new(db_pool.clone()));
         let user_repository = Arc::new(UserRepository::new(db_pool.clone()));
         
@@ -62,6 +72,7 @@ impl AppState {
             awareness_manager,
             document_persistence,
             crdt_service,
+            document_service,
             file_service,
             share_service,
             document_repository,
