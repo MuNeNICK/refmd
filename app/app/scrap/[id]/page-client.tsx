@@ -59,7 +59,7 @@ export function ScrapPageClient({ initialData, scrapId }: ScrapPageClientProps) 
       }
       setScrapData(data);
     } catch (error) {
-      console.error('Failed to refresh scrap data:', error);
+      // Failed to refresh scrap data
     }
   }, [scrapId, shareToken, accessToken, client]);
 
@@ -143,7 +143,6 @@ export function ScrapPageClient({ initialData, scrapId }: ScrapPageClientProps) 
       // Emit real-time event to other connected clients
       emitPostAdded(newPost);
     } catch (error) {
-      console.error('Failed to add post:', error);
       toast.error('Failed to add post');
     } finally {
       setIsLoading(false);
@@ -198,7 +197,6 @@ export function ScrapPageClient({ initialData, scrapId }: ScrapPageClientProps) 
       // Emit real-time event to other connected clients
       emitPostUpdated(updatedPost);
     } catch (error) {
-      console.error('Failed to update post:', error);
       toast.error('Failed to update post');
     } finally {
       if (!isPinUpdate) {
@@ -237,7 +235,6 @@ export function ScrapPageClient({ initialData, scrapId }: ScrapPageClientProps) 
       // Emit real-time event to other connected clients
       emitPostDeleted(postId);
     } catch (error) {
-      console.error('Failed to delete post:', error);
       toast.error('Failed to delete post');
     } finally {
       setDeletingPostId(null);

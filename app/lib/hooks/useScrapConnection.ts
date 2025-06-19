@@ -74,12 +74,6 @@ export function useScrapConnection({
       joinData.auth_token = authToken;
     }
 
-    console.log('[Scrap] Emitting join_document:', {
-      document_id: scrapId,
-      hasShareToken: !!shareToken,
-      hasAuthToken: !!authToken,
-      authTokenLength: authToken?.length
-    });
 
     socket.emit('join_document', joinData);
     hasJoinedRef.current = true;
@@ -100,45 +94,40 @@ export function useScrapConnection({
     const handleYjsSync = (message: { type: string }) => {
       // When CRDT content changes, we know posts have been updated
       if (message.type === 'Update') {
-        console.log('[Scrap] CRDT update received, triggering debounced refresh');
         debouncedContentUpdate();
       }
     };
 
     // Handle awareness updates (user presence)
-    const handleAwareness = (data: unknown) => {
-      console.log('[Scrap] User presence update:', data);
+    const handleAwareness = () => {
+      // User presence update handling
     };
 
     // Handle direct scrap post events
     const handleScrapPostAdded = (post: ScrapPost) => {
-      console.log('[Scrap] Post added:', post);
       onPostAdded?.(post);
     };
 
     const handleScrapPostUpdated = (post: ScrapPost) => {
-      console.log('[Scrap] Post updated:', post);
       onPostUpdated?.(post);
     };
 
     const handleScrapPostDeleted = (data: { postId: string }) => {
-      console.log('[Scrap] Post deleted:', data.postId);
       onPostDeleted?.(data.postId);
     };
 
     // Handle user count updates - this is the authoritative source
     const handleUserCountUpdate = (data: { count: number }) => {
-      console.log('[Scrap] User count update:', data.count);
       onUserCountChanged?.(data.count);
     };
 
-    // Handle user joined/left events (just for logging, count comes from user_count_update)
-    const handleUserJoined = (data: unknown) => {
-      console.log('[Scrap] User joined:', data);
+    // Handle user joined/left events (count comes from user_count_update)
+    const handleUserJoined = () => {
+      // User joined event handling
     };
 
-    const handleUserLeft = (data: unknown) => {
-      console.log('[Scrap] User left:', data);
+    const handleUserLeft = () => {
+      // User left event handling
     };
 
     // Set up event listeners
