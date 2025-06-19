@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation';
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { ScrapPageClient } from './page-client';
-import { RefMDClient, ApiError } from '@/lib/api/client';
+import { RefMDClient } from '@/lib/api/client';
 import { getApiUrl } from '@/lib/config';
 
 interface PageProps {
@@ -50,21 +50,22 @@ export default async function ScrapPage({ params, searchParams }: PageProps) {
     }
     
     return <ScrapPageClient initialData={scrapData} scrapId={id} />;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Failed to fetch scrap:', error);
     
     // Check if it's an ApiError with status property
-    if (error.status === 401 || error.status === 403) {
+    const apiError = error as { status?: number };
+    if (apiError.status === 401 || apiError.status === 403) {
       redirect('/');
     }
     
     // Check if it's an ApiError with status 404
-    if (error.status === 404) {
+    if (apiError.status === 404) {
       notFound();
     }
     
     // For development/debugging - remove this in production
-    if (error.status === 500) {
+    if (apiError.status === 500) {
       const mockScrap = {
         scrap: {
           id,

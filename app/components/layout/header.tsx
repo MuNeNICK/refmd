@@ -122,28 +122,24 @@ export function Header({
           )}
         </div>
 
-        {/* Center - Document title for scrap pages */}
-        {!showEditorFeatures && documentTitle && (
-          <div className="absolute left-1/2 transform -translate-x-1/2 hidden sm:block">
-            <span className="text-sm text-muted-foreground">{documentTitle}</span>
-          </div>
-        )}
 
-        {/* Center - Document info and realtime status (only for editor) */}
-        {showEditorFeatures && (
+        {/* Center - Document info and realtime status (for editor and other pages with realtime features) */}
+        {(showEditorFeatures || (isRealtimeConnected !== undefined && documentTitle)) && (
           <div className="hidden sm:flex absolute left-1/2 transform -translate-x-1/2 items-center gap-2 text-sm text-muted-foreground">
             <span className="hidden xl:inline">{documentTitle || 'Untitled Document'}</span>
             
-            {/* Save status */}
-            <span className={cn("text-xs px-1.5 sm:px-2 py-0.5 sm:py-1 rounded flex items-center gap-1", statusClassName)}>
-              {saveStatus === "saving" && (
-                <div className="w-2 h-2 bg-current rounded-full animate-pulse" />
-              )}
-              <span className="hidden sm:inline">{statusText}</span>
-              <span className="sm:hidden">
-                {saveStatus === "saving" ? "..." : saveStatus === "error" ? "!" : "✓"}
+            {/* Save status - only for editor features */}
+            {showEditorFeatures && (
+              <span className={cn("text-xs px-1.5 sm:px-2 py-0.5 sm:py-1 rounded flex items-center gap-1", statusClassName)}>
+                {saveStatus === "saving" && (
+                  <div className="w-2 h-2 bg-current rounded-full animate-pulse" />
+                )}
+                <span className="hidden sm:inline">{statusText}</span>
+                <span className="sm:hidden">
+                  {saveStatus === "saving" ? "..." : saveStatus === "error" ? "!" : "✓"}
+                </span>
               </span>
-            </span>
+            )}
             
             {/* Realtime connection status */}
             <div className="flex items-center gap-1">
@@ -165,7 +161,7 @@ export function Header({
               <div className="flex items-center gap-1">
                 <Users className="w-3 h-3 text-blue-500" />
                 <span className="text-xs text-blue-600 dark:text-blue-400 hidden md:inline">
-                  {realtimeUserCount} {realtimeUserCount === 1 ? 'person' : 'people'} editing
+                  {realtimeUserCount} people online
                 </span>
                 <span className="text-xs text-blue-600 dark:text-blue-400 md:hidden">
                   {realtimeUserCount}
@@ -173,7 +169,8 @@ export function Header({
               </div>
             )}
             
-            {lastSaved && saveStatus === "saved" && (
+            {/* Last saved time - only for editor features */}
+            {showEditorFeatures && lastSaved && saveStatus === "saved" && (
               <span className="text-xs hidden xl:inline">
                 {new Date(lastSaved).toLocaleTimeString()}
               </span>
@@ -182,12 +179,14 @@ export function Header({
         )}
         
         {/* Mobile status indicators - shown inline on mobile */}
-        {showEditorFeatures && (
+        {(showEditorFeatures || (isRealtimeConnected !== undefined && documentTitle)) && (
           <div className="flex sm:hidden items-center gap-2 text-sm text-muted-foreground mx-2">
-            {/* Save status icon only */}
-            <span className={cn("text-xs px-1.5 py-0.5 rounded", statusClassName)}>
-              {saveStatus === "saving" ? "..." : saveStatus === "error" ? "!" : "✓"}
-            </span>
+            {/* Save status icon only - only for editor features */}
+            {showEditorFeatures && (
+              <span className={cn("text-xs px-1.5 py-0.5 rounded", statusClassName)}>
+                {saveStatus === "saving" ? "..." : saveStatus === "error" ? "!" : "✓"}
+              </span>
+            )}
             
             {/* Connection icon */}
             {isRealtimeConnected ? (

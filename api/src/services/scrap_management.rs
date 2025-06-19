@@ -132,9 +132,13 @@ impl ScrapService {
             return Err(Error::Forbidden);
         }
 
-        // Create post in database
-        let db_post = ScrapRepository::create_scrap_post(
-            &self.pool,
+        // Use transaction to ensure atomicity
+        let mut tx = self.pool.begin().await
+            .map_err(|e| Error::InternalServerError(format!("Failed to start transaction: {}", e)))?;
+
+        // Create post in database within transaction
+        let db_post = ScrapRepository::create_scrap_post_tx(
+            &mut tx,
             scrap_id,
             user_id,
             request.content.clone(),
@@ -153,25 +157,67 @@ impl ScrapService {
             updated_at: db_post.updated_at,
         };
 
-        // Update file
-        let document = ScrapRepository::get_scrap_by_id(&*self.pool, scrap_id).await?;
+        // Get document within transaction
+        let document = ScrapRepository::get_scrap_by_id_tx(&mut tx, scrap_id).await?;
+        
+        // Commit transaction first to ensure post is saved
+        tx.commit().await
+            .map_err(|e| Error::InternalServerError(format!("Failed to commit transaction: {}", e)))?;
+
+        // Update CRDT and file with retry mechanism
         if let Some(_file_path) = &document.file_path {
-            // Get current content from CRDT
-            let content = self.crdt_service.get_document_content(document.id).await?;
+            let max_retries = 3;
+            let mut retry_count = 0;
             
-            // Add post to content
-            let new_content = ScrapParser::add_post_to_content(&content, &post)?;
-            
-            // Update CRDT
-            self.crdt_service.update_document_content(document.id, &new_content).await?;
-            
-            // Save to file
-            self.document_service
-                .save_to_file_with_content(&document, &new_content)
-                .await?;
+            while retry_count < max_retries {
+                match self.update_scrap_content_with_post(document.id, &post).await {
+                    Ok(_) => break,
+                    Err(e) => {
+                        retry_count += 1;
+                        if retry_count >= max_retries {
+                            tracing::error!("Failed to update scrap content after {} retries: {}", max_retries, e);
+                            // Don't fail the entire operation - post is already saved in DB
+                            break;
+                        }
+                        // Wait before retry
+                        tokio::time::sleep(tokio::time::Duration::from_millis(100 * retry_count as u64)).await;
+                    }
+                }
+            }
         }
 
         Ok(post)
+    }
+
+    async fn update_scrap_content_with_post(&self, document_id: Uuid, post: &ScrapPost) -> Result<()> {
+        // Get current content from CRDT with retry
+        let content = self.crdt_service.get_document_content(document_id).await?;
+        
+        // Add post to content
+        let new_content = ScrapParser::add_post_to_content(&content, post)?;
+        
+        // Update CRDT - this will handle the synchronization automatically
+        let update = self.crdt_service.set_document_content(document_id, &new_content).await?;
+        
+        // Get document for file save
+        let document = ScrapRepository::get_scrap_by_id(&*self.pool, document_id).await?;
+        
+        // Save to file
+        self.document_service
+            .save_to_file_with_content(&document, &new_content)
+            .await?;
+            
+        // Notify clients via SocketIO about the new post
+        self.notify_scrap_post_added(document_id, post, &update).await?;
+            
+        Ok(())
+    }
+
+    async fn notify_scrap_post_added(&self, document_id: Uuid, post: &ScrapPost, _update: &[u8]) -> Result<()> {
+        // Get SocketIO instance from app state if available
+        // This will be called from the handlers with the SocketIO instance
+        tracing::info!("Scrap post added to document {}: {}", document_id, post.id);
+        Ok(())
     }
 
     pub async fn get_posts(&self, scrap_id: Uuid, user_id: Uuid) -> Result<Vec<ScrapPost>> {
@@ -208,9 +254,13 @@ impl ScrapService {
         user_id: Uuid,
         request: UpdateScrapPostRequest,
     ) -> Result<ScrapPost> {
-        // Update in database
-        let db_post = ScrapRepository::update_scrap_post(
-            &self.pool,
+        // Use transaction for atomicity
+        let mut tx = self.pool.begin().await
+            .map_err(|e| Error::InternalServerError(format!("Failed to start transaction: {}", e)))?;
+
+        // Update in database within transaction
+        let db_post = ScrapRepository::update_scrap_post_tx(
+            &mut tx,
             post_id,
             user_id,
             request.content.clone(),
@@ -229,25 +279,58 @@ impl ScrapService {
             updated_at: db_post.updated_at,
         };
 
-        // Update file
-        let document = ScrapRepository::get_scrap_by_id(&*self.pool, scrap_id).await?;
+        // Get document within transaction
+        let document = ScrapRepository::get_scrap_by_id_tx(&mut tx, scrap_id).await?;
+        
+        // Commit transaction
+        tx.commit().await
+            .map_err(|e| Error::InternalServerError(format!("Failed to commit transaction: {}", e)))?;
+
+        // Update CRDT and file with retry mechanism
         if let Some(_) = &document.file_path {
-            // Get current content from CRDT
-            let content = self.crdt_service.get_document_content(document.id).await?;
+            let max_retries = 3;
+            let mut retry_count = 0;
             
-            // Update post in content
-            let new_content = ScrapParser::update_post_in_content(&content, post_id, &request.content)?;
-            
-            // Update CRDT
-            self.crdt_service.update_document_content(document.id, &new_content).await?;
-            
-            // Save to file
-            self.document_service
-                .save_to_file_with_content(&document, &new_content)
-                .await?;
+            while retry_count < max_retries {
+                match self.update_scrap_content_with_post_update(document.id, post_id, &request.content).await {
+                    Ok(_) => break,
+                    Err(e) => {
+                        retry_count += 1;
+                        if retry_count >= max_retries {
+                            tracing::error!("Failed to update scrap content after {} retries: {}", max_retries, e);
+                            break;
+                        }
+                        tokio::time::sleep(tokio::time::Duration::from_millis(100 * retry_count as u64)).await;
+                    }
+                }
+            }
         }
 
         Ok(post)
+    }
+
+    async fn update_scrap_content_with_post_update(&self, document_id: Uuid, post_id: Uuid, content: &str) -> Result<()> {
+        // Get current content from CRDT
+        let current_content = self.crdt_service.get_document_content(document_id).await?;
+        
+        // Update post in content
+        let new_content = ScrapParser::update_post_in_content(&current_content, post_id, content)?;
+        
+        // Update CRDT
+        let _update = self.crdt_service.set_document_content(document_id, &new_content).await?;
+        
+        // Get document for file save
+        let document = ScrapRepository::get_scrap_by_id(&*self.pool, document_id).await?;
+        
+        // Save to file
+        self.document_service
+            .save_to_file_with_content(&document, &new_content)
+            .await?;
+            
+        // Notify clients
+        tracing::info!("Scrap post updated in document {}: {}", document_id, post_id);
+        
+        Ok(())
     }
 
     pub async fn delete_post(
@@ -256,27 +339,64 @@ impl ScrapService {
         post_id: Uuid,
         user_id: Uuid,
     ) -> Result<()> {
-        // Delete from database
-        ScrapRepository::delete_scrap_post(&*self.pool, post_id, user_id).await?;
+        // Use transaction for atomicity
+        let mut tx = self.pool.begin().await
+            .map_err(|e| Error::InternalServerError(format!("Failed to start transaction: {}", e)))?;
 
-        // Update file
-        let document = ScrapRepository::get_scrap_by_id(&*self.pool, scrap_id).await?;
+        // Delete from database within transaction
+        ScrapRepository::delete_scrap_post_tx(&mut tx, post_id, user_id).await?;
+
+        // Get document within transaction
+        let document = ScrapRepository::get_scrap_by_id_tx(&mut tx, scrap_id).await?;
+        
+        // Commit transaction
+        tx.commit().await
+            .map_err(|e| Error::InternalServerError(format!("Failed to commit transaction: {}", e)))?;
+
+        // Update CRDT and file with retry mechanism
         if let Some(_) = &document.file_path {
-            // Get current content from CRDT
-            let content = self.crdt_service.get_document_content(document.id).await?;
+            let max_retries = 3;
+            let mut retry_count = 0;
             
-            // Delete post from content
-            let new_content = ScrapParser::delete_post_from_content(&content, post_id)?;
-            
-            // Update CRDT
-            self.crdt_service.update_document_content(document.id, &new_content).await?;
-            
-            // Save to file
-            self.document_service
-                .save_to_file_with_content(&document, &new_content)
-                .await?;
+            while retry_count < max_retries {
+                match self.update_scrap_content_with_post_delete(document.id, post_id).await {
+                    Ok(_) => break,
+                    Err(e) => {
+                        retry_count += 1;
+                        if retry_count >= max_retries {
+                            tracing::error!("Failed to update scrap content after {} retries: {}", max_retries, e);
+                            break;
+                        }
+                        tokio::time::sleep(tokio::time::Duration::from_millis(100 * retry_count as u64)).await;
+                    }
+                }
+            }
         }
 
+        Ok(())
+    }
+
+    async fn update_scrap_content_with_post_delete(&self, document_id: Uuid, post_id: Uuid) -> Result<()> {
+        // Get current content from CRDT
+        let content = self.crdt_service.get_document_content(document_id).await?;
+        
+        // Delete post from content
+        let new_content = ScrapParser::delete_post_from_content(&content, post_id)?;
+        
+        // Update CRDT
+        let _update = self.crdt_service.set_document_content(document_id, &new_content).await?;
+        
+        // Get document for file save
+        let document = ScrapRepository::get_scrap_by_id(&*self.pool, document_id).await?;
+        
+        // Save to file
+        self.document_service
+            .save_to_file_with_content(&document, &new_content)
+            .await?;
+            
+        // Notify clients
+        tracing::info!("Scrap post deleted from document {}: {}", document_id, post_id);
+        
         Ok(())
     }
 

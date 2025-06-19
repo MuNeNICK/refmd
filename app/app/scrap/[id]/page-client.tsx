@@ -1,18 +1,19 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
-import type { ScrapWithPosts, ScrapPost } from '@/lib/api/client';
+import type { ScrapWithPosts } from '@/lib/api/client';
 import MainLayout from '@/components/layout/main-layout';
 import { ScrapPostForm } from '@/components/scrap/scrap-post-form';
 import { ScrapPostComponent } from '@/components/scrap/scrap-post';
 import { Button } from '@/components/ui/button';
-import { ArrowUpDown, ArrowUp, ArrowDown, Share2 } from 'lucide-react';
+import { ArrowUp, ArrowDown } from 'lucide-react';
 import { useAuth } from '@/lib/auth/authContext';
 import { getApiClient } from '@/lib/api';
 import { ScrapMetadataParser } from '@/lib/utils/scrap-metadata-parser';
 import { ShareDialog } from '@/components/collaboration/share-dialog';
+import { useScrapConnection } from '@/lib/hooks/useScrapConnection';
 
 interface ScrapPageClientProps {
   initialData: ScrapWithPosts;
@@ -20,7 +21,6 @@ interface ScrapPageClientProps {
 }
 
 export function ScrapPageClient({ initialData, scrapId }: ScrapPageClientProps) {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const { accessToken, user } = useAuth();
   const [scrapData, setScrapData] = useState<ScrapWithPosts>(initialData);
@@ -30,6 +30,7 @@ export function ScrapPageClient({ initialData, scrapId }: ScrapPageClientProps) 
   const [deletingPostId, setDeletingPostId] = useState<string | null>(null);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc'); // Default to newest first
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [userCount, setUserCount] = useState(0);
 
   // Use the singleton API client with automatic token management
   const client = getApiClient();
@@ -41,10 +42,71 @@ export function ScrapPageClient({ initialData, scrapId }: ScrapPageClientProps) 
   const isViewOnly = false;
   
 
-  // Real-time updates (to be implemented later)
-  useEffect(() => {
-    // TODO: Implement real-time updates with WebSocket connection
-  }, [scrapId]);
+  // Refresh data from server
+  const refreshScrapData = useCallback(async () => {
+    try {
+      let data;
+      if (shareToken) {
+        const response = await fetch(`${client.request.config.BASE}/scraps/${scrapId}?token=${shareToken}`, {
+          headers: {
+            ...(accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {})
+          }
+        });
+        if (!response.ok) throw new Error('Failed to fetch scrap');
+        data = await response.json();
+      } else {
+        data = await client.scraps.getScrap(scrapId);
+      }
+      setScrapData(data);
+    } catch (error) {
+      console.error('Failed to refresh scrap data:', error);
+    }
+  }, [scrapId, shareToken, accessToken, client]);
+
+  // Handle real-time post events
+  const handlePostAdded = useCallback((post: ScrapPost) => {
+    setScrapData(prev => ({
+      ...prev,
+      posts: [...prev.posts, post]
+    }));
+  }, []);
+
+  const handlePostUpdated = useCallback((post: ScrapPost) => {
+    setScrapData(prev => ({
+      ...prev,
+      posts: prev.posts.map(p => p.id === post.id ? post : p)
+    }));
+  }, []);
+
+  const handlePostDeleted = useCallback((postId: string) => {
+    setScrapData(prev => ({
+      ...prev,
+      posts: prev.posts.filter(p => p.id !== postId)
+    }));
+  }, []);
+
+  const handleUserCountChanged = useCallback((count: number) => {
+    setUserCount(count);
+  }, []);
+
+  // Real-time updates with Socket.IO
+  const { 
+    connectionError, 
+    isConnected, 
+    socketConnected,
+    emitPostAdded,
+    emitPostUpdated,
+    emitPostDeleted 
+  } = useScrapConnection({
+    scrapId,
+    shareToken: shareToken || undefined,
+    onPostAdded: handlePostAdded,
+    onPostUpdated: handlePostUpdated,
+    onPostDeleted: handlePostDeleted,
+    onContentUpdate: refreshScrapData,
+    onUserCountChanged: handleUserCountChanged
+  });
+
 
   const handleAddPost = async (content: string) => {
     if (!content.trim() || isLoading) return;
@@ -78,6 +140,9 @@ export function ScrapPageClient({ initialData, scrapId }: ScrapPageClientProps) 
       }));
       // Form stays visible, just clear content
       toast.success('Post added');
+      
+      // Emit real-time event to other connected clients
+      emitPostAdded(newPost);
     } catch (error) {
       console.error('Failed to add post:', error);
       toast.error('Failed to add post');
@@ -130,6 +195,9 @@ export function ScrapPageClient({ initialData, scrapId }: ScrapPageClientProps) 
       } else {
         toast.success('Post updated');
       }
+      
+      // Emit real-time event to other connected clients
+      emitPostUpdated(updatedPost);
     } catch (error) {
       console.error('Failed to update post:', error);
       toast.error('Failed to update post');
@@ -166,6 +234,9 @@ export function ScrapPageClient({ initialData, scrapId }: ScrapPageClientProps) 
         posts: prev.posts.filter(post => post.id !== postId)
       }));
       toast.success('Post deleted');
+      
+      // Emit real-time event to other connected clients
+      emitPostDeleted(postId);
     } catch (error) {
       console.error('Failed to delete post:', error);
       toast.error('Failed to delete post');
@@ -204,12 +275,14 @@ export function ScrapPageClient({ initialData, scrapId }: ScrapPageClientProps) 
       showEditorFeatures={false}
       isViewOnly={isViewOnly}
       hideFileTree={!!shareToken}
+      isRealtimeConnected={isConnected && !connectionError}
+      realtimeUserCount={userCount}
       onShare={!isViewOnly && user ? () => setShareDialogOpen(true) : undefined}
     >
       <div className="flex flex-col h-full overflow-y-auto">
         <div className="max-w-4xl mx-auto w-full p-6">
           <div className="space-y-4 pb-6">
-            
+
             {/* Add post form - only visible if authenticated */}
             {!isViewOnly && user && (
               <ScrapPostForm

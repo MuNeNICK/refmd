@@ -9,7 +9,7 @@ use crate::socketio::crdt_sync::{YjsSyncManager, YjsMessage};
 use crate::socketio::connection_tracker::ConnectionTracker;
 use crate::crdt::{UserPresence, CursorPosition, SelectionRange};
 use crate::entities::share::Permission;
-use crate::middleware::permission::check_document_permission;
+use crate::middleware::permission::check_any_resource_permission;
 
 #[derive(Debug, Deserialize)]
 struct JoinDocumentRequest {
@@ -70,20 +70,34 @@ pub fn setup_handlers(io: SocketIo, state: Arc<AppState>) {
                     let connection_tracker = connection_tracker.clone();
                     
                     async move {
+                        tracing::info!("[SocketIO] Join document request: doc_id={}, share_token={:?}, auth_token={}", 
+                                     data.document_id, data.share_token.is_some(), data.auth_token.is_some());
+                        
                         // Try to authenticate with JWT token if provided
                         let mut user_id = None;
                         let mut user_email = None;
                         
                         if let Some(token) = &data.auth_token {
                             // Verify JWT token
-                            if let Ok(claims) = crate::utils::jwt::verify_token(token, &state.config.jwt_secret) {
-                                user_id = Some(claims.sub);
-                                user_email = Some(claims.email);
+                            match crate::utils::jwt::verify_token(token, &state.config.jwt_secret) {
+                                Ok(claims) => {
+                                    user_id = Some(claims.sub);
+                                    user_email = Some(claims.email);
+                                    tracing::info!("[SocketIO] JWT authentication successful: user_id={}", claims.sub);
+                                }
+                                Err(e) => {
+                                    tracing::warn!("[SocketIO] JWT verification failed: {}", e);
+                                }
                             }
+                        } else {
+                            tracing::info!("[SocketIO] No auth token provided");
                         }
                         
-                        // Check document permissions with optional auth and share token
-                        let permission_check = check_document_permission(
+                        // Check permissions for any resource type (document or scrap) with optional auth and share token
+                        tracing::info!("[SocketIO] Checking permissions: user_id={:?}, share_token={:?}", 
+                                     user_id, data.share_token.is_some());
+                        
+                        let permission_check = check_any_resource_permission(
                             &state,
                             data.document_id,
                             user_id,
@@ -92,6 +106,7 @@ pub fn setup_handlers(io: SocketIo, state: Arc<AppState>) {
                         ).await;
                         
                         if let Err(e) = permission_check {
+                            tracing::error!("[SocketIO] Permission check error: {}", e);
                             socket.emit("error", ErrorResponse {
                                 error: format!("Permission denied: {}", e)
                             }).ok();
@@ -99,9 +114,13 @@ pub fn setup_handlers(io: SocketIo, state: Arc<AppState>) {
                         }
                         
                         let check = permission_check.unwrap();
+                        tracing::info!("[SocketIO] Permission check result: has_access={}, is_share_link={}", 
+                                     check.has_access, check.is_share_link);
+                        
                         if !check.has_access {
+                            tracing::warn!("[SocketIO] Access denied for document: {}", data.document_id);
                             socket.emit("error", ErrorResponse {
-                                error: "Access denied to document".to_string()
+                                error: "Access denied to resource".to_string()
                             }).ok();
                             return;
                         }
@@ -156,6 +175,19 @@ pub fn setup_handlers(io: SocketIo, state: Arc<AppState>) {
                         socket.emit("joined-document", serde_json::json!({
                             "document_id": data.document_id.to_string()
                         })).ok();
+
+                        // Send user count update to all clients in the room (including the new user)
+                        let user_count = connection_tracker.get_document_sockets(data.document_id).len();
+                        tracing::info!("[SocketIO] Sending user count update: {} users in document {}", user_count, data.document_id);
+                        
+                        let count_update = serde_json::json!({
+                            "count": user_count
+                        });
+                        
+                        // Send to existing users in the room
+                        socket.to(room_name.clone()).emit("user_count_update", &count_update).ok();
+                        // Send to the new user
+                        socket.emit("user_count_update", &count_update).ok();
 
                         // Load document from database if it exists
                         if let Err(e) = state.crdt_service.load_or_create_document(data.document_id).await {
@@ -217,8 +249,16 @@ pub fn setup_handlers(io: SocketIo, state: Arc<AppState>) {
                         // User info is managed through awareness
 
                         // Broadcast user left
-                        socket.to(room_name).emit("user_left", serde_json::json!({
+                        socket.to(room_name.clone()).emit("user_left", serde_json::json!({
                             "client_id": socket.id.to_string()
+                        })).ok();
+
+                        // Send updated user count to remaining clients
+                        let user_count = connection_tracker.get_document_sockets(data.document_id).len();
+                        tracing::info!("[SocketIO] User left, sending user count update: {} users remaining in document {}", user_count, data.document_id);
+                        
+                        socket.to(room_name).emit("user_count_update", serde_json::json!({
+                            "count": user_count
                         })).ok();
 
                     }
@@ -278,6 +318,55 @@ pub fn setup_handlers(io: SocketIo, state: Arc<AppState>) {
                             "client_id": socket.id.to_string(),
                             "selection": data.selection
                         })).ok();
+                    }
+                });
+            }
+
+            // Handle scrap post events
+            {
+                let state_clone = state.clone();
+                socket.on("scrap_post_added", move |socket: SocketRef, Data::<serde_json::Value>(data)| {
+                    let _state = state_clone.clone();
+                    
+                    async move {
+                        if let Some(document_id) = data.get("document_id").and_then(|v| v.as_str()) {
+                            if let Ok(doc_id) = document_id.parse::<Uuid>() {
+                                let room_name = format!("doc:{}", doc_id);
+                                socket.to(room_name).emit("scrap_post_added", data).ok();
+                            }
+                        }
+                    }
+                });
+            }
+            
+            {
+                let state_clone = state.clone();
+                socket.on("scrap_post_updated", move |socket: SocketRef, Data::<serde_json::Value>(data)| {
+                    let _state = state_clone.clone();
+                    
+                    async move {
+                        if let Some(document_id) = data.get("document_id").and_then(|v| v.as_str()) {
+                            if let Ok(doc_id) = document_id.parse::<Uuid>() {
+                                let room_name = format!("doc:{}", doc_id);
+                                socket.to(room_name).emit("scrap_post_updated", data).ok();
+                            }
+                        }
+                    }
+                });
+            }
+            
+            {
+                let state_clone = state.clone();
+                socket.on("scrap_post_deleted", move |socket: SocketRef, Data::<serde_json::Value>(data)| {
+                    let _state = state_clone.clone();
+                    
+                    async move {
+                        if let Some(document_id) = data.get("document_id").and_then(|v| v.as_str()) {
+                            if let Ok(doc_id) = document_id.parse::<Uuid>() {
+                                let room_name = format!("doc:{}", doc_id);
+                                socket.to(room_name).emit("scrap_post_deleted", data).ok();
+                            }
+                        }
                     }
                 });
             }
@@ -359,8 +448,16 @@ pub fn setup_handlers(io: SocketIo, state: Arc<AppState>) {
                             
                             // Broadcast user left to remaining users
                             let room_name = format!("doc:{}", doc_id);
-                            socket.to(room_name).emit("user_left", serde_json::json!({
+                            socket.to(room_name.clone()).emit("user_left", serde_json::json!({
                                 "client_id": socket.id.to_string()
+                            })).ok();
+
+                            // Send updated user count to remaining clients
+                            let user_count = connection_tracker.get_document_sockets(doc_id).len();
+                            tracing::info!("[SocketIO] User disconnected, sending user count update: {} users remaining in document {}", user_count, doc_id);
+                            
+                            socket.to(room_name).emit("user_count_update", serde_json::json!({
+                                "count": user_count
                             })).ok();
                             
                             // Always save on disconnect to ensure no data loss

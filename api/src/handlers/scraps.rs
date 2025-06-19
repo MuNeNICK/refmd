@@ -19,6 +19,7 @@ use crate::{
     error::Error,
     middleware::auth::{auth_middleware, AuthUser},
     middleware::optional_auth::{optional_auth_middleware, OptionalAuthUser},
+    middleware::permission::check_scrap_permission,
     services::scrap_management::ScrapService,
     state::AppState,
 };
@@ -293,7 +294,7 @@ pub async fn create_scrap_post_with_share(
     let share_token = params.get("token").cloned();
     
     // Check permission with share token support
-    let permission_result = check_scrap_permission_with_share(
+    let permission_result = check_scrap_permission(
         &state,
         id,
         opt_user.user_id,
@@ -337,6 +338,10 @@ pub async fn create_scrap_post_with_share(
     );
 
     let post = scrap_service.add_post(id, user_id, request).await?;
+    
+    // The CRDT service will automatically handle synchronization 
+    // and the SocketIO sync manager will broadcast updates to connected clients
+    
     Ok((StatusCode::CREATED, Json(post)))
 }
 
@@ -350,7 +355,7 @@ pub async fn update_scrap_post_with_share(
     let share_token = params.get("token").cloned();
     
     // Check permission with share token support
-    let permission_result = check_scrap_permission_with_share(
+    let permission_result = check_scrap_permission(
         &state,
         scrap_id,
         opt_user.user_id,
@@ -408,7 +413,7 @@ pub async fn delete_scrap_post_with_share(
     let share_token = params.get("token").cloned();
     
     // Check permission with share token support
-    let permission_result = check_scrap_permission_with_share(
+    let permission_result = check_scrap_permission(
         &state,
         scrap_id,
         opt_user.user_id,
@@ -457,47 +462,3 @@ pub async fn delete_scrap_post_with_share(
     Ok(StatusCode::NO_CONTENT)
 }
 
-// Helper function to check scrap permissions with share token support
-async fn check_scrap_permission_with_share(
-    state: &Arc<AppState>,
-    scrap_id: Uuid,
-    user_id: Option<Uuid>,
-    share_token: Option<String>,
-    required_permission: crate::entities::share::Permission,
-) -> Result<crate::middleware::permission::PermissionCheck, Error> {
-    use crate::middleware::permission::PermissionCheck;
-    
-    // First check if scrap exists (as a document with type='scrap')
-    let doc = state.document_repository
-        .get_by_id(scrap_id)
-        .await?
-        .ok_or_else(|| Error::NotFound("Scrap not found".to_string()))?;
-    
-    // Check if user is owner
-    if let Some(uid) = user_id {
-        if doc.owner_id == uid {
-            return Ok(PermissionCheck {
-                has_access: true,
-                is_share_link: false,
-            });
-        }
-    }
-    
-    // Check share token
-    if let Some(token) = share_token {
-        if state.share_service.verify_share_token(&token, scrap_id).await? {
-            if let Some(perm) = state.share_service.get_permission_for_share(scrap_id, &token).await? {
-                let has_access = perm.has_permission(required_permission);
-                return Ok(PermissionCheck {
-                    has_access,
-                    is_share_link: true,
-                });
-            }
-        }
-    }
-    
-    Ok(PermissionCheck {
-        has_access: false,
-        is_share_link: false,
-    })
-}

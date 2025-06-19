@@ -1,5 +1,5 @@
 use chrono::Utc;
-use sqlx::{PgPool, Row};
+use sqlx::{PgPool, Row, Transaction, Postgres};
 use uuid::Uuid;
 
 use crate::db::models::{Document, ScrapPost as DbScrapPost};
@@ -175,6 +175,58 @@ impl ScrapRepository {
         Ok(post)
     }
 
+    // Transaction version for atomic operations
+    pub async fn create_scrap_post_tx(
+        tx: &mut Transaction<'_, Postgres>,
+        document_id: Uuid,
+        author_id: Uuid,
+        content: String,
+    ) -> Result<DbScrapPost> {
+        let id = Uuid::new_v4();
+        let now = Utc::now();
+
+        let post = sqlx::query_as::<_, DbScrapPost>(
+            r#"
+            INSERT INTO scrap_posts (id, document_id, author_id, content, created_at, updated_at)
+            VALUES ($1, $2, $3, $4, $5, $6)
+            RETURNING *
+            "#,
+        )
+        .bind(id)
+        .bind(document_id)
+        .bind(author_id)
+        .bind(content)
+        .bind(now)
+        .bind(now)
+        .fetch_one(&mut **tx)
+        .await
+        .map_err(|e| Error::Database(e))?;
+
+        Ok(post)
+    }
+
+    pub async fn get_scrap_by_id_tx(
+        tx: &mut Transaction<'_, Postgres>,
+        id: Uuid,
+    ) -> Result<Document> {
+        let document = sqlx::query_as::<_, Document>(
+            r#"
+            SELECT * FROM documents
+            WHERE id = $1 AND type = 'scrap'
+            FOR UPDATE
+            "#,
+        )
+        .bind(id)
+        .fetch_one(&mut **tx)
+        .await
+        .map_err(|e| match e {
+            sqlx::Error::RowNotFound => Error::NotFound("Scrap not found".to_string()),
+            _ => Error::Database(e),
+        })?;
+
+        Ok(document)
+    }
+
     pub async fn get_scrap_posts(
         pool: &PgPool,
         document_id: Uuid,
@@ -250,6 +302,59 @@ impl ScrapRepository {
         .bind(post_id)
         .bind(author_id)
         .execute(pool)
+        .await
+        .map_err(|e| Error::Database(e))?;
+
+        if result.rows_affected() == 0 {
+            return Err(Error::NotFound("Post not found or unauthorized".to_string()));
+        }
+
+        Ok(())
+    }
+
+    // Transaction versions for update and delete
+    pub async fn update_scrap_post_tx(
+        tx: &mut Transaction<'_, Postgres>,
+        post_id: Uuid,
+        author_id: Uuid,
+        content: String,
+    ) -> Result<DbScrapPost> {
+        let post = sqlx::query_as::<_, DbScrapPost>(
+            r#"
+            UPDATE scrap_posts
+            SET content = $1, updated_at = $2
+            WHERE id = $3 AND author_id = $4
+            RETURNING *
+            "#,
+        )
+        .bind(content)
+        .bind(Utc::now())
+        .bind(post_id)
+        .bind(author_id)
+        .fetch_one(&mut **tx)
+        .await
+        .map_err(|e| match e {
+            sqlx::Error::RowNotFound => Error::NotFound("Post not found or unauthorized".to_string()),
+            _ => Error::Database(e),
+        })?;
+
+        Ok(post)
+    }
+
+    pub async fn delete_scrap_post_tx(
+        tx: &mut Transaction<'_, Postgres>,
+        post_id: Uuid,
+        author_id: Uuid,
+    ) -> Result<()> {
+        let result = sqlx::query(
+            r#"
+            DELETE FROM scrap_posts
+            WHERE id = $1 AND author_id = $2
+            "#,
+        )
+        .bind(post_id)
+        .bind(author_id)
+        .execute(&mut **tx)
         .await
         .map_err(|e| Error::Database(e))?;
 

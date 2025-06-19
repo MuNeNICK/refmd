@@ -5,6 +5,7 @@ import { getSocketUrl } from '@/lib/config';
 
 export type UseSocketConnectionOptions = {
   token?: string; // Share token
+  authToken?: string; // Auth token
 };
 
 export type UseSocketConnectionReturn = {
@@ -12,7 +13,7 @@ export type UseSocketConnectionReturn = {
   isConnected: boolean;
 };
 
-export function useSocketConnection({ token }: UseSocketConnectionOptions = {}): UseSocketConnectionReturn {
+export function useSocketConnection({ token, authToken }: UseSocketConnectionOptions = {}): UseSocketConnectionReturn {
   const [isConnected, setIsConnected] = useState(false);
   const socketRef = useRef<Socket | null>(null);
 
@@ -23,17 +24,18 @@ export function useSocketConnection({ token }: UseSocketConnectionOptions = {}):
     }
 
     // Get auth token
-    const authToken = token || getAuthToken();
+    const finalAuthToken = authToken || getAuthToken();
     
-    if (!authToken) {
-      // No authentication token available
+    // For shared links, we don't need an auth token - the share token will be used for authorization
+    if (!finalAuthToken && !token) {
+      // No authentication token or share token available
       return;
     }
 
     // Create socket connection
     const socket = io(getSocketUrl(), {
       auth: {
-        token: authToken,
+        token: finalAuthToken || '',
       },
       transports: ['websocket', 'polling'],
       reconnection: true,
@@ -62,7 +64,7 @@ export function useSocketConnection({ token }: UseSocketConnectionOptions = {}):
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [token]);
+  }, [token, authToken]);
 
   // Return stable references
   return {
