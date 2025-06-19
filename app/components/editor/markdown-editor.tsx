@@ -309,18 +309,26 @@ export function MarkdownEditor({
       onSelectionChange?.(e.selection);
     });
 
-    // Update counts
+    // Update counts with throttling
+    let statsRafId: number | null = null;
     const updateCounts = () => {
-      const content = editor.getValue();
-      const words = content.match(/\b\w+\b/g) || [];
-      const newWordCount = words.length;
-      const newCharCount = content.length;
+      if (statsRafId) {
+        cancelAnimationFrame(statsRafId);
+      }
       
-      // Update local state
-      setContentStats({ wordCount: newWordCount, charCount: newCharCount });
-      
-      // Notify parent component
-      onContentStatsChange?.({ wordCount: newWordCount, charCount: newCharCount });
+      statsRafId = requestAnimationFrame(() => {
+        const content = editor.getValue();
+        const words = content.match(/\b\w+\b/g) || [];
+        const newWordCount = words.length;
+        const newCharCount = content.length;
+        
+        // Update local state
+        setContentStats({ wordCount: newWordCount, charCount: newCharCount });
+        
+        // Notify parent component
+        onContentStatsChange?.({ wordCount: newWordCount, charCount: newCharCount });
+        statsRafId = null;
+      });
     };
 
     // Initial count
@@ -338,6 +346,9 @@ export function MarkdownEditor({
     return () => {
       if (scrollRafId !== null) {
         cancelAnimationFrame(scrollRafId);
+      }
+      if (statsRafId) {
+        cancelAnimationFrame(statsRafId);
       }
     };
   }, [onMount, onScroll, onSelectionChange, onContentStatsChange]);

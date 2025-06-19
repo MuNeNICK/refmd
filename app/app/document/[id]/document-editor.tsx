@@ -89,18 +89,25 @@ export default function DocumentEditor({
 
     // Debounce content updates to improve performance
     let timeoutId: NodeJS.Timeout | null = null;
+    let rafId: number | null = null;
     
     // Update content when Yjs document changes
     const updateContent = () => {
       if (timeoutId) {
         clearTimeout(timeoutId);
       }
+      if (rafId) {
+        cancelAnimationFrame(rafId);
+      }
       
+      // Use shorter debounce for faster typing response
       timeoutId = setTimeout(() => {
-        const newContent = yText.toString();
-        setContent(newContent);
-        onContentChange?.(newContent);
-      }, 300); // Debounce to 300ms for better performance
+        rafId = requestAnimationFrame(() => {
+          const newContent = yText.toString();
+          setContent(newContent);
+          onContentChange?.(newContent);
+        });
+      }, 50); // Reduced debounce to 50ms for faster response
     };
 
     // Initial content
@@ -114,11 +121,14 @@ export default function DocumentEditor({
     return () => {
       if (timeoutId) {
         clearTimeout(timeoutId);
-        // Force immediate content update on unmount
-        const finalContent = yText.toString();
-        setContent(finalContent);
-        onContentChange?.(finalContent);
       }
+      if (rafId) {
+        cancelAnimationFrame(rafId);
+      }
+      // Force immediate content update on unmount
+      const finalContent = yText.toString();
+      setContent(finalContent);
+      onContentChange?.(finalContent);
       yText.unobserve(updateContent);
     };
   }, [doc, getText, onContentChange]);
