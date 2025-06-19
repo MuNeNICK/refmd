@@ -135,7 +135,8 @@ export const FileNode = memo(function FileNode({
               isActive={isSelected}
               className={cn(
                 isDragging && "opacity-50",
-                "h-7"
+                "h-7 overflow-visible flex-1",
+                "[&>span:last-child]:text-ellipsis [&>span:last-child]:overflow-hidden [&>span:last-child]:whitespace-nowrap [&>span:last-child]:max-w-none"
               )}
               onClick={handleSelect}
             >
@@ -144,7 +145,7 @@ export const FileNode = memo(function FileNode({
               ) : (
                 <FileText className="h-4 w-4 text-muted-foreground" />
               )}
-              <span className="truncate font-medium">{node.title}</span>
+              <span className="font-medium flex-1 text-ellipsis overflow-hidden whitespace-nowrap" title={node.title}>{node.title}</span>
             </SidebarMenuButton>
 
             <DropdownMenu>

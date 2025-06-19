@@ -186,7 +186,8 @@ export const FolderNode = memo(function FolderNode({
               isActive={isSelected}
               className={cn(
                 isDragging && "opacity-50",
-                "flex-1 h-7"
+                "flex-1 h-7 overflow-visible",
+                "[&>span:last-child]:text-ellipsis [&>span:last-child]:overflow-hidden [&>span:last-child]:whitespace-nowrap [&>span:last-child]:max-w-none"
               )}
               onClick={handleToggle}
             >
@@ -200,7 +201,7 @@ export const FolderNode = memo(function FolderNode({
               ) : (
                 <Folder className="h-4 w-4 text-primary" />
               )}
-              <span className="truncate font-medium">{node.title}</span>
+              <span className="font-medium flex-1 text-ellipsis overflow-hidden whitespace-nowrap" title={node.title}>{node.title}</span>
             </SidebarMenuButton>
             
             <div className="flex items-center gap-1 opacity-0 group-hover/folder:opacity-100 transition-opacity">
@@ -311,18 +312,5 @@ export const FolderNode = memo(function FolderNode({
         onConfirm={handleDelete}
       />
     </SidebarMenuItem>
-  );
-},
-// Prevent unnecessary re-renders with custom comparison function
-(prevProps, nextProps) => {
-  return (
-    prevProps.node.id === nextProps.node.id &&
-    prevProps.node.title === nextProps.node.title &&
-    prevProps.isExpanded === nextProps.isExpanded &&
-    prevProps.isSelected === nextProps.isSelected &&
-    prevProps.isDragging === nextProps.isDragging &&
-    prevProps.isDropTarget === nextProps.isDropTarget &&
-    prevProps.hasChildDropTarget === nextProps.hasChildDropTarget &&
-    prevProps.node.children?.length === nextProps.node.children?.length
   );
 });
