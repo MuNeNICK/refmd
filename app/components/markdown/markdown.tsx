@@ -42,30 +42,43 @@ const MINIMAL_REMARK_PLUGINS = [remarkGfm]
 
 // Default components with code highlighting
 const DEFAULT_COMPONENTS: import('react-markdown').Components = {
-  code({ node, inline, className, children, ...props }) {
+  code({ node, className, children, ...props }) {
     const match = /language-(\w+)/.exec(className || '')
     
-    // Code block with or without language
-    if (!inline) {
+    // Check if it's an inline code element
+    // In react-markdown v8+, inline code is when the parent is not 'pre'
+    const isInline = !node || (node.position?.start.line === node.position?.end.line)
+    
+    // Inline code
+    if (isInline) {
       return (
-        <CodeBlock language={match?.[1]} className="not-prose">
-          {String(children).replace(/\n$/, '')}
-        </CodeBlock>
+        <code className="bg-muted px-1 py-0.5 rounded text-sm" {...props}>
+          {children}
+        </code>
       )
     }
     
-    // Inline code
+    // Code block with or without language
     return (
-      <code className="bg-muted px-1 py-0.5 rounded text-sm" {...props}>
-        {children}
-      </code>
+      <CodeBlock language={match?.[1]} className="not-prose">
+        {String(children).replace(/\n$/, '')}
+      </CodeBlock>
     )
   },
   pre({ children, ...props }) {
     // If the pre element already contains a CodeBlock component (from the code function above),
     // just return the children without wrapping
     const hasCodeBlock = React.Children.toArray(children).some(
-      child => React.isValidElement(child) && (child.type === CodeBlock || child.props?.className?.includes('not-prose'))
+      child => {
+        if (!React.isValidElement(child)) return false;
+        
+        // Check if it's a CodeBlock component
+        if (child.type === CodeBlock) return true;
+        
+        // Check if it has the 'not-prose' className
+        const childProps = child.props as { className?: string };
+        return childProps.className?.includes('not-prose') ?? false;
+      }
     );
     
     if (hasCodeBlock) {

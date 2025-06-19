@@ -2,7 +2,6 @@
 
 import React, { useState, useMemo } from 'react';
 import { formatDistanceToNow } from 'date-fns';
-import { ja } from 'date-fns/locale';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -153,8 +152,7 @@ export function ScrapPostComponent({
               <span className="hidden sm:inline">•</span>
               <time dateTime={post.created_at} suppressHydrationWarning>
                 {typeof window !== 'undefined' ? formatDistanceToNow(new Date(post.created_at), {
-                  addSuffix: true,
-                  locale: ja,
+                  addSuffix: true
                 }) : ''}
               </time>
               {post.updated_at && post.updated_at !== post.created_at && (

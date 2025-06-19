@@ -7,6 +7,8 @@ import type { CreateScrapRequest } from '../models/CreateScrapRequest';
 import type { Scrap } from '../models/Scrap';
 import type { ScrapPost } from '../models/ScrapPost';
 import type { ScrapWithPosts } from '../models/ScrapWithPosts';
+import type { ShareDocumentRequest } from '../models/ShareDocumentRequest';
+import type { ShareResponse } from '../models/ShareResponse';
 import type { UpdateScrapPostRequest } from '../models/UpdateScrapPostRequest';
 import type { UpdateScrapRequest } from '../models/UpdateScrapRequest';
 import type { CancelablePromise } from '../core/CancelablePromise';
@@ -50,17 +52,22 @@ export class ScrapsService {
     /**
      * Get scrap with posts
      * @param id
+     * @param token Share token for accessing the scrap
      * @returns ScrapWithPosts Scrap with posts
      * @throws ApiError
      */
     public getScrap(
         id: string,
+        token?: string,
     ): CancelablePromise<ScrapWithPosts> {
         return this.httpRequest.request({
             method: 'GET',
             url: '/scraps/{id}',
             path: {
                 'id': id,
+            },
+            query: {
+                'token': token,
             },
             errors: {
                 401: `Unauthorized`,
@@ -118,19 +125,107 @@ export class ScrapsService {
         });
     }
     /**
+     * Create share link for scrap
+     * @param id
+     * @param requestBody
+     * @returns any Share link created
+     * @throws ApiError
+     */
+    public createScrapShare(
+        id: string,
+        requestBody: ShareDocumentRequest,
+    ): CancelablePromise<{
+        data?: ShareResponse;
+    }> {
+        return this.httpRequest.request({
+            method: 'POST',
+            url: '/scraps/{id}/share',
+            path: {
+                'id': id,
+            },
+            body: requestBody,
+            mediaType: 'application/json',
+            errors: {
+                401: `Unauthorized`,
+                403: `Forbidden`,
+                404: `Not found`,
+            },
+        });
+    }
+    /**
+     * List share links for scrap
+     * @param id
+     * @returns any List of share links
+     * @throws ApiError
+     */
+    public listScrapShares(
+        id: string,
+    ): CancelablePromise<{
+        data?: Array<{
+            id?: string;
+            token?: string;
+            document_id?: string;
+            permission_level?: string;
+            created_by?: string;
+            expires_at?: string | null;
+            created_at?: string;
+            url?: string;
+        }>;
+    }> {
+        return this.httpRequest.request({
+            method: 'GET',
+            url: '/scraps/{id}/shares',
+            path: {
+                'id': id,
+            },
+            errors: {
+                401: `Unauthorized`,
+                403: `Forbidden`,
+                404: `Not found`,
+            },
+        });
+    }
+    /**
+     * Delete scrap share link
+     * @param token
+     * @returns void
+     * @throws ApiError
+     */
+    public deleteScrapShare(
+        token: string,
+    ): CancelablePromise<void> {
+        return this.httpRequest.request({
+            method: 'DELETE',
+            url: '/scraps/shares/{token}',
+            path: {
+                'token': token,
+            },
+            errors: {
+                401: `Unauthorized`,
+                403: `Forbidden`,
+                404: `Not found`,
+            },
+        });
+    }
+    /**
      * Get scrap posts
      * @param id
+     * @param token Share token for accessing the scrap posts
      * @returns ScrapPost List of posts
      * @throws ApiError
      */
     public getScrapPosts(
         id: string,
+        token?: string,
     ): CancelablePromise<Array<ScrapPost>> {
         return this.httpRequest.request({
             method: 'GET',
             url: '/scraps/{id}/posts',
             path: {
                 'id': id,
+            },
+            query: {
+                'token': token,
             },
             errors: {
                 401: `Unauthorized`,

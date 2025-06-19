@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { X, ImageIcon, Eye, Edit } from 'lucide-react';
-import { useScrapFileUpload } from '@/lib/hooks/useScrapFileUpload';
+import { useFileUpload } from '@/lib/hooks/useFileUpload';
 import { useDropzone } from 'react-dropzone';
 import { ScrapMarkdown } from './scrap-markdown';
 import { ScrapToolbar } from './scrap-toolbar';
@@ -37,10 +37,6 @@ export function ScrapPostForm({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [isDragging, setIsDragging] = useState(false);
 
-  // Get cursor position in textarea
-  const getCursorPosition = useCallback(() => {
-    return textareaRef.current?.selectionStart || content.length;
-  }, [content]);
 
   // Insert text at cursor position
   const insertTextAtCursor = useCallback((text: string) => {
@@ -91,20 +87,15 @@ export function ScrapPostForm({
   }, [content]);
 
   // File upload hook
-  const { handleFileUpload, triggerFileUpload, fileInputRef, fileInputProps } = useScrapFileUpload({
+  const { handleFileUpload, triggerFileUpload, fileInputRef, fileInputProps } = useFileUpload({
     documentId,
     onInsertText: insertTextAtCursor,
-    getCursorPosition
+    insertMode: 'batch'
   });
 
   // Drag and drop hook
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop: handleFileUpload,
-    accept: {
-      'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.webp'],
-      'application/pdf': ['.pdf'],
-      'text/*': ['.txt', '.md']
-    },
     multiple: true,
     noClick: true, // Don't trigger file dialog on textarea click
     noKeyboard: true // Don't trigger on keyboard events

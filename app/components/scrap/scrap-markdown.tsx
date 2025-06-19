@@ -17,7 +17,7 @@ export function ScrapMarkdown({ content, documentId }: ScrapMarkdownProps) {
 
   const customComponents: Components = useMemo(() => ({
     img: ({ src, alt, width, height, ...props }) => {
-      if (!src) return null;
+      if (!src || typeof src !== 'string') return null;
       
       let imageSrc = src;
       
@@ -78,7 +78,7 @@ export function ScrapMarkdown({ content, documentId }: ScrapMarkdownProps) {
         React.isValidElement(childArray[0]) && 
         (childArray[0].type === 'img' || 
          childArray[0].type === AuthenticatedImage ||
-         (childArray[0].props && (childArray[0].props as any).src));
+         (childArray[0].props && typeof childArray[0].props === 'object' && childArray[0].props !== null && 'src' in childArray[0].props));
       
       if (hasOnlyImage) {
         return <div className="my-2" {...props}>{children}</div>;

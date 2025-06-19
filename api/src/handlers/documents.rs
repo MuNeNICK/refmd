@@ -20,7 +20,7 @@ use crate::{
     error::Result,
     state::AppState,
     services::document::DocumentService,
-    middleware::{auth::{auth_middleware, AuthUser}, optional_auth::optional_auth_middleware, permission::check_document_permission},
+    middleware::{auth::{auth_middleware, AuthUser}, optional_auth::{optional_auth_middleware, OptionalAuthUser}, permission::check_document_permission},
     db::models::Document,
     crdt::serialization,
     entities::share::Permission,
@@ -171,12 +171,12 @@ async fn get_document(
 
 async fn get_document_with_share(
     State(state): State<Arc<AppState>>,
-    Extension(auth_user): Extension<Option<AuthUser>>,
+    Extension(auth_user): Extension<OptionalAuthUser>,
     Path(id): Path<Uuid>,
     Query(params): Query<HashMap<String, String>>,
 ) -> Result<Json<DocumentResponse>> {
     let share_token = params.get("token").cloned();
-    let user_id = auth_user.map(|u| u.user_id);
+    let user_id = auth_user.user_id;
     
     // Check permissions with optional auth and share token
     let check = check_document_permission(
@@ -237,13 +237,13 @@ async fn update_document(
 
 async fn update_document_with_share(
     State(state): State<Arc<AppState>>,
-    Extension(auth_user): Extension<Option<AuthUser>>,
+    Extension(auth_user): Extension<OptionalAuthUser>,
     Path(id): Path<Uuid>,
     Query(params): Query<HashMap<String, String>>,
     Json(req): Json<UpdateDocumentRequest>,
 ) -> Result<Json<DocumentResponse>> {
     let share_token = params.get("token").cloned();
-    let user_id = auth_user.as_ref().map(|u| u.user_id);
+    let user_id = auth_user.user_id;
     
     // Check permissions with optional auth and share token
     let check = check_document_permission(
@@ -336,12 +336,12 @@ async fn get_document_content(
 
 async fn get_document_content_with_share(
     State(state): State<Arc<AppState>>,
-    Extension(auth_user): Extension<Option<AuthUser>>,
+    Extension(auth_user): Extension<OptionalAuthUser>,
     Path(id): Path<Uuid>,
     Query(params): Query<HashMap<String, String>>,
 ) -> Result<Json<DocumentContentResponse>> {
     let share_token = params.get("token").cloned();
-    let user_id = auth_user.map(|u| u.user_id);
+    let user_id = auth_user.user_id;
     
     // Check permissions with optional auth and share token
     let check = check_document_permission(
@@ -389,12 +389,12 @@ async fn get_document_state(
 
 async fn get_document_state_with_share(
     State(state): State<Arc<AppState>>,
-    Extension(auth_user): Extension<Option<AuthUser>>,
+    Extension(auth_user): Extension<OptionalAuthUser>,
     Path(id): Path<Uuid>,
     Query(params): Query<HashMap<String, String>>,
 ) -> Result<Json<DocumentStateResponse>> {
     let share_token = params.get("token").cloned();
-    let user_id = auth_user.map(|u| u.user_id);
+    let user_id = auth_user.user_id;
     
     // Check permissions with optional auth and share token
     let check = check_document_permission(
@@ -451,13 +451,13 @@ async fn get_document_updates(
 
 async fn get_document_updates_with_share(
     State(state): State<Arc<AppState>>,
-    Extension(auth_user): Extension<Option<AuthUser>>,
+    Extension(auth_user): Extension<OptionalAuthUser>,
     Path(id): Path<Uuid>,
     Query(params): Query<HashMap<String, String>>,
     Json(req): Json<DocumentUpdatesRequest>,
 ) -> Result<Json<DocumentUpdatesResponse>> {
     let share_token = params.get("token").cloned();
-    let user_id = auth_user.map(|u| u.user_id);
+    let user_id = auth_user.user_id;
     
     // Check permissions with optional auth and share token
     let check = check_document_permission(
@@ -487,12 +487,12 @@ async fn get_document_updates_with_share(
 }
 async fn download_document_with_share(
     State(state): State<Arc<AppState>>,
-    Extension(auth_user): Extension<Option<AuthUser>>,
+    Extension(auth_user): Extension<OptionalAuthUser>,
     Path(id): Path<Uuid>,
     Query(params): Query<HashMap<String, String>>,
 ) -> Result<Response> {
     let share_token = params.get("token").cloned();
-    let user_id = auth_user.map(|u| u.user_id);
+    let user_id = auth_user.user_id;
     
     // Check permissions with optional auth and share token
     let check = check_document_permission(

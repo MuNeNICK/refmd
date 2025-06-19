@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
-import type { ScrapWithPosts } from '@/lib/api/client';
+import type { ScrapWithPosts, ScrapPost } from '@/lib/api/client';
 import MainLayout from '@/components/layout/main-layout';
 import { ScrapPostForm } from '@/components/scrap/scrap-post-form';
 import { ScrapPostComponent } from '@/components/scrap/scrap-post';
@@ -93,7 +93,6 @@ export function ScrapPageClient({ initialData, scrapId }: ScrapPageClientProps) 
   const { 
     connectionError, 
     isConnected, 
-    socketConnected,
     emitPostAdded,
     emitPostUpdated,
     emitPostDeleted 

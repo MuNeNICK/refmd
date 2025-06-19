@@ -13,7 +13,6 @@ export class ScrapCommentParser {
 
   static parseComments(markdown: string): { content: string; comments: ScrapComment[] } {
     const comments: ScrapComment[] = [];
-    let processedContent = markdown;
     let match;
 
     // Reset the regex index
@@ -52,7 +51,10 @@ export class ScrapCommentParser {
       });
     }
 
-    return { content: processedContent, comments };
+    // Use existing method to extract content without comments
+    const contentWithoutComments = this.extractContentWithoutComments(markdown);
+
+    return { content: contentWithoutComments, comments };
   }
 
   static addComment(
@@ -90,7 +92,7 @@ ${comment.content}
       'g'
     );
 
-    return markdown.replace(regex, (match, start, end, oldContent, endTag) => {
+    return markdown.replace(regex, (_, start, end, _oldContent, endTag) => {
       const updatedAt = new Date().toISOString();
       const updatedStart = start.includes(':updated=')
         ? start.replace(/:updated=[^\s>]+/, `:updated=${updatedAt}`)

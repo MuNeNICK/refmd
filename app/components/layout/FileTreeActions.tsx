@@ -1,7 +1,7 @@
 "use client";
 
 import React, { memo, useCallback } from 'react';
-import { Plus, Folder, Download, RefreshCw, StickyNote } from 'lucide-react';
+import { Plus, Folder, Download, RefreshCw, NotebookText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { 
   DropdownMenu, 
@@ -97,7 +97,7 @@ export const FileTreeActions = memo(function FileTreeActions({
                 className="h-6 w-6"
                 onClick={onCreateScrap}
               >
-                <StickyNote className="h-3 w-3 text-muted-foreground" />
+                <NotebookText className="h-3 w-3 text-muted-foreground" />
               </Button>
             </TooltipTrigger>
             <TooltipContent>

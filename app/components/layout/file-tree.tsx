@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback} from 'react';
+import React, { useCallback } from 'react';
 import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -289,12 +289,12 @@ function FileTreeComponent({ onDocumentSelect, selectedDocumentId }: FileTreePro
   });
 
   // Add handling for dropping on files
-  const handleDrop = useCallback((e: React.DragEvent, targetId?: string, targetType?: 'file' | 'folder', parentId?: string) => {
+  const handleDrop = useCallback((e: React.DragEvent, targetId?: string, targetType?: 'file' | 'folder' | 'scrap', parentId?: string) => {
     if (targetType === 'file' && parentId !== undefined) {
       // When dropped on a file, move to the file's parent folder
-      originalHandleDrop(e, parentId, 'folder');
-    } else {
-      originalHandleDrop(e, targetId, targetType);
+      originalHandleDrop(e, parentId, 'folder', undefined);
+    } else if (targetId && targetType) {
+      originalHandleDrop(e, targetId, targetType, parentId);
     }
   }, [originalHandleDrop]);
 

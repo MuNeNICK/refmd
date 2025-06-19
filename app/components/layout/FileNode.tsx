@@ -38,10 +38,10 @@ interface FileNodeProps {
   onDelete: (id: string) => void;
   onDragStart: (e: React.DragEvent, id: string) => void;
   onDragEnd: (e: React.DragEvent) => void;
-  onDragEnter: (e: React.DragEvent, id: string, type: 'file' | 'folder') => void;
+  onDragEnter: (e: React.DragEvent, id: string, type: 'file' | 'folder' | 'scrap') => void;
   onDragLeave: (e: React.DragEvent) => void;
-  onDrop: (e: React.DragEvent, id: string, type: 'file' | 'folder', parentId?: string) => void;
-  onDragOver: (e: React.DragEvent, nodeId?: string, nodeType?: 'file' | 'folder') => void;
+  onDrop: (e: React.DragEvent, id: string, type: 'file' | 'folder' | 'scrap', parentId?: string) => void;
+  onDragOver: (e: React.DragEvent, nodeId?: string, nodeType?: 'file' | 'folder' | 'scrap') => void;
 }
 
 export const FileNode = memo(function FileNode({

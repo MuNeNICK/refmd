@@ -11,7 +11,7 @@ interface UseScrapConnectionOptions {
   onPostAdded?: (post: ScrapPost) => void;
   onPostUpdated?: (post: ScrapPost) => void;
   onPostDeleted?: (postId: string) => void;
-  onContentUpdate?: (content: string) => void;
+  onContentUpdate?: () => void;
   onUserCountChanged?: (count: number) => void;
 }
 
@@ -26,10 +26,9 @@ export function useScrapConnection({
 }: UseScrapConnectionOptions) {
   const [isConnected, setIsConnected] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
-  const [localUserCount, setLocalUserCount] = useState(0);
   
   // Get auth token using the same method as documents
-  const authToken = shareToken ? undefined : getAuthToken();
+  const authToken = shareToken ? undefined : getAuthToken() || undefined;
   
   // Use the existing socket connection hook
   const { socket, isConnected: socketConnected } = useSocketConnection({
@@ -38,7 +37,7 @@ export function useScrapConnection({
   });
 
   const hasJoinedRef = useRef(false);
-  const debounceTimeoutRef = useRef<NodeJS.Timeout>();
+  const debounceTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
   const lastUpdateTimeRef = useRef<number>(0);
 
   // Debounced content update handler
@@ -98,7 +97,7 @@ export function useScrapConnection({
     };
 
     // Handle CRDT sync messages for real-time content updates
-    const handleYjsSync = (message: any) => {
+    const handleYjsSync = (message: { type: string }) => {
       // When CRDT content changes, we know posts have been updated
       if (message.type === 'Update') {
         console.log('[Scrap] CRDT update received, triggering debounced refresh');
@@ -107,7 +106,7 @@ export function useScrapConnection({
     };
 
     // Handle awareness updates (user presence)
-    const handleAwareness = (data: any) => {
+    const handleAwareness = (data: unknown) => {
       console.log('[Scrap] User presence update:', data);
     };
 
@@ -130,16 +129,15 @@ export function useScrapConnection({
     // Handle user count updates - this is the authoritative source
     const handleUserCountUpdate = (data: { count: number }) => {
       console.log('[Scrap] User count update:', data.count);
-      setLocalUserCount(data.count);
       onUserCountChanged?.(data.count);
     };
 
     // Handle user joined/left events (just for logging, count comes from user_count_update)
-    const handleUserJoined = (data: any) => {
+    const handleUserJoined = (data: unknown) => {
       console.log('[Scrap] User joined:', data);
     };
 
-    const handleUserLeft = (data: any) => {
+    const handleUserLeft = (data: unknown) => {
       console.log('[Scrap] User left:', data);
     };
 
