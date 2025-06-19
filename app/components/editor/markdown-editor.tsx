@@ -76,6 +76,9 @@ export function MarkdownEditor({
   // Track when editor is mounted
   const [monacoEditor, setMonacoEditor] = useState<editor.IStandaloneCodeEditor | null>(null);
   
+  // Track content statistics
+  const [contentStats, setContentStats] = useState({ wordCount: 0, charCount: 0 });
+  
   // Insert text at cursor position
   const insertTextAtCursor = useCallback((text: string) => {
     if (!editorRef.current || !doc) return;
@@ -312,6 +315,9 @@ export function MarkdownEditor({
       const words = content.match(/\b\w+\b/g) || [];
       const newWordCount = words.length;
       const newCharCount = content.length;
+      
+      // Update local state
+      setContentStats({ wordCount: newWordCount, charCount: newCharCount });
       
       // Notify parent component
       onContentStatsChange?.({ wordCount: newWordCount, charCount: newCharCount });
@@ -642,6 +648,16 @@ export function MarkdownEditor({
             </div>
           </div>
         )}
+      </div>
+      
+      {/* Editor footer with content statistics */}
+      <div className="flex-shrink-0 border-t bg-muted/30 px-4 py-1">
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <div className="flex items-center gap-4">
+            <span>{contentStats.wordCount} words</span>
+            <span>{contentStats.charCount} characters</span>
+          </div>
+        </div>
       </div>
     </div>
   );

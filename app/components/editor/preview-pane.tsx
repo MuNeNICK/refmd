@@ -155,16 +155,6 @@ function PreviewPaneComponent({
 
   return (
     <div className="h-full bg-background relative overflow-hidden flex flex-col">
-      {/* Floating content stats for split mode */}
-      {viewMode === "split" && contentStats && (
-        <div className="absolute top-2 right-2 z-10 bg-background/80 backdrop-blur-sm rounded-md px-3 py-1.5 border shadow-sm">
-          <div className="text-sm text-muted-foreground">
-            <span>{contentStats.wordCount} words</span>
-            <span className="mx-2">•</span>
-            <span>{contentStats.charCount} characters</span>
-          </div>
-        </div>
-      )}
       <div className="flex-1 overflow-auto" ref={actualPreviewRef} onScroll={handleScroll}>
         <div className={cn(
           "w-full mx-auto flex gap-8 p-4 sm:p-6 md:p-8",
