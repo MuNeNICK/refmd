@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::Arc;
 use git2::{Repository, Signature, RemoteCallbacks, Cred, PushOptions, FetchOptions};
 use uuid::Uuid;
@@ -7,20 +7,24 @@ use chrono::Utc;
 use crate::{
     entities::git_config::{GitConfig, GitStatus, GitSyncResponse},
     repository::GitConfigRepository,
+    utils::encryption::EncryptionService,
     error::{Error, Result},
 };
 
 pub struct GitSyncService {
     git_config_repo: Arc<GitConfigRepository>,
     upload_dir: PathBuf,
+    encryption_service: EncryptionService,
 }
 
 impl GitSyncService {
-    pub fn new(git_config_repo: Arc<GitConfigRepository>, upload_dir: PathBuf) -> Self {
-        Self {
+    pub fn new(git_config_repo: Arc<GitConfigRepository>, upload_dir: PathBuf, jwt_secret: &str) -> Result<Self> {
+        let encryption_service = EncryptionService::new(jwt_secret)?;
+        Ok(Self {
             git_config_repo,
             upload_dir,
-        }
+            encryption_service,
+        })
     }
 
     fn get_user_repo_path(&self, user_id: Uuid) -> PathBuf {
@@ -356,25 +360,28 @@ impl GitSyncService {
     }
 
     fn setup_auth_callbacks<'a>(&self, callbacks: &mut RemoteCallbacks<'a>, config: &'a GitConfig) -> Result<()> {
+        // Decrypt auth data first
+        let decrypted_auth_data = config.decrypt_auth_data(&self.encryption_service)?;
+        
         match config.auth_type.as_str() {
             "ssh" => {
-                if let Some(ssh_key_path) = config.auth_data.get("private_key_path") {
-                    let key_path = ssh_key_path.as_str()
-                        .ok_or_else(|| Error::BadRequest("Invalid SSH key path".to_string()))?;
+                if let Some(private_key_json) = decrypted_auth_data.get("private_key") {
+                    let private_key = private_key_json.as_str()
+                        .ok_or_else(|| Error::BadRequest("Invalid SSH private key".to_string()))?;
                     
-                    let key_path_owned = key_path.to_owned();
+                    let private_key_owned = private_key.to_owned();
                     callbacks.credentials(move |_url, username_from_url, _allowed_types| {
-                        Cred::ssh_key(
+                        Cred::ssh_key_from_memory(
                             username_from_url.unwrap_or("git"),
                             None,
-                            Path::new(&key_path_owned),
+                            &private_key_owned,
                             None,
                         )
                     });
                 }
             },
             "token" => {
-                if let Some(token) = config.auth_data.get("token") {
+                if let Some(token) = decrypted_auth_data.get("token") {
                     let token_str = token.as_str()
                         .ok_or_else(|| Error::BadRequest("Invalid token".to_string()))?;
                     

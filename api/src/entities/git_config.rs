@@ -2,6 +2,8 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use uuid::Uuid;
+use crate::utils::encryption::EncryptionService;
+use crate::error::Result;
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct GitConfig {
@@ -10,10 +12,33 @@ pub struct GitConfig {
     pub repository_url: String,
     pub branch_name: String,
     pub auth_type: String, // 'ssh' or 'token'
-    pub auth_data: serde_json::Value, // SSH key path or token
+    pub auth_data: serde_json::Value, // Encrypted SSH private key or token
     pub auto_sync: bool,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+}
+
+impl GitConfig {
+    /// Decrypt auth data using the provided encryption service
+    pub fn decrypt_auth_data(&self, encryption_service: &EncryptionService) -> Result<serde_json::Value> {
+        match &self.auth_data {
+            serde_json::Value::Object(obj) => {
+                let mut decrypted_data = serde_json::Map::new();
+                
+                for (key, value) in obj {
+                    if let serde_json::Value::String(encrypted_str) = value {
+                        let decrypted = encryption_service.decrypt(encrypted_str)?;
+                        decrypted_data.insert(key.clone(), serde_json::Value::String(decrypted));
+                    } else {
+                        decrypted_data.insert(key.clone(), value.clone());
+                    }
+                }
+                
+                Ok(serde_json::Value::Object(decrypted_data))
+            }
+            _ => Ok(self.auth_data.clone())
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -25,6 +50,26 @@ pub struct CreateGitConfigRequest {
     pub auto_sync: Option<bool>,
 }
 
+impl CreateGitConfigRequest {
+    /// Encrypt sensitive auth data before storing
+    pub fn encrypt_auth_data(&mut self, encryption_service: &EncryptionService) -> Result<()> {
+        match &mut self.auth_data {
+            serde_json::Value::Object(obj) => {
+                for (key, value) in obj.iter_mut() {
+                    if (key == "private_key" || key == "token") && value.is_string() {
+                        if let serde_json::Value::String(plaintext) = value {
+                            let encrypted = encryption_service.encrypt(plaintext)?;
+                            *value = serde_json::Value::String(encrypted);
+                        }
+                    }
+                }
+            }
+            _ => {}
+        }
+        Ok(())
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct UpdateGitConfigRequest {
     pub repository_url: Option<String>,
@@ -32,6 +77,28 @@ pub struct UpdateGitConfigRequest {
     pub auth_type: Option<String>,
     pub auth_data: Option<serde_json::Value>,
     pub auto_sync: Option<bool>,
+}
+
+impl UpdateGitConfigRequest {
+    /// Encrypt sensitive auth data before storing
+    pub fn encrypt_auth_data(&mut self, encryption_service: &EncryptionService) -> Result<()> {
+        if let Some(auth_data) = &mut self.auth_data {
+            match auth_data {
+                serde_json::Value::Object(obj) => {
+                    for (key, value) in obj.iter_mut() {
+                        if (key == "private_key" || key == "token") && value.is_string() {
+                            if let serde_json::Value::String(plaintext) = value {
+                                let encrypted = encryption_service.encrypt(plaintext)?;
+                                *value = serde_json::Value::String(encrypted);
+                            }
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+        Ok(())
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]

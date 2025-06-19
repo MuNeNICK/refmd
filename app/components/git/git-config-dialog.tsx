@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -36,7 +37,7 @@ interface FormData {
   auth_type: CreateGitConfigRequest.auth_type;
   auth_data: {
     token?: string;
-    private_key_path?: string;
+    private_key?: string;
   };
   auto_sync: boolean;
 }
@@ -116,14 +117,14 @@ export function GitConfigDialog({ open, onOpenChange }: GitConfigDialogProps) {
       return;
     }
 
-    if (formData.auth_type === CreateGitConfigRequest.auth_type.SSH && !formData.auth_data.private_key_path?.trim()) {
-      toast.error("SSH秘密鍵のパスを入力してください");
+    if (formData.auth_type === CreateGitConfigRequest.auth_type.SSH && !formData.auth_data.private_key?.trim()) {
+      toast.error("SSH秘密鍵を入力してください");
       return;
     }
 
     const authData = formData.auth_type === CreateGitConfigRequest.auth_type.TOKEN 
       ? { token: formData.auth_data.token }
-      : { private_key_path: formData.auth_data.private_key_path };
+      : { private_key: formData.auth_data.private_key };
 
     saveConfigMutation.mutate({
       repository_url: formData.repository_url.trim(),
@@ -228,20 +229,26 @@ export function GitConfigDialog({ open, onOpenChange }: GitConfigDialogProps) {
               </div>
             ) : (
               <div className="space-y-2">
-                <Label htmlFor="private_key_path">SSH秘密鍵のパス *</Label>
-                <Input
-                  id="private_key_path"
-                  placeholder="/home/user/.ssh/id_rsa"
-                  value={formData.auth_data.private_key_path || ""}
+                <Label htmlFor="private_key">SSH秘密鍵 *</Label>
+                <Textarea
+                  id="private_key"
+                  placeholder="-----BEGIN OPENSSH PRIVATE KEY-----
+XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+-----END OPENSSH PRIVATE KEY-----"
+                  value={formData.auth_data.private_key || ""}
                   onChange={(e) =>
                     setFormData((prev) => ({
                       ...prev,
-                      auth_data: { private_key_path: e.target.value },
+                      auth_data: { private_key: e.target.value },
                     }))
                   }
+                  rows={6}
+                  className="font-mono text-sm"
                 />
                 <p className="text-sm text-muted-foreground">
-                  サーバー上のSSH秘密鍵ファイルの絶対パスを指定してください
+                  SSH秘密鍵の内容を貼り付けてください。通常は ~/.ssh/id_rsa や ~/.ssh/id_ed25519 ファイルの内容です。
+                  <br />
+                  注意: 秘密鍵は安全に暗号化されて保存されます。
                 </p>
               </div>
             )}

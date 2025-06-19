@@ -19,6 +19,7 @@ use crate::{
     },
     repository::GitConfigRepository,
     services::git_sync::GitSyncService,
+    utils::encryption::EncryptionService,
     error::{Error, Result},
     state::AppState,
     middleware::auth::{auth_middleware, AuthUser},
@@ -42,43 +43,61 @@ pub async fn create_or_update_config(
     Json(request): Json<CreateGitConfigRequest>,
 ) -> Result<Json<GitConfigResponse>> {
     let git_config_repo = Arc::new(GitConfigRepository::new(state.db_pool.clone()));
+    let encryption_service = EncryptionService::new(&state.config.jwt_secret)?;
+    
+    // Create a mutable copy of the request to encrypt auth data
+    let mut encrypted_request = request;
     
     // Validate auth_type
-    if request.auth_type != "ssh" && request.auth_type != "token" {
+    if encrypted_request.auth_type != "ssh" && encrypted_request.auth_type != "token" {
         return Err(Error::BadRequest("auth_type must be 'ssh' or 'token'".to_string()));
     }
 
     // Validate auth_data structure based on auth_type
-    match request.auth_type.as_str() {
+    match encrypted_request.auth_type.as_str() {
         "ssh" => {
-            if !request.auth_data.get("private_key_path").and_then(|v| v.as_str()).is_some() {
-                return Err(Error::BadRequest("SSH auth requires 'private_key_path' in auth_data".to_string()));
+            if let Some(private_key_value) = encrypted_request.auth_data.get("private_key") {
+                if let Some(private_key) = private_key_value.as_str() {
+                    // Validate that it looks like an SSH private key
+                    if !private_key.contains("BEGIN") || !private_key.contains("PRIVATE KEY") {
+                        return Err(Error::BadRequest("Invalid SSH private key format".to_string()));
+                    }
+                } else {
+                    return Err(Error::BadRequest("SSH auth requires 'private_key' to be a string".to_string()));
+                }
+            } else {
+                return Err(Error::BadRequest("SSH auth requires 'private_key' in auth_data".to_string()));
             }
         },
         "token" => {
-            if !request.auth_data.get("token").and_then(|v| v.as_str()).is_some() {
+            if !encrypted_request.auth_data.get("token").and_then(|v| v.as_str()).is_some() {
                 return Err(Error::BadRequest("Token auth requires 'token' in auth_data".to_string()));
             }
         },
         _ => unreachable!(),
     }
 
+    // Encrypt sensitive auth data before storing
+    encrypted_request.encrypt_auth_data(&encryption_service)?;
+
     // Check if config already exists
     if let Some(_existing_config) = git_config_repo.get_by_user_id(auth_user.user_id).await? {
         // Update existing config
         let update_request = UpdateGitConfigRequest {
-            repository_url: Some(request.repository_url),
-            branch_name: request.branch_name,
-            auth_type: Some(request.auth_type),
-            auth_data: Some(request.auth_data),
-            auto_sync: request.auto_sync,
+            repository_url: Some(encrypted_request.repository_url),
+            branch_name: encrypted_request.branch_name,
+            auth_type: Some(encrypted_request.auth_type),
+            auth_data: Some(encrypted_request.auth_data),
+            auto_sync: encrypted_request.auto_sync,
         };
+        
+        // Note: auth_data is already encrypted in encrypted_request
         
         let updated_config = git_config_repo.update(auth_user.user_id, update_request).await?;
         Ok(Json(updated_config.into()))
     } else {
         // Create new config
-        let new_config = git_config_repo.create(auth_user.user_id, request).await?;
+        let new_config = git_config_repo.create(auth_user.user_id, encrypted_request).await?;
         Ok(Json(new_config.into()))
     }
 }
@@ -111,7 +130,7 @@ pub async fn manual_sync(
     Extension(auth_user): Extension<AuthUser>,
 ) -> Result<Json<GitSyncResponse>> {
     let git_config_repo = Arc::new(GitConfigRepository::new(state.db_pool.clone()));
-    let git_sync_service = GitSyncService::new(git_config_repo, state.config.upload_dir.clone().into());
+    let git_sync_service = GitSyncService::new(git_config_repo, state.config.upload_dir.clone().into(), &state.config.jwt_secret)?;
     
     let sync_result = git_sync_service.sync(
         auth_user.user_id,
@@ -128,7 +147,7 @@ pub async fn get_status(
     Extension(auth_user): Extension<AuthUser>,
 ) -> Result<Json<GitStatus>> {
     let git_config_repo = Arc::new(GitConfigRepository::new(state.db_pool.clone()));
-    let git_sync_service = GitSyncService::new(git_config_repo, state.config.upload_dir.clone().into());
+    let git_sync_service = GitSyncService::new(git_config_repo, state.config.upload_dir.clone().into(), &state.config.jwt_secret)?;
     
     let status = git_sync_service.get_status(auth_user.user_id).await?;
     Ok(Json(status))
@@ -140,7 +159,7 @@ pub async fn init_repository(
     Extension(auth_user): Extension<AuthUser>,
 ) -> Result<Json<serde_json::Value>> {
     let git_config_repo = Arc::new(GitConfigRepository::new(state.db_pool.clone()));
-    let git_sync_service = GitSyncService::new(git_config_repo, state.config.upload_dir.clone().into());
+    let git_sync_service = GitSyncService::new(git_config_repo, state.config.upload_dir.clone().into(), &state.config.jwt_secret)?;
     
     git_sync_service.init_repository(auth_user.user_id).await?;
     

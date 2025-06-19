@@ -1696,7 +1696,7 @@ components:
           example: "token"
         auth_data:
           type: object
-          description: Authentication data (SSH key path or token)
+          description: Authentication data (SSH private key or token)
           example: { "token": "ghp_xxxxxxxxxxxxxxxxxxxx" }
         auto_sync:
           type: boolean

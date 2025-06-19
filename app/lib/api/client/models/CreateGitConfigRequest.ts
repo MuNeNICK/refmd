@@ -16,7 +16,7 @@ export type CreateGitConfigRequest = {
      */
     auth_type: CreateGitConfigRequest.auth_type;
     /**
-     * Authentication data (SSH key path or token)
+     * Authentication data (SSH private key or token)
      */
     auth_data: Record<string, any>;
     /**
