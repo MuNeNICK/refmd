@@ -9,6 +9,7 @@ RefMD is a modern, real-time collaborative markdown editor with advanced feature
 - **CRDT-based Conflict Resolution**: Uses Yjs/Yrs for robust conflict-free replicated data types ensuring consistency
 - **User Authentication**: Secure JWT-based authentication with refresh tokens
 - **Document Management**: Create, edit, delete, and organize documents with folder structure
+- **Scrap Functionality**: Thread-based collaborative memo spaces for discussions and quick notes
 - **File Attachments**: Upload and manage images and files within documents
 - **Document Sharing**: Share documents with specific users or generate public share links
 - **Live User Presence**: See who's online, their cursor positions, and active selections
@@ -29,6 +30,15 @@ RefMD is a modern, real-time collaborative markdown editor with advanced feature
 - **Connection Status**: Visual indicators for connection and sync status
 - **Awareness Protocol**: Track user presence and activity
 - **Persistent Sessions**: Rejoin documents with maintained state
+
+### Scrap Features
+- **Thread-based Discussions**: Create collaborative spaces for team discussions and brainstorming
+- **Post Management**: Add, edit, delete, and pin posts with rich markdown support
+- **Comment System**: Nested comments on individual posts for detailed discussions
+- **Real-time Collaboration**: Multiple users can contribute simultaneously with live updates
+- **User Presence**: See active participants and their contributions
+- **Public Sharing**: Share scraps publicly via secure tokens
+- **Metadata Support**: Pin important posts and track user contributions
 
 ## Technology Stack
 
@@ -153,6 +163,14 @@ pnpm dev
 - **Delete Document**: Use the context menu on document cards
 - **Organize**: Documents support parent-child relationships for folder structure
 
+### Scrap Management
+- **Create Scrap**: Click "New Scrap" to create a thread-based discussion space
+- **Add Posts**: Click "Add Post" to contribute to the discussion
+- **Pin Posts**: Use the pin icon to highlight important posts
+- **Comment**: Add nested comments to individual posts for detailed discussions
+- **Share Scraps**: Generate public share links for external collaboration
+- **Real-time Updates**: See live updates as team members contribute
+
 ### Collaboration
 1. Open a document
 2. Click "Share" in the toolbar
@@ -169,8 +187,9 @@ pnpm dev
 
 ### Database Schema
 - **users**: User accounts and authentication
-- **documents**: Document metadata and content
+- **documents**: Document metadata and content (includes scraps)
 - **document_updates**: CRDT update history for synchronization
+- **scrap_posts**: Individual posts within scrap threads
 - **attachments**: File attachment metadata
 - **shares**: Document sharing permissions
 - **user_tokens**: Refresh token management
@@ -178,6 +197,7 @@ pnpm dev
 ### API Endpoints
 - `/api/auth/*`: Authentication endpoints
 - `/api/documents/*`: Document CRUD operations
+- `/api/scraps/*`: Scrap management and post operations
 - `/api/files/*`: File upload and retrieval
 - `/api/shares/*`: Sharing management
 - `/socket.io/*`: WebSocket connections for real-time sync
