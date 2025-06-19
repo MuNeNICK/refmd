@@ -166,7 +166,7 @@ export function useScrapConnection({
         clearTimeout(debounceTimeoutRef.current);
       }
     };
-  }, [socket, socketConnected, scrapId, shareToken, authToken, debouncedContentUpdate]);
+  }, [socket, socketConnected, scrapId, shareToken, authToken, debouncedContentUpdate, onPostAdded, onPostUpdated, onPostDeleted, onUserCountChanged]);
 
   // Handle socket disconnection
   useEffect(() => {

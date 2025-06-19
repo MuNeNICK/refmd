@@ -58,7 +58,7 @@ export function ScrapPageClient({ initialData, scrapId }: ScrapPageClientProps) 
         data = await client.scraps.getScrap(scrapId);
       }
       setScrapData(data);
-    } catch (error) {
+    } catch {
       // Failed to refresh scrap data
     }
   }, [scrapId, shareToken, accessToken, client]);
@@ -142,7 +142,7 @@ export function ScrapPageClient({ initialData, scrapId }: ScrapPageClientProps) 
       
       // Emit real-time event to other connected clients
       emitPostAdded(newPost);
-    } catch (error) {
+    } catch {
       toast.error('Failed to add post');
     } finally {
       setIsLoading(false);
@@ -196,7 +196,7 @@ export function ScrapPageClient({ initialData, scrapId }: ScrapPageClientProps) 
       
       // Emit real-time event to other connected clients
       emitPostUpdated(updatedPost);
-    } catch (error) {
+    } catch {
       toast.error('Failed to update post');
     } finally {
       if (!isPinUpdate) {
@@ -234,7 +234,7 @@ export function ScrapPageClient({ initialData, scrapId }: ScrapPageClientProps) 
       
       // Emit real-time event to other connected clients
       emitPostDeleted(postId);
-    } catch (error) {
+    } catch {
       toast.error('Failed to delete post');
     } finally {
       setDeletingPostId(null);
