@@ -68,7 +68,7 @@ impl FileService {
             self.get_document_directory_path(doc).await?
         } else {
             // No document, save in user's root directory
-            self.storage_path.join("documents").join(user_id.to_string())
+            self.storage_path.join(user_id.to_string())
         };
 
         // Add attachments subdirectory
@@ -271,9 +271,8 @@ impl FileService {
             path_components.push(self.sanitize_filename(&document.title));
         }
         
-        // Build the full path: storage_path/documents/user_id/...path_components
+        // Build the full path: storage_path/user_id/...path_components
         let mut full_path = self.storage_path.clone();
-        full_path.push("documents");
         full_path.push(document.owner_id.to_string());
         for component in path_components {
             full_path.push(component);

@@ -17,7 +17,7 @@ use crate::{
     error::Error,
     middleware::{
         auth::{AuthUser, auth_middleware},
-        optional_auth::optional_auth_middleware,
+        optional_auth::{optional_auth_middleware, OptionalAuthUser},
     },
 };
 
@@ -130,12 +130,12 @@ async fn download_file(
 
 async fn download_file_by_name(
     State(state): State<Arc<AppState>>,
-    Extension(auth_user): Extension<Option<AuthUser>>,
+    Extension(auth_user): Extension<OptionalAuthUser>,
     Path(filename): Path<String>,
     Query(params): Query<DownloadByNameQuery>,
 ) -> Result<Response, Error> {
     // Check if user has access to the document (either through auth or share token)
-    let user_id = auth_user.as_ref().map(|u| u.user_id);
+    let user_id = auth_user.user_id;
     
     // Try to get file with appropriate access check
     let (attachment, data) = state.file_service
