@@ -136,7 +136,7 @@ export function ScrapPostForm({
   };
 
   return (
-    <Card className="p-4 shadow-none">
+    <Card className="p-3 sm:p-4 shadow-none">
       <form onSubmit={handleSubmit}>
         <div className="space-y-3">
           {/* Mode toggle buttons */}

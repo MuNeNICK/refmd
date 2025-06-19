@@ -135,7 +135,7 @@ export function ScrapPostComponent({
   };
 
   return (
-    <Card className={`p-4 shadow-none ${isPinned ? 'ring-2 ring-primary/20 bg-primary/5' : ''}`}>
+    <Card className={`p-3 sm:p-4 shadow-none ${isPinned ? 'ring-2 ring-primary/20 bg-primary/5' : ''}`}>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           {isPinned && (

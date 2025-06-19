@@ -276,7 +276,7 @@ export function ScrapPageClient({ initialData, scrapId }: ScrapPageClientProps) 
       onShare={!isViewOnly && user ? () => setShareDialogOpen(true) : undefined}
     >
       <div className="flex flex-col h-full overflow-y-auto">
-        <div className="max-w-4xl mx-auto w-full p-6">
+        <div className="max-w-4xl mx-auto w-full p-3 sm:p-6">
           <div className="space-y-4 pb-6">
 
             {/* Add post form - only visible if authenticated */}
