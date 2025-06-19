@@ -5,4 +5,5 @@ pub mod crdt;
 pub mod scrap;
 pub mod scrap_management;
 pub mod share;
+pub mod git_sync;
 

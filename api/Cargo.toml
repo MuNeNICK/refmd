@@ -6,7 +6,7 @@ edition = "2021"
 
 [dependencies]
 # Web framework
-axum = { version = "0.7", features = ["multipart"] }
+axum = { version = "0.7", features = ["multipart", "macros"] }
 axum-extra = { version = "0.9", features = ["typed-header", "multipart"] }
 tower = "0.4"
 tower-http = { version = "0.5", features = ["cors", "trace"] }
@@ -46,6 +46,9 @@ parking_lot = "0.12"
 rand = "0.8"
 hex = "0.4"
 regex = "1.10"
+
+# Git integration
+git2 = "0.20"
 
 # File handling
 mime_guess = "2.0"

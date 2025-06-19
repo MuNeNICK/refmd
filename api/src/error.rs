@@ -31,6 +31,7 @@ pub enum Error {
     Base64(base64::DecodeError),
     Multipart(MultipartError),
     Zip(zip::result::ZipError),
+    Git(git2::Error),
 }
 
 impl fmt::Display for Error {
@@ -54,6 +55,7 @@ impl fmt::Display for Error {
             Error::Base64(e) => write!(f, "Base64 decode error: {}", e),
             Error::Multipart(e) => write!(f, "Multipart error: {}", e),
             Error::Zip(e) => write!(f, "ZIP error: {}", e),
+            Error::Git(e) => write!(f, "Git error: {}", e),
         }
     }
 }
@@ -81,6 +83,7 @@ impl IntoResponse for Error {
             Error::Base64(_) => (StatusCode::BAD_REQUEST, "Invalid data encoding"),
             Error::Multipart(_) => (StatusCode::BAD_REQUEST, "Invalid multipart data"),
             Error::Zip(_) => (StatusCode::INTERNAL_SERVER_ERROR, "ZIP creation error"),
+            Error::Git(_) => (StatusCode::INTERNAL_SERVER_ERROR, "Git operation error"),
         };
 
         let body = Json(json!({
@@ -167,5 +170,11 @@ impl From<MultipartError> for Error {
 impl From<zip::result::ZipError> for Error {
     fn from(err: zip::result::ZipError) -> Self {
         Error::Zip(err)
+    }
+}
+
+impl From<git2::Error> for Error {
+    fn from(err: git2::Error) -> Self {
+        Error::Git(err)
     }
 }

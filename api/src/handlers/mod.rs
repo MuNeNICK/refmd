@@ -9,6 +9,7 @@ pub mod scraps;
 pub mod shares;
 pub mod user;
 pub mod socketio;
+pub mod git_sync;
 
 pub fn routes(state: Arc<AppState>) -> Router {
     Router::new()
@@ -18,5 +19,6 @@ pub fn routes(state: Arc<AppState>) -> Router {
         .nest("/files", files::routes(state.clone()))
         .nest("/scraps", scraps::routes(state.clone()))
         .nest("/shares", shares::routes(state.clone()))
+        .nest("/git", git_sync::routes(state.clone()))
         .nest("/socketio", socketio::routes(state))
 }

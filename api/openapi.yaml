@@ -749,6 +749,150 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  # ===== Git Sync =====
+  /git/config:
+    post:
+      tags:
+        - Git Sync
+      summary: Create or update Git configuration
+      operationId: createOrUpdateGitConfig
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateGitConfigRequest'
+      responses:
+        '200':
+          description: Git configuration created or updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GitConfigResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    get:
+      tags:
+        - Git Sync
+      summary: Get Git configuration
+      operationId: getGitConfig
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Git configuration retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GitConfigResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags:
+        - Git Sync
+      summary: Delete Git configuration
+      operationId: deleteGitConfig
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Git configuration deleted successfully
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /git/init:
+    post:
+      tags:
+        - Git Sync
+      summary: Initialize Git repository
+      operationId: initGitRepository
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Repository initialized successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /git/sync:
+    post:
+      tags:
+        - Git Sync
+      summary: Manual sync
+      operationId: manualGitSync
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Sync completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GitSyncResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /git/status:
+    get:
+      tags:
+        - Git Sync
+      summary: Get Git status
+      operationId: getGitStatus
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Git status retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GitStatus'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /git/logs:
+    get:
+      tags:
+        - Git Sync
+      summary: Get sync logs
+      operationId: getGitSyncLogs
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Sync logs retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/GitSyncLogResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
   # ===== Socket.IO Stats =====
   /socketio/documents/{id}/active-users:
     get:
@@ -1527,6 +1671,124 @@ components:
         permission:
           type: string
           enum: [view, edit]
+
+    # ===== Git Sync =====
+    CreateGitConfigRequest:
+      type: object
+      required:
+        - repository_url
+        - auth_type
+        - auth_data
+      properties:
+        repository_url:
+          type: string
+          description: Git repository URL
+          example: "https://github.com/user/repo.git"
+        branch_name:
+          type: string
+          description: Branch name to sync with
+          default: "main"
+          example: "main"
+        auth_type:
+          type: string
+          enum: [ssh, token]
+          description: Authentication type
+          example: "token"
+        auth_data:
+          type: object
+          description: Authentication data (SSH key path or token)
+          example: { "token": "ghp_xxxxxxxxxxxxxxxxxxxx" }
+        auto_sync:
+          type: boolean
+          description: Enable automatic sync on document save
+          default: true
+
+    GitConfigResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        repository_url:
+          type: string
+        branch_name:
+          type: string
+        auth_type:
+          type: string
+          enum: [ssh, token]
+        auto_sync:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    GitSyncResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        commit_hash:
+          type: string
+          nullable: true
+        files_changed:
+          type: integer
+          format: int32
+
+    GitStatus:
+      type: object
+      properties:
+        repository_initialized:
+          type: boolean
+        has_remote:
+          type: boolean
+        current_branch:
+          type: string
+          nullable: true
+        uncommitted_changes:
+          type: integer
+          format: int32
+        untracked_files:
+          type: integer
+          format: int32
+        last_sync:
+          type: string
+          format: date-time
+          nullable: true
+        sync_enabled:
+          type: boolean
+
+    GitSyncLogResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        operation:
+          type: string
+          enum: [init, commit, push, pull]
+        status:
+          type: string
+          enum: [success, error]
+        message:
+          type: string
+          nullable: true
+        commit_hash:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
 
     # ===== Error =====
     ErrorResponse:

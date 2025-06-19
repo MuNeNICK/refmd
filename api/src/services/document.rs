@@ -143,9 +143,8 @@ impl DocumentService {
             path_components.push(filename);
         }
         
-        // Build the full path: upload_dir/documents/user_id/...path_components
+        // Build the full path: upload_dir/user_id/...path_components
         let mut full_path = self.upload_dir.clone();
-        full_path.push("documents");
         full_path.push(document.owner_id.to_string());
         for component in path_components {
             full_path.push(component);
