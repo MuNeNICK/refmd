@@ -19,7 +19,6 @@ use bytes::Bytes;
 use crate::{
     error::Result,
     state::AppState,
-    services::document::DocumentService,
     middleware::{auth::{auth_middleware, AuthUser}, optional_auth::{optional_auth_middleware, OptionalAuthUser}, permission::check_document_permission},
     db::models::Document,
     crdt::serialization,
@@ -111,13 +110,7 @@ async fn list_documents(
     State(state): State<Arc<AppState>>,
     Extension(auth_user): Extension<AuthUser>,
 ) -> Result<Json<Vec<DocumentResponse>>> {
-    let document_service = DocumentService::new(
-        state.document_repository.clone(),
-        state.config.upload_dir.clone().into(),
-        state.crdt_service.clone(),
-    );
-    
-    let documents = document_service.list_documents(auth_user.user_id).await?;
+    let documents = state.document_service.list_documents(auth_user.user_id).await?;
     let response: Vec<DocumentResponse> = documents.into_iter().map(Into::into).collect();
     
     Ok(Json(response))
@@ -128,13 +121,7 @@ async fn create_document(
     Extension(auth_user): Extension<AuthUser>,
     Json(req): Json<CreateDocumentRequest>,
 ) -> Result<Json<DocumentResponse>> {
-    let document_service = DocumentService::new(
-        state.document_repository.clone(),
-        state.config.upload_dir.clone().into(),
-        state.crdt_service.clone(),
-    );
-    
-    let document = document_service.create_document(
+    let document = state.document_service.create_document(
         auth_user.user_id,
         &req.title,
         req.content.as_deref(),
@@ -147,7 +134,7 @@ async fn create_document(
         state.crdt_service.set_document_content(document.id, content).await?;
         
         // Re-save document to file with content
-        document_service.save_to_file_with_content(&document, content).await?;
+        state.document_service.save_to_file_with_content(&document, content).await?;
     }
     
     Ok(Json(document.into()))
@@ -158,13 +145,7 @@ async fn get_document(
     Extension(auth_user): Extension<AuthUser>,
     Path(id): Path<Uuid>,
 ) -> Result<Json<DocumentResponse>> {
-    let document_service = DocumentService::new(
-        state.document_repository.clone(),
-        state.config.upload_dir.clone().into(),
-        state.crdt_service.clone(),
-    );
-    
-    let document = document_service.get_document(id, auth_user.user_id).await?;
+    let document = state.document_service.get_document(id, auth_user.user_id).await?;
     
     Ok(Json(document.into()))
 }
@@ -206,13 +187,7 @@ async fn update_document(
     Path(id): Path<Uuid>,
     Json(req): Json<UpdateDocumentRequest>,
 ) -> Result<Json<DocumentResponse>> {
-    let document_service = DocumentService::new(
-        state.document_repository.clone(),
-        state.config.upload_dir.clone().into(),
-        state.crdt_service.clone(),
-    );
-    
-    let document = document_service.update_document(
+    let document = state.document_service.update_document(
         id,
         auth_user.user_id,
         req.title.as_deref(),
@@ -227,7 +202,7 @@ async fn update_document(
         
         // Save updated content to file
         tracing::info!("Saving document {} to file", document.id);
-        document_service.save_to_file_with_content(&document, content).await?;
+        state.document_service.save_to_file_with_content(&document, content).await?;
     } else {
         tracing::info!("No content provided for document {} update", document.id);
     }
@@ -264,16 +239,10 @@ async fn update_document_with_share(
         .await?
         .ok_or_else(|| crate::error::Error::NotFound("Document not found".to_string()))?;
     
-    let document_service = DocumentService::new(
-        state.document_repository.clone(),
-        state.config.upload_dir.clone().into(),
-        state.crdt_service.clone(),
-    );
-    
     // Use the document owner ID for the update (since share links don't have a user ID)
     let update_user_id = user_id.unwrap_or(document.owner_id);
     
-    let updated_document = document_service.update_document(
+    let updated_document = state.document_service.update_document(
         id,
         update_user_id,
         req.title.as_deref(),
@@ -288,7 +257,7 @@ async fn update_document_with_share(
         
         // Save updated content to file
         tracing::info!("Saving document {} to file via share link", updated_document.id);
-        document_service.save_to_file_with_content(&updated_document, content).await?;
+        state.document_service.save_to_file_with_content(&updated_document, content).await?;
     } else {
         tracing::info!("No content provided for document {} update via share link", updated_document.id);
     }
@@ -301,13 +270,7 @@ async fn delete_document(
     Extension(auth_user): Extension<AuthUser>,
     Path(id): Path<Uuid>,
 ) -> Result<()> {
-    let document_service = DocumentService::new(
-        state.document_repository.clone(),
-        state.config.upload_dir.clone().into(),
-        state.crdt_service.clone(),
-    );
-    
-    document_service.delete_document(id, auth_user.user_id).await?;
+    state.document_service.delete_document(id, auth_user.user_id).await?;
     
     // Also remove from CRDT cache
     state.crdt_service.evict_from_cache(&id);
@@ -321,12 +284,7 @@ async fn get_document_content(
     Path(id): Path<Uuid>,
 ) -> Result<Json<DocumentContentResponse>> {
     // Check permissions
-    let document_service = DocumentService::new(
-        state.document_repository.clone(),
-        state.config.upload_dir.clone().into(),
-        state.crdt_service.clone(),
-    );
-    document_service.get_document(id, auth_user.user_id).await?;
+    state.document_service.get_document(id, auth_user.user_id).await?;
     
     // Get content from CRDT
     let content = state.crdt_service.get_document_content(id).await?;
@@ -368,12 +326,7 @@ async fn get_document_state(
     Path(id): Path<Uuid>,
 ) -> Result<Json<DocumentStateResponse>> {
     // Check permissions
-    let document_service = DocumentService::new(
-        state.document_repository.clone(),
-        state.config.upload_dir.clone().into(),
-        state.crdt_service.clone(),
-    );
-    document_service.get_document(id, auth_user.user_id).await?;
+    state.document_service.get_document(id, auth_user.user_id).await?;
     
     // Get CRDT state
     let doc = state.crdt_service.load_or_create_document(id).await?;
@@ -428,12 +381,7 @@ async fn get_document_updates(
     Json(req): Json<DocumentUpdatesRequest>,
 ) -> Result<Json<DocumentUpdatesResponse>> {
     // Check permissions
-    let document_service = DocumentService::new(
-        state.document_repository.clone(),
-        state.config.upload_dir.clone().into(),
-        state.crdt_service.clone(),
-    );
-    document_service.get_document(id, auth_user.user_id).await?;
+    state.document_service.get_document(id, auth_user.user_id).await?;
     
     // Get updates since timestamp
     let since = req.since.unwrap_or_else(|| Utc::now() - chrono::Duration::days(7));

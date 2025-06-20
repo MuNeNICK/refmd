@@ -6,4 +6,5 @@ pub mod scrap;
 pub mod scrap_management;
 pub mod share;
 pub mod git_sync;
+pub mod git_batch_sync;
 

@@ -1,8 +1,10 @@
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::collections::HashMap;
 use git2::{Repository, Signature, RemoteCallbacks, Cred, PushOptions, FetchOptions};
 use uuid::Uuid;
-use chrono::Utc;
+use chrono::{Utc, DateTime};
+use tokio::sync::RwLock;
 
 use crate::{
     entities::git_config::{GitConfig, GitStatus, GitSyncResponse},
@@ -15,6 +17,7 @@ pub struct GitSyncService {
     git_config_repo: Arc<GitConfigRepository>,
     upload_dir: PathBuf,
     encryption_service: EncryptionService,
+    push_in_progress: Arc<RwLock<HashMap<Uuid, DateTime<Utc>>>>,
 }
 
 impl GitSyncService {
@@ -24,6 +27,7 @@ impl GitSyncService {
             git_config_repo,
             upload_dir,
             encryption_service,
+            push_in_progress: Arc::new(RwLock::new(HashMap::new())),
         })
     }
 
@@ -188,6 +192,24 @@ impl GitSyncService {
     }
 
     pub async fn push_to_remote(&self, user_id: Uuid) -> Result<()> {
+        // Check if a push is already in progress for this user
+        {
+            let push_map = self.push_in_progress.read().await;
+            if let Some(last_push) = push_map.get(&user_id) {
+                let time_since_push = Utc::now().signed_duration_since(*last_push);
+                if time_since_push < chrono::Duration::seconds(10) {
+                    tracing::info!("Push already in progress for user {}, skipping", user_id);
+                    return Ok(());
+                }
+            }
+        }
+        
+        // Mark push as in progress
+        {
+            let mut push_map = self.push_in_progress.write().await;
+            push_map.insert(user_id, Utc::now());
+        }
+        
         let config = self.git_config_repo.get_by_user_id(user_id).await?
             .ok_or_else(|| Error::BadRequest("Git config not found".to_string()))?;
 
@@ -224,7 +246,8 @@ impl GitSyncService {
             remote.push(&[&refspec], Some(&mut push_options))
         };
 
-        match push_result {
+        // Clean up push tracking after operation
+        let result = match push_result {
             Ok(_) => {
                 self.git_config_repo.log_sync_operation(
                     user_id,
@@ -245,7 +268,15 @@ impl GitSyncService {
                 ).await?;
                 Err(Error::BadRequest(format!("Failed to push: {}", e)))
             }
+        };
+        
+        // Remove from push tracking
+        {
+            let mut push_map = self.push_in_progress.write().await;
+            push_map.remove(&user_id);
         }
+        
+        result
     }
 
     pub async fn pull_from_remote(&self, user_id: Uuid) -> Result<()> {

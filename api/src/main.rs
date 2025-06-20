@@ -63,6 +63,12 @@ async fn main() -> Result<()> {
     
     let app = app.layer(socketio_layer);
     
+    // Start batch sync service if enabled
+    if let Some(ref batch_sync) = app_state.git_batch_sync_service {
+        batch_sync.start().await;
+        info!("Git batch sync service started");
+    }
+    
     // Start server
     let addr = SocketAddr::from(([0, 0, 0, 0], config.port));
     info!("Starting server on {}", addr);
@@ -99,6 +105,12 @@ async fn shutdown_signal(app_state: Arc<AppState>) {
         _ = ctrl_c => {},
         _ = terminate => {},
     }
+    
+    // Stop batch sync service if running
+    if let Some(ref batch_sync) = app_state.git_batch_sync_service {
+        batch_sync.stop().await;
+        info!("Git batch sync service stopped");
+    }
 
     warn!("Shutdown signal received, starting graceful shutdown...");
     
@@ -114,12 +126,7 @@ async fn shutdown_signal(app_state: Arc<AppState>) {
         
         // Also save to file
         if let Ok(Some(document)) = app_state.document_repository.get_by_id(doc_id).await {
-            let document_service = crate::services::document::DocumentService::new(
-                app_state.document_repository.clone(),
-                app_state.config.upload_dir.clone().into(),
-                app_state.crdt_service.clone(),
-            );
-            if let Err(e) = document_service.save_to_file(&document).await {
+            if let Err(e) = app_state.document_service.save_to_file(&document).await {
                 warn!("Failed to save document {} to file during shutdown: {}", doc_id, e);
             } else {
                 info!("Saved document {} to file during shutdown", doc_id);

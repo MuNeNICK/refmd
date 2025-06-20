@@ -233,12 +233,7 @@ pub fn setup_handlers(io: SocketIo, state: Arc<AppState>) {
                             
                             // Also save to file
                             if let Ok(Some(document)) = state.document_repository.get_by_id(data.document_id).await {
-                                let document_service = crate::services::document::DocumentService::new(
-                                    state.document_repository.clone(),
-                                    state.config.upload_dir.clone().into(),
-                                    state.crdt_service.clone(),
-                                );
-                                if let Err(e) = document_service.save_to_file(&document).await {
+                                if let Err(e) = state.document_service.save_to_file(&document).await {
                                     error!("Failed to save document {} to file: {}", data.document_id, e);
                                 }
                             }
@@ -468,12 +463,7 @@ pub fn setup_handlers(io: SocketIo, state: Arc<AppState>) {
                             
                             // Also save to file to ensure all content is persisted
                             if let Ok(Some(document)) = state.document_repository.get_by_id(doc_id).await {
-                                let document_service = crate::services::document::DocumentService::new(
-                                    state.document_repository.clone(),
-                                    state.config.upload_dir.clone().into(),
-                                    state.crdt_service.clone(),
-                                );
-                                if let Err(e) = document_service.save_to_file(&document).await {
+                                if let Err(e) = state.document_service.save_to_file(&document).await {
                                     error!("Failed to save document {} to file on disconnect: {}", doc_id, e);
                                 } else {
                                     tracing::info!("Saved document {} to file on disconnect (remaining users: {})", 

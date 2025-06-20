@@ -7,20 +7,32 @@ use crate::{
     repository::DocumentRepository,
     db::models::Document,
     services::crdt::CrdtService,
+    services::git_batch_sync::GitBatchSyncService,
+    config::Config,
 };
 
 pub struct DocumentService {
     document_repo: Arc<DocumentRepository>,
     upload_dir: PathBuf,
     crdt_service: Arc<CrdtService>,
+    git_batch_sync_service: Option<Arc<GitBatchSyncService>>,
+    config: Arc<Config>,
 }
 
 impl DocumentService {
-    pub fn new(document_repo: Arc<DocumentRepository>, upload_dir: PathBuf, crdt_service: Arc<CrdtService>) -> Self {
+    pub fn new(
+        document_repo: Arc<DocumentRepository>, 
+        upload_dir: PathBuf, 
+        crdt_service: Arc<CrdtService>,
+        git_batch_sync_service: Option<Arc<GitBatchSyncService>>,
+        config: Arc<Config>,
+    ) -> Self {
         Self { 
             document_repo,
             upload_dir,
             crdt_service,
+            git_batch_sync_service,
+            config,
         }
     }
     
@@ -270,6 +282,13 @@ updated_at: {}
         
         self.document_repo.update_file_path(document.id, Some(&relative_path)).await?;
         
+        // Queue for batch git sync if enabled
+        if self.config.git_auto_sync {
+            if let Some(ref batch_sync) = self.git_batch_sync_service {
+                batch_sync.queue_sync(document.owner_id, document.title.clone()).await;
+            }
+        }
+        
         Ok(())
     }
     
@@ -365,6 +384,13 @@ updated_at: {}
         
         self.document_repo.update_file_path(document.id, Some(&relative_path)).await?;
         
+        // Queue for batch git sync if enabled
+        if self.config.git_auto_sync {
+            if let Some(ref batch_sync) = self.git_batch_sync_service {
+                batch_sync.queue_sync(document.owner_id, document.title.clone()).await;
+            }
+        }
+        
         Ok(())
     }
     
@@ -374,6 +400,13 @@ updated_at: {}
             let full_path = self.upload_dir.join(file_path);
             if full_path.exists() {
                 fs::remove_file(full_path).await?;
+                
+                // Queue deletion for batch git sync if enabled
+                if self.config.git_auto_sync {
+                    if let Some(ref batch_sync) = self.git_batch_sync_service {
+                        batch_sync.queue_sync(document.owner_id, format!("Delete: {}", document.title)).await;
+                    }
+                }
             }
         }
         Ok(())
@@ -406,6 +439,13 @@ updated_at: {}
                     .unwrap_or_else(|_| new_file_path.to_string_lossy().to_string());
                 
                 self.document_repo.update_file_path(document.id, Some(&relative_path)).await?;
+                
+                // Queue move for batch git sync if enabled
+                if self.config.git_auto_sync {
+                    if let Some(ref batch_sync) = self.git_batch_sync_service {
+                        batch_sync.queue_sync(document.owner_id, format!("Move/rename: {}", document.title)).await;
+                    }
+                }
             }
         } else {
             // No old path, just save to new location

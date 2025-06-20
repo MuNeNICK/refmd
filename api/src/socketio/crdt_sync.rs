@@ -313,13 +313,7 @@ impl YjsSyncManager {
             
             // Also save to filesystem
             if let Ok(Some(document)) = app_state.document_repository.get_by_id(document_id).await {
-                let document_service = crate::services::document::DocumentService::new(
-                    app_state.document_repository.clone(),
-                    app_state.config.upload_dir.clone().into(),
-                    app_state.crdt_service.clone(),
-                );
-                
-                match document_service.save_to_file_with_content(&document, &content).await {
+                match app_state.document_service.save_to_file_with_content(&document, &content).await {
                     Ok(_) => {
                         info!("Successfully saved document {} to file ({} chars, title: {})", 
                               document_id, content.len(), document.title);
