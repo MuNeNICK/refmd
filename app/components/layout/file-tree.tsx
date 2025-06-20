@@ -22,6 +22,7 @@ import { FolderNode } from './FolderNode';
 import { FileTreeActions } from './FileTreeActions';
 import { useFileTreeDrag } from '@/lib/hooks/useFileTreeDrag';
 import { GitSyncButton } from '@/components/git/git-sync-button';
+import { GitDiffDialog } from '@/components/git/git-diff-dialog';
 import { useAuth } from '@/lib/auth/authContext';
 
 interface DocumentNode {
@@ -43,6 +44,7 @@ function FileTreeComponent({ onDocumentSelect, selectedDocumentId }: FileTreePro
   const { documents, expandedFolders, loading, toggleFolder, expandFolder, expandParentFolders, refreshDocuments, updateDocuments } = useFileTree();
   const router = useRouter();
   const { user } = useAuth();
+  const [showGitDiff, setShowGitDiff] = React.useState(false);
 
   // Expand parent folders when a document is selected
   React.useEffect(() => {
@@ -467,11 +469,16 @@ function FileTreeComponent({ onDocumentSelect, selectedDocumentId }: FileTreePro
         <SidebarFooter>
           <SidebarMenu>
             <SidebarMenuItem>
-              <GitSyncButton />
+              <GitSyncButton onShowDiff={() => setShowGitDiff(true)} />
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarFooter>
       )}
+      
+      <GitDiffDialog 
+        open={showGitDiff} 
+        onOpenChange={setShowGitDiff} 
+      />
     </div>
   );
 }

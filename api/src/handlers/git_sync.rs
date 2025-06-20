@@ -1,6 +1,6 @@
 use std::sync::Arc;
 use axum::{
-    extract::State,
+    extract::{State, Path},
     http::StatusCode,
     response::Json,
     Extension,
@@ -18,7 +18,10 @@ use crate::{
         },
     },
     repository::GitConfigRepository,
-    services::git_sync::GitSyncService,
+    services::{
+        git_sync::GitSyncService,
+        git_diff::{GitDiffService, DiffResult},
+    },
     utils::encryption::EncryptionService,
     error::{Error, Result},
     state::AppState,
@@ -183,6 +186,112 @@ pub async fn get_sync_logs(
     Ok(Json(response))
 }
 
+// GET /api/git/diff/files/{file_path:.*} - Get file diff
+pub async fn get_file_diff(
+    State(state): State<Arc<AppState>>,
+    Extension(auth_user): Extension<AuthUser>,
+    Path(file_path): Path<String>,
+) -> Result<Json<DiffResult>> {
+    let user_dir = std::path::Path::new(&state.config.upload_dir)
+        .join(auth_user.user_id.to_string());
+    
+    // Check if directory exists
+    if !user_dir.exists() {
+        return Ok(Json(DiffResult {
+            file_path,
+            diff_lines: vec![],
+            old_content: None,
+            new_content: None,
+        }));
+    }
+    
+    // Check if it's a git repository
+    if !user_dir.join(".git").exists() {
+        return Ok(Json(DiffResult {
+            file_path,
+            diff_lines: vec![],
+            old_content: None,
+            new_content: None,
+        }));
+    }
+    
+    let git_diff_service = GitDiffService::new(&user_dir)?;
+    let diff_result = git_diff_service.get_file_diff(&file_path)?;
+    
+    Ok(Json(diff_result))
+}
+
+// GET /api/git/diff/commits/{from}/{to} - Get commit diff
+pub async fn get_commit_diff(
+    State(state): State<Arc<AppState>>,
+    Extension(auth_user): Extension<AuthUser>,
+    Path((from, to)): Path<(String, String)>,
+) -> Result<Json<Vec<DiffResult>>> {
+    let user_dir = std::path::Path::new(&state.config.upload_dir)
+        .join(auth_user.user_id.to_string());
+    
+    // Check if directory exists
+    if !user_dir.exists() {
+        return Ok(Json(vec![]));
+    }
+    
+    // Check if it's a git repository
+    if !user_dir.join(".git").exists() {
+        return Ok(Json(vec![]));
+    }
+    
+    let git_diff_service = GitDiffService::new(&user_dir)?;
+    let diff_results = git_diff_service.get_commit_diff(&from, &to)?;
+    
+    Ok(Json(diff_results))
+}
+
+// GET /api/git/diff/staged - Get staged diff
+pub async fn get_staged_diff(
+    State(state): State<Arc<AppState>>,
+    Extension(auth_user): Extension<AuthUser>,
+) -> Result<Json<Vec<DiffResult>>> {
+    let user_dir = std::path::Path::new(&state.config.upload_dir)
+        .join(auth_user.user_id.to_string());
+    
+    // Check if directory exists
+    if !user_dir.exists() {
+        return Ok(Json(vec![]));
+    }
+    
+    // Check if it's a git repository
+    if !user_dir.join(".git").exists() {
+        return Ok(Json(vec![]));
+    }
+    
+    let git_diff_service = GitDiffService::new(&user_dir)?;
+    let diff_results = git_diff_service.get_staged_diff()?;
+    
+    Ok(Json(diff_results))
+}
+
+// GET /api/git/diff/working - Get working directory diff
+pub async fn get_working_diff(
+    State(state): State<Arc<AppState>>,
+    Extension(auth_user): Extension<AuthUser>,
+) -> Result<Json<Vec<DiffResult>>> {
+    let user_dir = std::path::Path::new(&state.config.upload_dir)
+        .join(auth_user.user_id.to_string());
+    // Check if directory exists
+    if !user_dir.exists() {
+        return Ok(Json(vec![]));
+    }
+    
+    // Check if it's a git repository
+    if !user_dir.join(".git").exists() {
+        return Ok(Json(vec![]));
+    }
+    
+    let git_diff_service = GitDiffService::new(&user_dir)?;
+    let diff_results = git_diff_service.get_working_diff()?;
+    Ok(Json(diff_results))
+}
+
 // Route definitions
 pub fn routes(state: Arc<AppState>) -> Router {
     Router::new()
@@ -193,6 +302,10 @@ pub fn routes(state: Arc<AppState>) -> Router {
         .route("/sync", post(manual_sync))
         .route("/status", get(get_status))
         .route("/logs", get(get_sync_logs))
+        .route("/diff/files/*file_path", get(get_file_diff))
+        .route("/diff/commits/:from/:to", get(get_commit_diff))
+        .route("/diff/staged", get(get_staged_diff))
+        .route("/diff/working", get(get_working_diff))
         .layer(from_fn_with_state(state.clone(), auth_middleware))
         .with_state(state)
 }

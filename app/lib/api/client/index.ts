@@ -15,6 +15,8 @@ export { CreateDocumentRequest } from './models/CreateDocumentRequest';
 export { CreateGitConfigRequest } from './models/CreateGitConfigRequest';
 export type { CreateScrapPostRequest } from './models/CreateScrapPostRequest';
 export type { CreateScrapRequest } from './models/CreateScrapRequest';
+export { DiffLine } from './models/DiffLine';
+export type { DiffResult } from './models/DiffResult';
 export { Document } from './models/Document';
 export type { DocumentContent } from './models/DocumentContent';
 export type { DocumentListResponse } from './models/DocumentListResponse';

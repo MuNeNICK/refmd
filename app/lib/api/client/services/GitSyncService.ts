@@ -3,6 +3,7 @@
 /* tslint:disable */
 /* eslint-disable */
 import type { CreateGitConfigRequest } from '../models/CreateGitConfigRequest';
+import type { DiffResult } from '../models/DiffResult';
 import type { GitConfigResponse } from '../models/GitConfigResponse';
 import type { GitStatus } from '../models/GitStatus';
 import type { GitSyncLogResponse } from '../models/GitSyncLogResponse';
@@ -117,6 +118,84 @@ export class GitSyncService {
         return this.httpRequest.request({
             method: 'GET',
             url: '/git/logs',
+            errors: {
+                401: `Unauthorized`,
+            },
+        });
+    }
+    /**
+     * Get file diff
+     * Get uncommitted changes for a specific file
+     * @param filePath Path to the file relative to the repository root
+     * @returns DiffResult File diff retrieved successfully
+     * @throws ApiError
+     */
+    public getFileDiff(
+        filePath: string,
+    ): CancelablePromise<DiffResult> {
+        return this.httpRequest.request({
+            method: 'GET',
+            url: '/git/diff/files/{file_path}',
+            path: {
+                'file_path': filePath,
+            },
+            errors: {
+                400: `Bad request`,
+                401: `Unauthorized`,
+                404: `Not found`,
+            },
+        });
+    }
+    /**
+     * Get commit diff
+     * Get diff between two commits
+     * @param from From commit hash
+     * @param to To commit hash
+     * @returns DiffResult Commit diff retrieved successfully
+     * @throws ApiError
+     */
+    public getCommitDiff(
+        from: string,
+        to: string,
+    ): CancelablePromise<Array<DiffResult>> {
+        return this.httpRequest.request({
+            method: 'GET',
+            url: '/git/diff/commits/{from}/{to}',
+            path: {
+                'from': from,
+                'to': to,
+            },
+            errors: {
+                400: `Bad request`,
+                401: `Unauthorized`,
+            },
+        });
+    }
+    /**
+     * Get staged diff
+     * Get diff of staged changes
+     * @returns DiffResult Staged diff retrieved successfully
+     * @throws ApiError
+     */
+    public getStagedDiff(): CancelablePromise<Array<DiffResult>> {
+        return this.httpRequest.request({
+            method: 'GET',
+            url: '/git/diff/staged',
+            errors: {
+                401: `Unauthorized`,
+            },
+        });
+    }
+    /**
+     * Get working directory diff
+     * Get diff of working directory changes
+     * @returns DiffResult Working directory diff retrieved successfully
+     * @throws ApiError
+     */
+    public getWorkingDiff(): CancelablePromise<Array<DiffResult>> {
+        return this.httpRequest.request({
+            method: 'GET',
+            url: '/git/diff/working',
             errors: {
                 401: `Unauthorized`,
             },

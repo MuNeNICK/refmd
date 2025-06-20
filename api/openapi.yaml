@@ -893,6 +893,114 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
 
+  /git/diff/files/{file_path}:
+    get:
+      tags:
+        - Git Sync
+      summary: Get file diff
+      description: Get uncommitted changes for a specific file
+      operationId: getFileDiff
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: file_path
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Path to the file relative to the repository root
+      responses:
+        '200':
+          description: File diff retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiffResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /git/diff/commits/{from}/{to}:
+    get:
+      tags:
+        - Git Sync
+      summary: Get commit diff
+      description: Get diff between two commits
+      operationId: getCommitDiff
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: from
+          in: path
+          required: true
+          schema:
+            type: string
+          description: From commit hash
+        - name: to
+          in: path
+          required: true
+          schema:
+            type: string
+          description: To commit hash
+      responses:
+        '200':
+          description: Commit diff retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DiffResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /git/diff/staged:
+    get:
+      tags:
+        - Git Sync
+      summary: Get staged diff
+      description: Get diff of staged changes
+      operationId: getStagedDiff
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Staged diff retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DiffResult'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /git/diff/working:
+    get:
+      tags:
+        - Git Sync
+      summary: Get working directory diff
+      description: Get diff of working directory changes
+      operationId: getWorkingDiff
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Working directory diff retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DiffResult'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
   # ===== Socket.IO Stats =====
   /socketio/documents/{id}/active-users:
     get:
@@ -1789,6 +1897,44 @@ components:
         created_at:
           type: string
           format: date-time
+
+    DiffResult:
+      type: object
+      properties:
+        file_path:
+          type: string
+          description: Path to the file being diffed
+        diff_lines:
+          type: array
+          items:
+            $ref: '#/components/schemas/DiffLine'
+        old_content:
+          type: string
+          nullable: true
+          description: Original file content (optional)
+        new_content:
+          type: string
+          nullable: true
+          description: New file content (optional)
+
+    DiffLine:
+      type: object
+      properties:
+        line_type:
+          type: string
+          enum: [added, deleted, context]
+          description: Type of change for this line
+        old_line_number:
+          type: integer
+          nullable: true
+          description: Line number in the original file
+        new_line_number:
+          type: integer
+          nullable: true
+          description: Line number in the new file
+        content:
+          type: string
+          description: The actual line content
 
     # ===== Error =====
     ErrorResponse:

@@ -14,16 +14,25 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { toast } from "sonner";
-import { GitBranch, GitCommit, AlertCircle, CheckCircle, Loader2, Settings } from "lucide-react";
+import { GitBranch, GitCommit, AlertCircle, CheckCircle, Loader2, Settings, Eye, ChevronDown } from "lucide-react";
 import { getApiClient } from "@/lib/api";
 import type { GitSyncResponse } from "@/lib/api/client";
 import { GitConfigDialog } from "./git-config-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
 
 interface GitSyncButtonProps {
   className?: string;
+  onShowDiff?: () => void;
 }
 
-export function GitSyncButton({ className }: GitSyncButtonProps) {
+export function GitSyncButton({ className, onShowDiff }: GitSyncButtonProps) {
   const queryClient = useQueryClient();
   const [showConfig, setShowConfig] = useState(false);
   const { isMobile } = useSidebar();
@@ -78,7 +87,7 @@ export function GitSyncButton({ className }: GitSyncButtonProps) {
     }
   };
 
-  const handleClick = () => {
+  const handleMainClick = () => {
     if (statusError || !gitConfig) {
       setShowConfig(true);
     } else {
@@ -130,53 +139,77 @@ export function GitSyncButton({ className }: GitSyncButtonProps) {
 
   return (
     <>
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <SidebarMenuButton
-              size="lg"
-              onClick={handleClick}
-              disabled={syncMutation.isPending || initMutation.isPending || statusLoading}
-              className={`data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground ${className}`}
-            >
-              <div className="flex items-center gap-2 min-w-0 flex-1">
-                {getStatusIcon()}
-                
-                <div className="grid flex-1 text-left text-sm leading-tight min-w-0">
-                  <span className="truncate font-medium">
-                    Git Sync
-                  </span>
-                  <span className="truncate text-xs text-muted-foreground">
-                    {getStatusText()}
-                  </span>
-                </div>
-                
-                {!statusError && gitConfig && gitStatus?.repository_initialized && (
-                  <div className="flex items-center gap-1 shrink-0">
-                    {gitStatus?.current_branch && (
-                      <Badge variant="outline" className="text-xs">
-                        <GitBranch className="h-3 w-3 mr-1" />
-                        {gitStatus.current_branch}
-                      </Badge>
-                    )}
+      <div className="flex items-center gap-1">
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <SidebarMenuButton
+                size="lg"
+                onClick={handleMainClick}
+                disabled={syncMutation.isPending || initMutation.isPending || statusLoading}
+                className={`data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground flex-1 ${className}`}
+              >
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  {getStatusIcon()}
+                  
+                  <div className="grid flex-1 text-left text-sm leading-tight min-w-0">
+                    <span className="truncate font-medium">
+                      Git Sync
+                    </span>
+                    <span className="truncate text-xs text-muted-foreground">
+                      {getStatusText()}
+                    </span>
                   </div>
-                )}
-                
-                <Settings 
-                  className="h-4 w-4 text-muted-foreground shrink-0" 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowConfig(true);
-                  }}
-                />
-              </div>
-            </SidebarMenuButton>
-          </TooltipTrigger>
-          <TooltipContent side={isMobile ? "top" : "right"}>
-            {getTooltipText()}
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
+                  
+                  {!statusError && gitConfig && gitStatus?.repository_initialized && (
+                    <div className="flex items-center gap-1 shrink-0">
+                      {gitStatus?.current_branch && (
+                        <Badge variant="outline" className="text-xs">
+                          <GitBranch className="h-3 w-3 mr-1" />
+                          {gitStatus.current_branch}
+                        </Badge>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </SidebarMenuButton>
+            </TooltipTrigger>
+            <TooltipContent side={isMobile ? "top" : "right"}>
+              {getTooltipText()}
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+        
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-10 w-10 p-0"
+            >
+              <ChevronDown className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent side={isMobile ? "top" : "right"} align="end" className="w-48">
+            {onShowDiff && gitStatus?.repository_initialized && (
+              <>
+                <DropdownMenuItem 
+                  onClick={onShowDiff}
+                  disabled={!gitConfig || (gitStatus.uncommitted_changes || 0) + (gitStatus.untracked_files || 0) === 0}
+                >
+                  <Eye className="mr-2 h-4 w-4" />
+                  View Changes
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+              </>
+            )}
+            <DropdownMenuItem onClick={() => setShowConfig(true)}>
+              <Settings className="mr-2 h-4 w-4" />
+              Settings
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
       
       <GitConfigDialog
         open={showConfig}
