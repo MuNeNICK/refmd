@@ -52,6 +52,10 @@ impl GitSyncService {
                     Some("Repository initialized"),
                     None,
                 ).await?;
+                
+                // Create default .gitignore
+                self.create_default_gitignore(user_id).await?;
+                
                 Ok(())
             },
             Err(e) => {
@@ -560,4 +564,195 @@ impl GitSyncService {
         }
         Ok(())
     }
+
+    pub async fn create_default_gitignore(&self, user_id: Uuid) -> Result<()> {
+        let repo_path = self.get_user_repo_path(user_id);
+        let gitignore_path = repo_path.join(".gitignore");
+        
+        // Check if .gitignore already exists
+        if gitignore_path.exists() {
+            return Ok(());
+        }
+        
+        // Default .gitignore content for RefMD
+        let gitignore_content = r#"# RefMD Git Sync ignore patterns
+
+# System files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# Temporary files
+*.tmp
+*.temp
+.~lock.*
+
+# Editor directories
+.vscode/
+.idea/
+*.sublime-*
+
+# Log files
+*.log
+
+# Node modules (if any frontend assets are stored)
+node_modules/
+
+# Python cache (if any scripts are used)
+__pycache__/
+*.pyc
+
+# Custom ignore patterns
+# Add document-specific patterns below
+"#;
+
+        tokio::fs::write(&gitignore_path, gitignore_content).await?;
+        
+        // Commit the .gitignore file
+        self.add_and_commit(user_id, Some("Add default .gitignore".to_string())).await?;
+        
+        Ok(())
+    }
+
+    pub async fn add_to_gitignore(&self, user_id: Uuid, patterns: Vec<String>) -> Result<()> {
+        let repo_path = self.get_user_repo_path(user_id);
+        let gitignore_path = repo_path.join(".gitignore");
+        
+        // Read existing content or create new
+        let mut content = if gitignore_path.exists() {
+            tokio::fs::read_to_string(&gitignore_path).await?
+        } else {
+            String::new()
+        };
+        
+        // Add new patterns
+        if !content.is_empty() && !content.ends_with('\n') {
+            content.push('\n');
+        }
+        
+        for pattern in patterns {
+            content.push_str(&format!("{}\n", pattern));
+        }
+        
+        tokio::fs::write(&gitignore_path, content).await?;
+        
+        // Commit the changes
+        self.add_and_commit(user_id, Some("Update .gitignore".to_string())).await?;
+        
+        Ok(())
+    }
+
+    pub async fn is_path_ignored(&self, user_id: Uuid, path: &str) -> Result<bool> {
+        let repo_path = self.get_user_repo_path(user_id);
+        
+        let is_ignored = {
+            let repo = Repository::open(&repo_path)?;
+            repo.is_path_ignored(std::path::Path::new(path))?
+        };
+        
+        Ok(is_ignored)
+    }
+
+    pub async fn get_gitignore_patterns(&self, user_id: Uuid) -> Result<Vec<String>> {
+        let repo_path = self.get_user_repo_path(user_id);
+        let gitignore_path = repo_path.join(".gitignore");
+        
+        if !gitignore_path.exists() {
+            return Ok(Vec::new());
+        }
+        
+        let content = tokio::fs::read_to_string(&gitignore_path).await?;
+        let patterns: Vec<String> = content
+            .lines()
+            .filter(|line| !line.trim().is_empty() && !line.trim().starts_with('#'))
+            .map(|line| line.to_string())
+            .collect();
+        
+        Ok(patterns)
+    }
+
+    pub async fn get_commit_history(&self, user_id: Uuid, limit: Option<usize>) -> Result<Vec<GitCommit>> {
+        let repo_path = self.get_user_repo_path(user_id);
+        
+        let repo = Repository::open(&repo_path)?;
+        let mut revwalk = repo.revwalk()?;
+        revwalk.push_head()?;
+        revwalk.set_sorting(git2::Sort::TIME)?;
+        
+        let limit = limit.unwrap_or(50);
+        let mut commits = Vec::new();
+        
+        for (i, oid) in revwalk.enumerate() {
+            if i >= limit {
+                break;
+            }
+            
+            let oid = oid?;
+            let commit = repo.find_commit(oid)?;
+            
+            let author = commit.author();
+            let author_name = author.name().unwrap_or("Unknown").to_string();
+            let author_email = author.email().unwrap_or("unknown@example.com").to_string();
+            
+            let timestamp = commit.time().seconds();
+            let datetime = DateTime::<Utc>::from_timestamp(timestamp, 0)
+                .unwrap_or_else(|| Utc::now());
+            
+            let parent_count = commit.parent_count();
+            let mut diff_stats = DiffStats::default();
+            
+            // Get diff stats for non-merge commits
+            if parent_count <= 1 {
+                if let Some(parent) = commit.parents().next() {
+                    let parent_tree = parent.tree()?;
+                    let commit_tree = commit.tree()?;
+                    let diff = repo.diff_tree_to_tree(Some(&parent_tree), Some(&commit_tree), None)?;
+                    
+                    let stats = diff.stats()?;
+                    diff_stats.files_changed = stats.files_changed();
+                    diff_stats.insertions = stats.insertions();
+                    diff_stats.deletions = stats.deletions();
+                } else {
+                    // First commit - count all files
+                    let tree = commit.tree()?;
+                    let diff = repo.diff_tree_to_tree(None, Some(&tree), None)?;
+                    
+                    let stats = diff.stats()?;
+                    diff_stats.files_changed = stats.files_changed();
+                    diff_stats.insertions = stats.insertions();
+                    diff_stats.deletions = stats.deletions();
+                }
+            }
+            
+            commits.push(GitCommit {
+                id: oid.to_string(),
+                message: commit.message().unwrap_or("No message").to_string(),
+                author_name,
+                author_email,
+                timestamp: datetime,
+                diff_stats: Some(diff_stats),
+            });
+        }
+        
+        Ok(commits)
+    }
+}
+
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+pub struct GitCommit {
+    pub id: String,
+    pub message: String,
+    pub author_name: String,
+    pub author_email: String,
+    pub timestamp: DateTime<Utc>,
+    pub diff_stats: Option<DiffStats>,
+}
+
+#[derive(Debug, Default, serde::Serialize, serde::Deserialize)]
+pub struct DiffStats {
+    pub files_changed: usize,
+    pub insertions: usize,
+    pub deletions: usize,
 }

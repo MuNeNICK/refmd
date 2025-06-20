@@ -19,7 +19,7 @@ use crate::{
     },
     repository::GitConfigRepository,
     services::{
-        git_sync::GitSyncService,
+        git_sync::{GitSyncService, GitCommit},
         git_diff::{GitDiffService, DiffResult},
         git_conflict::{GitConflictService, ConflictInfo, MergeResolution},
     },
@@ -185,6 +185,22 @@ pub async fn get_sync_logs(
     
     let response: Vec<GitSyncLogResponse> = logs.into_iter().map(|log| log.into()).collect();
     Ok(Json(response))
+}
+
+// GET /api/git/commits - Get commit history
+pub async fn get_commit_history(
+    State(state): State<Arc<AppState>>,
+    Extension(auth_user): Extension<AuthUser>,
+) -> crate::error::Result<Json<Vec<GitCommit>>> {
+    let git_config_repo = Arc::new(GitConfigRepository::new(state.db_pool.clone()));
+    let git_sync_service = GitSyncService::new(
+        git_config_repo,
+        state.config.upload_dir.clone().into(),
+        &state.config.jwt_secret
+    )?;
+    
+    let commits = git_sync_service.get_commit_history(auth_user.user_id, Some(50)).await?;
+    Ok(Json(commits))
 }
 
 // GET /api/git/diff/files/{file_path:.*} - Get file diff
@@ -381,6 +397,94 @@ pub async fn pull_from_remote(
     }
 }
 
+// .gitignore endpoints
+pub async fn create_gitignore(
+    State(state): State<Arc<AppState>>,
+    Extension(auth_user): Extension<AuthUser>,
+) -> crate::error::Result<Json<serde_json::Value>> {
+    let git_config_repo = Arc::new(GitConfigRepository::new(state.db_pool.clone()));
+    let git_sync_service = GitSyncService::new(
+        git_config_repo,
+        state.config.upload_dir.clone().into(),
+        &state.config.jwt_secret
+    )?;
+    
+    git_sync_service.create_default_gitignore(auth_user.user_id).await?;
+    
+    Ok(Json(serde_json::json!({
+        "success": true,
+        "message": "Default .gitignore created"
+    })))
+}
+
+#[derive(Deserialize)]
+pub struct AddGitignoreRequest {
+    patterns: Vec<String>,
+}
+
+pub async fn add_gitignore_patterns(
+    State(state): State<Arc<AppState>>,
+    Extension(auth_user): Extension<AuthUser>,
+    Json(payload): Json<AddGitignoreRequest>,
+) -> crate::error::Result<Json<serde_json::Value>> {
+    let git_config_repo = Arc::new(GitConfigRepository::new(state.db_pool.clone()));
+    let git_sync_service = GitSyncService::new(
+        git_config_repo,
+        state.config.upload_dir.clone().into(),
+        &state.config.jwt_secret
+    )?;
+    
+    git_sync_service.add_to_gitignore(auth_user.user_id, payload.patterns).await?;
+    
+    Ok(Json(serde_json::json!({
+        "success": true,
+        "message": "Patterns added to .gitignore"
+    })))
+}
+
+pub async fn get_gitignore_patterns(
+    State(state): State<Arc<AppState>>,
+    Extension(auth_user): Extension<AuthUser>,
+) -> crate::error::Result<Json<serde_json::Value>> {
+    let git_config_repo = Arc::new(GitConfigRepository::new(state.db_pool.clone()));
+    let git_sync_service = GitSyncService::new(
+        git_config_repo,
+        state.config.upload_dir.clone().into(),
+        &state.config.jwt_secret
+    )?;
+    
+    let patterns = git_sync_service.get_gitignore_patterns(auth_user.user_id).await?;
+    
+    Ok(Json(serde_json::json!({
+        "patterns": patterns
+    })))
+}
+
+#[derive(Deserialize)]
+pub struct CheckIgnoredRequest {
+    path: String,
+}
+
+pub async fn check_path_ignored(
+    State(state): State<Arc<AppState>>,
+    Extension(auth_user): Extension<AuthUser>,
+    Json(payload): Json<CheckIgnoredRequest>,
+) -> crate::error::Result<Json<serde_json::Value>> {
+    let git_config_repo = Arc::new(GitConfigRepository::new(state.db_pool.clone()));
+    let git_sync_service = GitSyncService::new(
+        git_config_repo,
+        state.config.upload_dir.clone().into(),
+        &state.config.jwt_secret
+    )?;
+    
+    let is_ignored = git_sync_service.is_path_ignored(auth_user.user_id, &payload.path).await?;
+    
+    Ok(Json(serde_json::json!({
+        "path": payload.path,
+        "is_ignored": is_ignored
+    })))
+}
+
 // Route definitions
 pub fn routes(state: Arc<AppState>) -> Router {
     Router::new()
@@ -391,6 +495,7 @@ pub fn routes(state: Arc<AppState>) -> Router {
         .route("/sync", post(manual_sync))
         .route("/status", get(get_status))
         .route("/logs", get(get_sync_logs))
+        .route("/commits", get(get_commit_history))
         .route("/pull", post(pull_from_remote))
         .route("/conflicts", get(get_conflicts))
         .route("/conflicts/resolve", post(resolve_conflict))
@@ -399,6 +504,10 @@ pub fn routes(state: Arc<AppState>) -> Router {
         .route("/diff/commits/:from/:to", get(get_commit_diff))
         .route("/diff/staged", get(get_staged_diff))
         .route("/diff/working", get(get_working_diff))
+        .route("/gitignore", post(create_gitignore))
+        .route("/gitignore/patterns", post(add_gitignore_patterns))
+        .route("/gitignore/patterns", get(get_gitignore_patterns))
+        .route("/gitignore/check", post(check_path_ignored))
         .layer(from_fn_with_state(state.clone(), auth_middleware))
         .with_state(state)
 }

@@ -10,3 +10,5 @@ pub mod git_batch_sync;
 pub mod git_diff;
 pub mod git_conflict;
 
+pub use git_sync::{GitCommit, DiffStats};
+

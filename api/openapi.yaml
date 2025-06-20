@@ -1001,6 +1001,237 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
 
+  /git/pull:
+    post:
+      tags:
+        - Git Sync
+      summary: Pull from remote
+      description: Pull changes from remote repository
+      operationId: pullFromRemote
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Pull completed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  has_conflicts:
+                    type: boolean
+                  conflicts:
+                    $ref: '#/components/schemas/ConflictInfo'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /git/conflicts:
+    get:
+      tags:
+        - Git Sync
+      summary: Get conflicts
+      description: Get current merge conflicts
+      operationId: getConflicts
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Conflicts retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConflictInfo'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /git/conflicts/resolve:
+    post:
+      tags:
+        - Git Sync
+      summary: Resolve conflict
+      description: Resolve a merge conflict for a specific file
+      operationId: resolveConflict
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MergeResolution'
+      responses:
+        '200':
+          description: Conflict resolved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /git/conflicts/abort:
+    post:
+      tags:
+        - Git Sync
+      summary: Abort merge
+      description: Abort the current merge operation
+      operationId: abortMerge
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Merge aborted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /git/gitignore:
+    post:
+      tags:
+        - Git Sync
+      summary: Create default gitignore
+      description: Create a default .gitignore file
+      operationId: createGitignore
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Gitignore created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /git/gitignore/patterns:
+    get:
+      tags:
+        - Git Sync
+      summary: Get gitignore patterns
+      description: Get current .gitignore patterns
+      operationId: getGitignorePatterns
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Patterns retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  patterns:
+                    type: array
+                    items:
+                      type: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags:
+        - Git Sync
+      summary: Add gitignore patterns
+      description: Add patterns to .gitignore
+      operationId: addGitignorePatterns
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - patterns
+              properties:
+                patterns:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: Patterns added successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /git/gitignore/check:
+    post:
+      tags:
+        - Git Sync
+      summary: Check if path is ignored
+      description: Check if a path is ignored by .gitignore
+      operationId: checkPathIgnored
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - path
+              properties:
+                path:
+                  type: string
+      responses:
+        '200':
+          description: Check completed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  path:
+                    type: string
+                  is_ignored:
+                    type: boolean
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
   # ===== Socket.IO Stats =====
   /socketio/documents/{id}/active-users:
     get:
@@ -1935,6 +2166,92 @@ components:
         content:
           type: string
           description: The actual line content
+
+    ConflictInfo:
+      type: object
+      properties:
+        has_conflicts:
+          type: boolean
+          description: Whether there are any conflicts
+        conflicted_files:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConflictedFile'
+        can_auto_merge:
+          type: boolean
+          description: Whether conflicts can be auto-merged
+        merge_message:
+          type: string
+          nullable: true
+          description: Message about the merge status
+
+    ConflictedFile:
+      type: object
+      properties:
+        file_path:
+          type: string
+          description: Path to the conflicted file
+        conflict_type:
+          type: string
+          enum: [both_modified, both_added, deleted_by_us, deleted_by_them, unknown]
+          description: Type of conflict
+        our_version:
+          type: string
+          nullable: true
+          description: Our version of the file content
+        their_version:
+          type: string
+          nullable: true
+          description: Their version of the file content
+        base_version:
+          type: string
+          nullable: true
+          description: Base version of the file content
+        markers:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConflictMarker'
+
+    ConflictMarker:
+      type: object
+      properties:
+        start_line:
+          type: integer
+          description: Line number where conflict starts
+        middle_line:
+          type: integer
+          description: Line number of the separator
+        end_line:
+          type: integer
+          description: Line number where conflict ends
+        our_content:
+          type: array
+          items:
+            type: string
+          description: Our version content lines
+        their_content:
+          type: array
+          items:
+            type: string
+          description: Their version content lines
+
+    MergeResolution:
+      type: object
+      required:
+        - file_path
+        - resolution_type
+      properties:
+        file_path:
+          type: string
+          description: Path to the file to resolve
+        resolution_type:
+          type: string
+          enum: [use_ours, use_theirs, manual, delete]
+          description: How to resolve the conflict
+        resolved_content:
+          type: string
+          nullable: true
+          description: Manual resolution content (required if resolution_type is manual)
 
     # ===== Error =====
     ErrorResponse:

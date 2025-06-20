@@ -1,5 +1,5 @@
 use crate::error::{Error, Result};
-use git2::{Delta, DiffOptions, Oid, Repository};
+use git2::{Delta, DiffOptions, Repository};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
@@ -111,13 +111,16 @@ impl GitDiffService {
     }
 
     pub fn get_commit_diff(&self, from: &str, to: &str) -> Result<Vec<DiffResult>> {
-        let from_oid = Oid::from_str(from)
-            .map_err(|e| Error::BadRequest(format!("Invalid from commit: {}", e)))?;
-        let to_oid = Oid::from_str(to)
-            .map_err(|e| Error::BadRequest(format!("Invalid to commit: {}", e)))?;
+        // Resolve commit references (supports ^, ~, etc.)
+        let from_obj = self.repository.revparse_single(from)
+            .map_err(|e| Error::BadRequest(format!("Invalid from commit reference '{}': {}", from, e)))?;
+        let to_obj = self.repository.revparse_single(to)
+            .map_err(|e| Error::BadRequest(format!("Invalid to commit reference '{}': {}", to, e)))?;
 
-        let from_commit = self.repository.find_commit(from_oid)?;
-        let to_commit = self.repository.find_commit(to_oid)?;
+        let from_commit = from_obj.peel_to_commit()
+            .map_err(|e| Error::BadRequest(format!("'{}' is not a valid commit: {}", from, e)))?;
+        let to_commit = to_obj.peel_to_commit()
+            .map_err(|e| Error::BadRequest(format!("'{}' is not a valid commit: {}", to, e)))?;
 
         let from_tree = from_commit.tree()?;
         let to_tree = to_commit.tree()?;

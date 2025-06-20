@@ -2,12 +2,15 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
+import type { ConflictInfo } from '../models/ConflictInfo';
 import type { CreateGitConfigRequest } from '../models/CreateGitConfigRequest';
 import type { DiffResult } from '../models/DiffResult';
 import type { GitConfigResponse } from '../models/GitConfigResponse';
 import type { GitStatus } from '../models/GitStatus';
 import type { GitSyncLogResponse } from '../models/GitSyncLogResponse';
 import type { GitSyncResponse } from '../models/GitSyncResponse';
+import type { MergeResolution } from '../models/MergeResolution';
+import type { GitCommit } from '../models/GitCommit';
 import type { CancelablePromise } from '../core/CancelablePromise';
 import type { BaseHttpRequest } from '../core/BaseHttpRequest';
 export class GitSyncService {
@@ -124,6 +127,20 @@ export class GitSyncService {
         });
     }
     /**
+     * Get commit history
+     * @returns GitCommit Commit history retrieved successfully
+     * @throws ApiError
+     */
+    public getCommitHistory(): CancelablePromise<Array<GitCommit>> {
+        return this.httpRequest.request({
+            method: 'GET',
+            url: '/git/commits',
+            errors: {
+                401: `Unauthorized`,
+            },
+        });
+    }
+    /**
      * Get file diff
      * Get uncommitted changes for a specific file
      * @param filePath Path to the file relative to the repository root
@@ -197,6 +214,173 @@ export class GitSyncService {
             method: 'GET',
             url: '/git/diff/working',
             errors: {
+                401: `Unauthorized`,
+            },
+        });
+    }
+    /**
+     * Pull from remote
+     * Pull changes from remote repository
+     * @returns any Pull completed
+     * @throws ApiError
+     */
+    public pullFromRemote(): CancelablePromise<{
+        success?: boolean;
+        message?: string;
+        has_conflicts?: boolean;
+        conflicts?: ConflictInfo;
+    }> {
+        return this.httpRequest.request({
+            method: 'POST',
+            url: '/git/pull',
+            errors: {
+                400: `Bad request`,
+                401: `Unauthorized`,
+            },
+        });
+    }
+    /**
+     * Get conflicts
+     * Get current merge conflicts
+     * @returns ConflictInfo Conflicts retrieved successfully
+     * @throws ApiError
+     */
+    public getConflicts(): CancelablePromise<ConflictInfo> {
+        return this.httpRequest.request({
+            method: 'GET',
+            url: '/git/conflicts',
+            errors: {
+                401: `Unauthorized`,
+            },
+        });
+    }
+    /**
+     * Resolve conflict
+     * Resolve a merge conflict for a specific file
+     * @param requestBody
+     * @returns any Conflict resolved successfully
+     * @throws ApiError
+     */
+    public resolveConflict(
+        requestBody: MergeResolution,
+    ): CancelablePromise<{
+        success?: boolean;
+        message?: string;
+    }> {
+        return this.httpRequest.request({
+            method: 'POST',
+            url: '/git/conflicts/resolve',
+            body: requestBody,
+            mediaType: 'application/json',
+            errors: {
+                400: `Bad request`,
+                401: `Unauthorized`,
+            },
+        });
+    }
+    /**
+     * Abort merge
+     * Abort the current merge operation
+     * @returns any Merge aborted successfully
+     * @throws ApiError
+     */
+    public abortMerge(): CancelablePromise<{
+        success?: boolean;
+        message?: string;
+    }> {
+        return this.httpRequest.request({
+            method: 'POST',
+            url: '/git/conflicts/abort',
+            errors: {
+                400: `Bad request`,
+                401: `Unauthorized`,
+            },
+        });
+    }
+    /**
+     * Create default gitignore
+     * Create a default .gitignore file
+     * @returns any Gitignore created successfully
+     * @throws ApiError
+     */
+    public createGitignore(): CancelablePromise<{
+        success?: boolean;
+        message?: string;
+    }> {
+        return this.httpRequest.request({
+            method: 'POST',
+            url: '/git/gitignore',
+            errors: {
+                400: `Bad request`,
+                401: `Unauthorized`,
+            },
+        });
+    }
+    /**
+     * Get gitignore patterns
+     * Get current .gitignore patterns
+     * @returns any Patterns retrieved successfully
+     * @throws ApiError
+     */
+    public getGitignorePatterns(): CancelablePromise<{
+        patterns?: Array<string>;
+    }> {
+        return this.httpRequest.request({
+            method: 'GET',
+            url: '/git/gitignore/patterns',
+            errors: {
+                401: `Unauthorized`,
+            },
+        });
+    }
+    /**
+     * Add gitignore patterns
+     * Add patterns to .gitignore
+     * @param requestBody
+     * @returns any Patterns added successfully
+     * @throws ApiError
+     */
+    public addGitignorePatterns(
+        requestBody: {
+            patterns: Array<string>;
+        },
+    ): CancelablePromise<{
+        success?: boolean;
+        message?: string;
+    }> {
+        return this.httpRequest.request({
+            method: 'POST',
+            url: '/git/gitignore/patterns',
+            body: requestBody,
+            mediaType: 'application/json',
+            errors: {
+                400: `Bad request`,
+                401: `Unauthorized`,
+            },
+        });
+    }
+    /**
+     * Check if path is ignored
+     * Check if a path is ignored by .gitignore
+     * @param requestBody
+     * @returns any Check completed successfully
+     * @throws ApiError
+     */
+    public checkPathIgnored(
+        requestBody: {
+            path: string;
+        },
+    ): CancelablePromise<{
+        path?: string;
+        is_ignored?: boolean;
+    }> {
+        return this.httpRequest.request({
+            method: 'POST',
+            url: '/git/gitignore/check',
+            body: requestBody,
+            mediaType: 'application/json',
+            errors: {
+                400: `Bad request`,
                 401: `Unauthorized`,
             },
         });

@@ -11,6 +11,9 @@ export { OpenAPI } from './core/OpenAPI';
 export type { OpenAPIConfig } from './core/OpenAPI';
 
 export type { AuthResponse } from './models/AuthResponse';
+export { ConflictedFile } from './models/ConflictedFile';
+export type { ConflictInfo } from './models/ConflictInfo';
+export type { ConflictMarker } from './models/ConflictMarker';
 export { CreateDocumentRequest } from './models/CreateDocumentRequest';
 export { CreateGitConfigRequest } from './models/CreateGitConfigRequest';
 export type { CreateScrapPostRequest } from './models/CreateScrapPostRequest';
@@ -28,6 +31,7 @@ export type { GitStatus } from './models/GitStatus';
 export { GitSyncLogResponse } from './models/GitSyncLogResponse';
 export type { GitSyncResponse } from './models/GitSyncResponse';
 export type { LoginRequest } from './models/LoginRequest';
+export { MergeResolution } from './models/MergeResolution';
 export type { RefreshTokenRequest } from './models/RefreshTokenRequest';
 export type { RegisterRequest } from './models/RegisterRequest';
 export type { Scrap } from './models/Scrap';

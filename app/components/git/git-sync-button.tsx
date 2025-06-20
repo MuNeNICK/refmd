@@ -14,10 +14,12 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { toast } from "sonner";
-import { GitBranch, GitCommit, AlertCircle, CheckCircle, Loader2, Settings, Eye, ChevronDown } from "lucide-react";
+import { GitBranch, GitCommit, AlertCircle, CheckCircle, Loader2, Settings, Eye, ChevronDown, GitPullRequest, History } from "lucide-react";
 import { getApiClient } from "@/lib/api";
 import type { GitSyncResponse } from "@/lib/api/client";
 import { GitConfigDialog } from "./git-config-dialog";
+import { ConflictResolutionDialog } from "./conflict-resolution-dialog";
+import { GitHistoryDialog } from "./git-history-dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,6 +37,8 @@ interface GitSyncButtonProps {
 export function GitSyncButton({ className, onShowDiff }: GitSyncButtonProps) {
   const queryClient = useQueryClient();
   const [showConfig, setShowConfig] = useState(false);
+  const [showConflicts, setShowConflicts] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   const { isMobile } = useSidebar();
 
   // Fetch Git status
@@ -76,6 +80,24 @@ export function GitSyncButton({ className, onShowDiff }: GitSyncButtonProps) {
     onError: (error: unknown) => {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       toast.error(`Initialization failed: ${errorMessage}`);
+    },
+  });
+
+  // Pull from remote mutation
+  const pullMutation = useMutation({
+    mutationFn: () => getApiClient().gitSync.pullFromRemote(),
+    onSuccess: (data) => {
+      if (data.has_conflicts) {
+        toast.warning("Pull completed with conflicts");
+        setShowConflicts(true);
+      } else {
+        toast.success("Pull completed successfully");
+      }
+      queryClient.invalidateQueries({ queryKey: ["git-status"] });
+    },
+    onError: (error: unknown) => {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      toast.error(`Pull failed: ${errorMessage}`);
     },
   });
 
@@ -191,14 +213,27 @@ export function GitSyncButton({ className, onShowDiff }: GitSyncButtonProps) {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent side={isMobile ? "top" : "right"} align="end" className="w-48">
-            {onShowDiff && gitStatus?.repository_initialized && (
+            {gitStatus?.repository_initialized && gitConfig && (
               <>
+                {onShowDiff && (
+                  <DropdownMenuItem 
+                    onClick={onShowDiff}
+                    disabled={(gitStatus.uncommitted_changes || 0) + (gitStatus.untracked_files || 0) === 0}
+                  >
+                    <Eye className="mr-2 h-4 w-4" />
+                    View Changes
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem 
-                  onClick={onShowDiff}
-                  disabled={!gitConfig || (gitStatus.uncommitted_changes || 0) + (gitStatus.untracked_files || 0) === 0}
+                  onClick={() => pullMutation.mutate()}
+                  disabled={pullMutation.isPending || !gitStatus.has_remote}
                 >
-                  <Eye className="mr-2 h-4 w-4" />
-                  View Changes
+                  <GitPullRequest className="mr-2 h-4 w-4" />
+                  Pull from Remote
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setShowHistory(true)}>
+                  <History className="mr-2 h-4 w-4" />
+                  View History
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
               </>
@@ -214,6 +249,19 @@ export function GitSyncButton({ className, onShowDiff }: GitSyncButtonProps) {
       <GitConfigDialog
         open={showConfig}
         onOpenChange={setShowConfig}
+      />
+      
+      <ConflictResolutionDialog
+        open={showConflicts}
+        onOpenChange={setShowConflicts}
+        onResolved={() => {
+          queryClient.invalidateQueries({ queryKey: ["git-status"] });
+        }}
+      />
+      
+      <GitHistoryDialog
+        open={showHistory}
+        onOpenChange={setShowHistory}
       />
     </>
   );
