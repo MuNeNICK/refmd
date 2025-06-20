@@ -47,12 +47,12 @@ export function GitSyncButton({ className }: GitSyncButtonProps) {
   const syncMutation = useMutation({
     mutationFn: () => getApiClient().gitSync.manualGitSync(),
     onSuccess: (data: GitSyncResponse) => {
-      toast.success(`同期完了: ${data.files_changed}個のファイルが変更されました`);
+      toast.success(`Sync complete: ${data.files_changed} files changed`);
       queryClient.invalidateQueries({ queryKey: ["git-status"] });
     },
     onError: (error: unknown) => {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      toast.error(`同期に失敗しました: ${errorMessage}`);
+      toast.error(`Sync failed: ${errorMessage}`);
       queryClient.invalidateQueries({ queryKey: ["git-status"] });
     },
   });
@@ -61,12 +61,12 @@ export function GitSyncButton({ className }: GitSyncButtonProps) {
   const initMutation = useMutation({
     mutationFn: () => getApiClient().gitSync.initGitRepository(),
     onSuccess: () => {
-      toast.success("Gitリポジトリが初期化されました");
+      toast.success("Git repository initialized");
       queryClient.invalidateQueries({ queryKey: ["git-status"] });
     },
     onError: (error: unknown) => {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      toast.error(`初期化に失敗しました: ${errorMessage}`);
+      toast.error(`Initialization failed: ${errorMessage}`);
     },
   });
 

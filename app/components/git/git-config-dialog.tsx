@@ -78,14 +78,14 @@ export function GitConfigDialog({ open, onOpenChange }: GitConfigDialogProps) {
     mutationFn: (data: CreateGitConfigRequest) =>
       getApiClient().gitSync.createOrUpdateGitConfig(data),
     onSuccess: () => {
-      toast.success("Git設定が保存されました");
+      toast.success("Git settings saved successfully");
       queryClient.invalidateQueries({ queryKey: ["git-config"] });
       queryClient.invalidateQueries({ queryKey: ["git-status"] });
       onOpenChange(false);
     },
     onError: (error: unknown) => {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      toast.error(`設定の保存に失敗しました: ${errorMessage}`);
+      toast.error(`Failed to save settings: ${errorMessage}`);
     },
   });
 
@@ -93,14 +93,14 @@ export function GitConfigDialog({ open, onOpenChange }: GitConfigDialogProps) {
   const deleteConfigMutation = useMutation({
     mutationFn: () => getApiClient().gitSync.deleteGitConfig(),
     onSuccess: () => {
-      toast.success("Git設定が削除されました");
+      toast.success("Git settings deleted successfully");
       queryClient.invalidateQueries({ queryKey: ["git-config"] });
       queryClient.invalidateQueries({ queryKey: ["git-status"] });
       onOpenChange(false);
     },
     onError: (error: unknown) => {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      toast.error(`設定の削除に失敗しました: ${errorMessage}`);
+      toast.error(`Failed to delete settings: ${errorMessage}`);
     },
   });
 
@@ -108,17 +108,17 @@ export function GitConfigDialog({ open, onOpenChange }: GitConfigDialogProps) {
     e.preventDefault();
     
     if (!formData.repository_url.trim()) {
-      toast.error("リポジトリURLを入力してください");
+      toast.error("Please enter repository URL");
       return;
     }
 
     if (formData.auth_type === CreateGitConfigRequest.auth_type.TOKEN && !formData.auth_data.token?.trim()) {
-      toast.error("Personal Access Tokenを入力してください");
+      toast.error("Please enter Personal Access Token");
       return;
     }
 
     if (formData.auth_type === CreateGitConfigRequest.auth_type.SSH && !formData.auth_data.private_key?.trim()) {
-      toast.error("SSH秘密鍵を入力してください");
+      toast.error("Please enter SSH private key");
       return;
     }
 
@@ -136,7 +136,7 @@ export function GitConfigDialog({ open, onOpenChange }: GitConfigDialogProps) {
   };
 
   const handleDelete = () => {
-    if (confirm("本当にGit設定を削除しますか？")) {
+    if (confirm("Are you sure you want to delete Git settings?")) {
       deleteConfigMutation.mutate();
     }
   };
@@ -145,18 +145,18 @@ export function GitConfigDialog({ open, onOpenChange }: GitConfigDialogProps) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Git同期設定</DialogTitle>
+          <DialogTitle>Git Sync Settings</DialogTitle>
           <DialogDescription>
-            文書をGitリポジトリと同期するための設定を行います。
+            Configure settings to sync documents with a Git repository.
           </DialogDescription>
         </DialogHeader>
 
         {isLoading ? (
-          <div className="flex justify-center py-4">読み込み中...</div>
+          <div className="flex justify-center py-4">Loading...</div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="repository_url">リポジトリURL *</Label>
+              <Label htmlFor="repository_url">Repository URL *</Label>
               <Input
                 id="repository_url"
                 type="url"
@@ -172,7 +172,7 @@ export function GitConfigDialog({ open, onOpenChange }: GitConfigDialogProps) {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="branch_name">ブランチ名</Label>
+              <Label htmlFor="branch_name">Branch name</Label>
               <Input
                 id="branch_name"
                 placeholder="main"
@@ -187,7 +187,7 @@ export function GitConfigDialog({ open, onOpenChange }: GitConfigDialogProps) {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="auth_type">認証方式</Label>
+              <Label htmlFor="auth_type">Authentication method</Label>
               <Select
                 value={formData.auth_type}
                 onValueChange={(value: CreateGitConfigRequest.auth_type) =>
@@ -224,12 +224,12 @@ export function GitConfigDialog({ open, onOpenChange }: GitConfigDialogProps) {
                   }
                 />
                 <p className="text-sm text-muted-foreground">
-                  GitHubの場合: Settings → Developer settings → Personal access tokens → Generate new token
+                  For GitHub: Settings → Developer settings → Personal access tokens → Generate new token
                 </p>
               </div>
             ) : (
               <div className="space-y-2">
-                <Label htmlFor="private_key">SSH秘密鍵 *</Label>
+                <Label htmlFor="private_key">SSH Private Key *</Label>
                 <Textarea
                   id="private_key"
                   placeholder="-----BEGIN OPENSSH PRIVATE KEY-----
@@ -246,9 +246,7 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
                   className="font-mono text-sm"
                 />
                 <p className="text-sm text-muted-foreground">
-                  SSH秘密鍵の内容を貼り付けてください。通常は ~/.ssh/id_rsa や ~/.ssh/id_ed25519 ファイルの内容です。
-                  <br />
-                  注意: 秘密鍵は安全に暗号化されて保存されます。
+                  Please paste the SSH private key content. Usually the contents of ~/.ssh/id_rsa or ~/.ssh/id_ed25519 file.
                 </p>
               </div>
             )}
@@ -266,12 +264,12 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
                 }
                 className="rounded border-gray-300"
               />
-              <Label htmlFor="auto_sync">文書保存時に自動同期する</Label>
+              <Label htmlFor="auto_sync">Auto-sync when saving documents</Label>
             </div>
 
             <Alert>
               <AlertDescription>
-                認証情報は暗号化されて安全に保存されます。リポジトリには読み書き権限が必要です。
+                Authentication information is encrypted and stored securely. The repository requires read and write permissions.
               </AlertDescription>
             </Alert>
 
@@ -284,7 +282,7 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
                     onClick={handleDelete}
                     disabled={deleteConfigMutation.isPending}
                   >
-                    {deleteConfigMutation.isPending ? "削除中..." : "設定を削除"}
+                    {deleteConfigMutation.isPending ? "Deleting..." : "Delete Settings"}
                   </Button>
                 )}
               </div>
@@ -294,13 +292,13 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
                   variant="outline"
                   onClick={() => onOpenChange(false)}
                 >
-                  キャンセル
+                  Cancel
                 </Button>
                 <Button
                   type="submit"
                   disabled={saveConfigMutation.isPending}
                 >
-                  {saveConfigMutation.isPending ? "保存中..." : "保存"}
+                  {saveConfigMutation.isPending ? "Saving..." : "Save"}
                 </Button>
               </div>
             </DialogFooter>

@@ -42,13 +42,13 @@ export function GitSyncLogs({ className }: GitSyncLogsProps) {
   const getOperationLabel = (operation: string) => {
     switch (operation) {
       case "init":
-        return "初期化";
+        return "Initialize";
       case "commit":
-        return "コミット";
+        return "Commit";
       case "push":
-        return "プッシュ";
+        return "Push";
       case "pull":
-        return "プル";
+        return "Pull";
       default:
         return operation;
     }
@@ -59,14 +59,14 @@ export function GitSyncLogs({ className }: GitSyncLogsProps) {
       return (
         <Badge variant="default" className="gap-1">
           <CheckCircle className="h-3 w-3" />
-          成功
+          Success
         </Badge>
       );
     } else {
       return (
         <Badge variant="destructive" className="gap-1">
           <AlertCircle className="h-3 w-3" />
-          失敗
+          Failed
         </Badge>
       );
     }
@@ -90,10 +90,10 @@ export function GitSyncLogs({ className }: GitSyncLogsProps) {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <AlertCircle className="h-5 w-5" />
-            Git同期ログ
+            Git Sync Logs
           </CardTitle>
           <CardDescription>
-            ログの取得に失敗しました。Git設定を確認してください。
+            Failed to fetch logs. Please check Git settings.
           </CardDescription>
         </CardHeader>
       </Card>
@@ -105,18 +105,18 @@ export function GitSyncLogs({ className }: GitSyncLogsProps) {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Clock className="h-5 w-5" />
-          Git同期ログ
+          Git Sync Logs
         </CardTitle>
         <CardDescription>
-          最新の同期操作の履歴を表示します
+          Displays the history of recent sync operations
         </CardDescription>
       </CardHeader>
       <CardContent>
         {isLoading ? (
-          <div className="flex justify-center py-4">読み込み中...</div>
+          <div className="flex justify-center py-4">Loading...</div>
         ) : !logs || logs.length === 0 ? (
           <div className="text-center py-4 text-muted-foreground">
-            同期ログがありません
+            No sync logs
           </div>
         ) : (
           <ScrollArea className="h-[300px] w-full">
