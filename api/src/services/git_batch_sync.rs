@@ -128,6 +128,8 @@ impl GitBatchSyncService {
                     match git_sync.sync(user_id, Some(commit_message), false).await {
                         Ok(_) => {
                             tracing::info!("Batch git sync completed for user {} (retry: {})", user_id, sync.retry_count);
+                            // TODO: Notify frontend via Socket.IO
+                            // This would require adding Socket.IO integration to the batch sync service
                         }
                         Err(e) => {
                             tracing::error!("Batch git sync failed for user {} (retry: {}): {}", user_id, sync.retry_count, e);

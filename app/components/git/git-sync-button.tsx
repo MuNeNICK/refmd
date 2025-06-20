@@ -32,7 +32,7 @@ export function GitSyncButton({ className }: GitSyncButtonProps) {
   const { data: gitStatus, isLoading: statusLoading, error: statusError } = useQuery({
     queryKey: ["git-status"],
     queryFn: () => getApiClient().gitSync.getGitStatus(),
-    refetchInterval: 30000, // Refetch every 30 seconds
+    refetchInterval: 10000, // Refetch every 10 seconds
     retry: false,
   });
 

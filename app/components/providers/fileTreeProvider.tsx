@@ -202,6 +202,8 @@ export function FileTreeProvider({ children }: { children: React.ReactNode }) {
   const refreshDocuments = useCallback(() => {
     // Invalidate and refetch the documents query
     queryClient.invalidateQueries({ queryKey: ['documents', user?.id] });
+    // Also refresh git status when documents are refreshed
+    queryClient.invalidateQueries({ queryKey: ['git-status'] });
   }, [queryClient, user]);
 
   const updateDocuments = useCallback((newDocuments: DocumentNode[]) => {
