@@ -21,9 +21,10 @@ use crate::{
     services::{
         git_sync::GitSyncService,
         git_diff::{GitDiffService, DiffResult},
+        git_conflict::{GitConflictService, ConflictInfo, MergeResolution},
     },
     utils::encryption::EncryptionService,
-    error::{Error, Result},
+    error::{Error},
     state::AppState,
     middleware::auth::{auth_middleware, AuthUser},
 };
@@ -44,7 +45,7 @@ pub async fn create_or_update_config(
     State(state): State<Arc<AppState>>,
     Extension(auth_user): Extension<AuthUser>,
     Json(request): Json<CreateGitConfigRequest>,
-) -> Result<Json<GitConfigResponse>> {
+) -> crate::error::Result<Json<GitConfigResponse>> {
     let git_config_repo = Arc::new(GitConfigRepository::new(state.db_pool.clone()));
     let encryption_service = EncryptionService::new(&state.config.jwt_secret)?;
     
@@ -109,7 +110,7 @@ pub async fn create_or_update_config(
 pub async fn get_config(
     State(state): State<Arc<AppState>>,
     Extension(auth_user): Extension<AuthUser>,
-) -> Result<Json<Option<GitConfigResponse>>> {
+) -> crate::error::Result<Json<Option<GitConfigResponse>>> {
     let git_config_repo = Arc::new(GitConfigRepository::new(state.db_pool.clone()));
     
     let config = git_config_repo.get_by_user_id(auth_user.user_id).await?;
@@ -120,7 +121,7 @@ pub async fn get_config(
 pub async fn delete_config(
     State(state): State<Arc<AppState>>,
     Extension(auth_user): Extension<AuthUser>,
-) -> Result<StatusCode> {
+) -> crate::error::Result<StatusCode> {
     let git_config_repo = Arc::new(GitConfigRepository::new(state.db_pool.clone()));
     
     git_config_repo.delete(auth_user.user_id).await?;
@@ -131,7 +132,7 @@ pub async fn delete_config(
 pub async fn manual_sync(
     State(state): State<Arc<AppState>>,
     Extension(auth_user): Extension<AuthUser>,
-) -> Result<Json<GitSyncResponse>> {
+) -> crate::error::Result<Json<GitSyncResponse>> {
     let git_config_repo = Arc::new(GitConfigRepository::new(state.db_pool.clone()));
     let git_sync_service = GitSyncService::new(git_config_repo, state.config.upload_dir.clone().into(), &state.config.jwt_secret)?;
     
@@ -148,7 +149,7 @@ pub async fn manual_sync(
 pub async fn get_status(
     State(state): State<Arc<AppState>>,
     Extension(auth_user): Extension<AuthUser>,
-) -> Result<Json<GitStatus>> {
+) -> crate::error::Result<Json<GitStatus>> {
     let git_config_repo = Arc::new(GitConfigRepository::new(state.db_pool.clone()));
     let git_sync_service = GitSyncService::new(git_config_repo, state.config.upload_dir.clone().into(), &state.config.jwt_secret)?;
     
@@ -160,7 +161,7 @@ pub async fn get_status(
 pub async fn init_repository(
     State(state): State<Arc<AppState>>,
     Extension(auth_user): Extension<AuthUser>,
-) -> Result<Json<serde_json::Value>> {
+) -> crate::error::Result<Json<serde_json::Value>> {
     let git_config_repo = Arc::new(GitConfigRepository::new(state.db_pool.clone()));
     let git_sync_service = GitSyncService::new(git_config_repo, state.config.upload_dir.clone().into(), &state.config.jwt_secret)?;
     
@@ -176,7 +177,7 @@ pub async fn init_repository(
 pub async fn get_sync_logs(
     State(state): State<Arc<AppState>>,
     Extension(auth_user): Extension<AuthUser>,
-) -> Result<Json<Vec<GitSyncLogResponse>>> {
+) -> crate::error::Result<Json<Vec<GitSyncLogResponse>>> {
     let git_config_repo = Arc::new(GitConfigRepository::new(state.db_pool.clone()));
     
     let limit = 50;
@@ -191,7 +192,7 @@ pub async fn get_file_diff(
     State(state): State<Arc<AppState>>,
     Extension(auth_user): Extension<AuthUser>,
     Path(file_path): Path<String>,
-) -> Result<Json<DiffResult>> {
+) -> crate::error::Result<Json<DiffResult>> {
     let user_dir = std::path::Path::new(&state.config.upload_dir)
         .join(auth_user.user_id.to_string());
     
@@ -226,7 +227,7 @@ pub async fn get_commit_diff(
     State(state): State<Arc<AppState>>,
     Extension(auth_user): Extension<AuthUser>,
     Path((from, to)): Path<(String, String)>,
-) -> Result<Json<Vec<DiffResult>>> {
+) -> crate::error::Result<Json<Vec<DiffResult>>> {
     let user_dir = std::path::Path::new(&state.config.upload_dir)
         .join(auth_user.user_id.to_string());
     
@@ -250,7 +251,7 @@ pub async fn get_commit_diff(
 pub async fn get_staged_diff(
     State(state): State<Arc<AppState>>,
     Extension(auth_user): Extension<AuthUser>,
-) -> Result<Json<Vec<DiffResult>>> {
+) -> crate::error::Result<Json<Vec<DiffResult>>> {
     let user_dir = std::path::Path::new(&state.config.upload_dir)
         .join(auth_user.user_id.to_string());
     
@@ -274,7 +275,7 @@ pub async fn get_staged_diff(
 pub async fn get_working_diff(
     State(state): State<Arc<AppState>>,
     Extension(auth_user): Extension<AuthUser>,
-) -> Result<Json<Vec<DiffResult>>> {
+) -> crate::error::Result<Json<Vec<DiffResult>>> {
     let user_dir = std::path::Path::new(&state.config.upload_dir)
         .join(auth_user.user_id.to_string());
     // Check if directory exists
@@ -292,6 +293,94 @@ pub async fn get_working_diff(
     Ok(Json(diff_results))
 }
 
+// GET /api/git/conflicts - Get current conflicts
+pub async fn get_conflicts(
+    State(state): State<Arc<AppState>>,
+    Extension(auth_user): Extension<AuthUser>,
+) -> crate::error::Result<Json<ConflictInfo>> {
+    let git_config_repo = Arc::new(GitConfigRepository::new(state.db_pool.clone()));
+    let git_sync_service = GitSyncService::new(
+        git_config_repo,
+        state.config.upload_dir.clone().into(),
+        &state.config.jwt_secret
+    )?;
+    
+    let conflicts = git_sync_service.get_conflicts(auth_user.user_id).await?;
+    Ok(Json(conflicts))
+}
+
+// POST /api/git/conflicts/resolve - Resolve a conflict
+pub async fn resolve_conflict(
+    State(state): State<Arc<AppState>>,
+    Extension(auth_user): Extension<AuthUser>,
+    Json(resolution): Json<MergeResolution>,
+) -> crate::error::Result<Json<serde_json::Value>> {
+    let git_conflict_service = GitConflictService::new(
+        state.config.upload_dir.clone().into()
+    );
+    
+    git_conflict_service.resolve_conflict(auth_user.user_id, resolution).await?;
+    
+    Ok(Json(serde_json::json!({
+        "success": true,
+        "message": "Conflict resolved successfully"
+    })))
+}
+
+// POST /api/git/conflicts/abort - Abort merge with conflicts
+pub async fn abort_merge(
+    State(state): State<Arc<AppState>>,
+    Extension(auth_user): Extension<AuthUser>,
+) -> crate::error::Result<Json<serde_json::Value>> {
+    let git_conflict_service = GitConflictService::new(
+        state.config.upload_dir.clone().into()
+    );
+    
+    git_conflict_service.abort_merge(auth_user.user_id).await?;
+    
+    Ok(Json(serde_json::json!({
+        "success": true,
+        "message": "Merge aborted successfully"
+    })))
+}
+
+// POST /api/git/pull - Pull from remote with conflict detection
+pub async fn pull_from_remote(
+    State(state): State<Arc<AppState>>,
+    Extension(auth_user): Extension<AuthUser>,
+) -> crate::error::Result<Json<serde_json::Value>> {
+    let git_config_repo = Arc::new(GitConfigRepository::new(state.db_pool.clone()));
+    let git_sync_service = GitSyncService::new(
+        git_config_repo,
+        state.config.upload_dir.clone().into(),
+        &state.config.jwt_secret
+    )?;
+    
+    match git_sync_service.pull_from_remote(auth_user.user_id).await {
+        Ok(_) => {
+            Ok(Json(serde_json::json!({
+                "success": true,
+                "message": "Pull completed successfully",
+                "has_conflicts": false
+            })))
+        },
+        Err(e) => {
+            if e.to_string().contains("conflicts detected") {
+                // Get conflict details
+                let conflicts = git_sync_service.get_conflicts(auth_user.user_id).await?;
+                Ok(Json(serde_json::json!({
+                    "success": false,
+                    "message": "Pull completed with conflicts",
+                    "has_conflicts": true,
+                    "conflicts": conflicts
+                })))
+            } else {
+                Err(e)
+            }
+        }
+    }
+}
+
 // Route definitions
 pub fn routes(state: Arc<AppState>) -> Router {
     Router::new()
@@ -302,6 +391,10 @@ pub fn routes(state: Arc<AppState>) -> Router {
         .route("/sync", post(manual_sync))
         .route("/status", get(get_status))
         .route("/logs", get(get_sync_logs))
+        .route("/pull", post(pull_from_remote))
+        .route("/conflicts", get(get_conflicts))
+        .route("/conflicts/resolve", post(resolve_conflict))
+        .route("/conflicts/abort", post(abort_merge))
         .route("/diff/files/*file_path", get(get_file_diff))
         .route("/diff/commits/:from/:to", get(get_commit_diff))
         .route("/diff/staged", get(get_staged_diff))

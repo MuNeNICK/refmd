@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::collections::HashMap;
-use git2::{Repository, Signature, RemoteCallbacks, Cred, PushOptions, FetchOptions};
+use git2::{Repository, Signature, RemoteCallbacks, Cred, PushOptions, FetchOptions, MergeOptions};
 use uuid::Uuid;
 use chrono::{Utc, DateTime};
 use tokio::sync::RwLock;
@@ -10,6 +10,7 @@ use crate::{
     entities::git_config::{GitConfig, GitStatus, GitSyncResponse},
     repository::GitConfigRepository,
     utils::encryption::EncryptionService,
+    services::git_conflict::{GitConflictService, ConflictInfo},
     error::{Error, Result},
 };
 
@@ -311,14 +312,42 @@ impl GitSyncService {
 
         match pull_result {
             Ok(_) => {
-                self.git_config_repo.log_sync_operation(
-                    user_id,
-                    "pull",
-                    "success",
-                    Some("Successfully pulled from remote"),
-                    None,
-                ).await?;
-                Ok(())
+                // After successful fetch, try to merge
+                let merge_result = self.merge_fetched_branch(user_id, &config.branch_name).await;
+                
+                match merge_result {
+                    Ok(conflict_info) => {
+                        if conflict_info.has_conflicts {
+                            self.git_config_repo.log_sync_operation(
+                                user_id,
+                                "pull",
+                                "conflict",
+                                Some("Pull completed with conflicts"),
+                                None,
+                            ).await?;
+                            return Err(Error::BadRequest("Pull completed but conflicts detected".to_string()));
+                        } else {
+                            self.git_config_repo.log_sync_operation(
+                                user_id,
+                                "pull",
+                                "success",
+                                Some("Successfully pulled and merged from remote"),
+                                None,
+                            ).await?;
+                            Ok(())
+                        }
+                    },
+                    Err(e) => {
+                        self.git_config_repo.log_sync_operation(
+                            user_id,
+                            "pull",
+                            "error",
+                            Some(&format!("Merge failed: {}", e)),
+                            None,
+                        ).await?;
+                        Err(e)
+                    }
+                }
             },
             Err(e) => {
                 self.git_config_repo.log_sync_operation(
@@ -331,6 +360,109 @@ impl GitSyncService {
                 Err(Error::BadRequest(format!("Failed to pull: {}", e)))
             }
         }
+    }
+
+    async fn merge_fetched_branch(&self, user_id: Uuid, branch_name: &str) -> Result<ConflictInfo> {
+        let repo_path = self.get_user_repo_path(user_id);
+        
+        // Perform git operations in a synchronous block
+        let merge_result = {
+            let repo = Repository::open(&repo_path)?;
+            
+            // Get the fetched branch reference
+            let fetch_head = format!("refs/remotes/origin/{}", branch_name);
+            let annotated_commit = repo.find_annotated_commit(
+                repo.refname_to_id(&fetch_head)?
+            )?;
+            
+            // Perform merge analysis
+            let (merge_analysis, _) = repo.merge_analysis(&[&annotated_commit])?;
+            
+            if merge_analysis.is_up_to_date() {
+                // Nothing to merge
+                return Ok(ConflictInfo {
+                    has_conflicts: false,
+                    conflicted_files: vec![],
+                    can_auto_merge: true,
+                    merge_message: Some("Already up to date".to_string()),
+                });
+            }
+            
+            if merge_analysis.is_fast_forward() {
+                // Fast-forward merge
+                let refname = format!("refs/heads/{}", branch_name);
+                let mut reference = repo.find_reference(&refname)?;
+                reference.set_target(annotated_commit.id(), "Fast-forward merge")?;
+                repo.set_head(&refname)?;
+                repo.checkout_head(None)?;
+                
+                return Ok(ConflictInfo {
+                    has_conflicts: false,
+                    conflicted_files: vec![],
+                    can_auto_merge: true,
+                    merge_message: Some("Fast-forward merge completed".to_string()),
+                });
+            }
+            
+            // Normal merge required
+            let mut merge_options = MergeOptions::new();
+            repo.merge(&[&annotated_commit], Some(&mut merge_options), None)?;
+            
+            // Return whether we need to check for conflicts
+            true
+        };
+        
+        // If merge was performed, check for conflicts
+        if merge_result {
+            let conflict_service = GitConflictService::new(self.upload_dir.clone());
+            let conflict_info = conflict_service.detect_conflicts(user_id).await?;
+            
+            if !conflict_info.has_conflicts {
+                // No conflicts, create merge commit in a synchronous block
+                {
+                    let repo = Repository::open(&repo_path)?;
+                    let fetch_head = format!("refs/remotes/origin/{}", branch_name);
+                    let annotated_commit = repo.find_annotated_commit(
+                        repo.refname_to_id(&fetch_head)?
+                    )?;
+                    
+                    let signature = Signature::now("RefMD System", "system@refmd.local")?;
+                    let head = repo.head()?.peel_to_commit()?;
+                    let fetched = repo.find_commit(annotated_commit.id())?;
+                    
+                    let mut index = repo.index()?;
+                    let tree_id = index.write_tree()?;
+                    let tree = repo.find_tree(tree_id)?;
+                    
+                    repo.commit(
+                        Some("HEAD"),
+                        &signature,
+                        &signature,
+                        &format!("Merge branch '{}' from remote", branch_name),
+                        &tree,
+                        &[&head, &fetched],
+                    )?;
+                    
+                    // Clean up merge state
+                    repo.cleanup_state()?;
+                }
+            }
+            
+            Ok(conflict_info)
+        } else {
+            // This shouldn't happen, but just in case
+            Ok(ConflictInfo {
+                has_conflicts: false,
+                conflicted_files: vec![],
+                can_auto_merge: true,
+                merge_message: Some("Merge completed".to_string()),
+            })
+        }
+    }
+
+    pub async fn get_conflicts(&self, user_id: Uuid) -> Result<ConflictInfo> {
+        let conflict_service = GitConflictService::new(self.upload_dir.clone());
+        conflict_service.detect_conflicts(user_id).await
     }
 
     pub async fn sync(&self, user_id: Uuid, message: Option<String>, _force: bool) -> Result<GitSyncResponse> {
