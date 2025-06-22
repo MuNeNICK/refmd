@@ -9,12 +9,12 @@ import { Skeleton } from '@/components/ui/skeleton';
 import {
   AlertCircle,
   RefreshCw,
-  FileText,
-  ChevronRight,
-  ChevronDown,
 } from 'lucide-react';
 import type { DiffResult } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { getDiffStats } from '@/lib/git/diff-utils';
+import { FileExpander } from './file-expander';
+import { DiffViewer } from './diff-viewer';
 
 interface CommitDiffPanelProps {
   commitId: string;
@@ -64,41 +64,6 @@ export function CommitDiffPanel({ commitId, className }: CommitDiffPanelProps) {
     });
   };
 
-  const getDiffStats = (diff: DiffResult) => {
-    let additions = 0;
-    let deletions = 0;
-    
-    if (diff.diff_lines) {
-      diff.diff_lines.forEach(line => {
-        if (line.line_type === 'added') additions++;
-        else if (line.line_type === 'deleted') deletions++;
-      });
-    }
-    
-    return { additions, deletions };
-  };
-
-  const getLineTypeClass = (lineType: string | undefined) => {
-    switch (lineType) {
-      case 'added':
-        return 'bg-green-50 dark:bg-green-950/30 text-green-900 dark:text-green-100';
-      case 'deleted':
-        return 'bg-red-50 dark:bg-red-950/30 text-red-900 dark:text-red-100';
-      default:
-        return '';
-    }
-  };
-
-  const getLinePrefix = (lineType: string | undefined) => {
-    switch (lineType) {
-      case 'added':
-        return '+';
-      case 'deleted':
-        return '-';
-      default:
-        return ' ';
-    }
-  };
 
   if (loading) {
     return (
@@ -155,67 +120,23 @@ export function CommitDiffPanel({ commitId, className }: CommitDiffPanelProps) {
         </div>
 
         {diffs.map((diff) => {
-          const { additions, deletions } = getDiffStats(diff);
+          const stats = getDiffStats(diff);
           const isExpanded = diff.file_path ? expandedFiles.has(diff.file_path) : false;
 
           return (
-            <div key={diff.file_path} className="border rounded-lg">
-              <button
-                className="w-full flex items-center gap-2 p-3 hover:bg-accent/50 transition-colors"
-                onClick={() => diff.file_path && toggleFile(diff.file_path)}
-              >
-                {isExpanded ? (
-                  <ChevronDown className="h-4 w-4 flex-shrink-0" />
-                ) : (
-                  <ChevronRight className="h-4 w-4 flex-shrink-0" />
-                )}
-                <FileText className="h-4 w-4 flex-shrink-0" />
-                <span className="font-mono text-sm flex-1 text-left truncate">
-                  {diff.file_path}
-                </span>
-                <div className="flex items-center gap-2 text-xs">
-                  <span className="text-green-600 dark:text-green-400">
-                    +{additions}
-                  </span>
-                  <span className="text-red-600 dark:text-red-400">
-                    -{deletions}
-                  </span>
-                </div>
-              </button>
-
-              {isExpanded && diff.diff_lines && diff.diff_lines.length > 0 && (
-                <div className="border-t">
-                  <div className="font-mono text-xs overflow-x-auto">
-                    <table className="w-full">
-                      <tbody>
-                        {diff.diff_lines.map((line, idx) => (
-                          <tr
-                            key={idx}
-                            className={cn(
-                              'hover:bg-accent/25',
-                              getLineTypeClass(line.line_type)
-                            )}
-                          >
-                            <td className="w-12 px-2 py-0.5 text-right text-muted-foreground select-none">
-                              {line.old_line_number || ''}
-                            </td>
-                            <td className="w-12 px-2 py-0.5 text-right text-muted-foreground select-none">
-                              {line.new_line_number || ''}
-                            </td>
-                            <td className="px-2 py-0.5 select-none">
-                              {getLinePrefix(line.line_type)}
-                            </td>
-                            <td className="px-2 py-0.5 whitespace-pre-wrap break-all">
-                              {line.content}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+            <FileExpander
+              key={diff.file_path}
+              filePath={diff.file_path || ''}
+              isExpanded={isExpanded}
+              onToggle={() => diff.file_path && toggleFile(diff.file_path)}
+              stats={stats}
+            >
+              {diff.diff_lines && diff.diff_lines.length > 0 && (
+                <div className="p-4">
+                  <DiffViewer diffResult={diff} viewMode="unified" />
                 </div>
               )}
-            </div>
+            </FileExpander>
           );
         })}
       </div>

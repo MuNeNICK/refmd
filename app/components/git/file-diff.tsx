@@ -8,6 +8,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FileIcon, GitBranchIcon } from 'lucide-react';
+import { getDiffStats } from '@/lib/git/diff-utils';
 
 interface FileDiffProps {
   filePath: string;
@@ -65,7 +66,7 @@ export function FileDiff({ filePath, className }: FileDiffProps) {
   }
 
   const hasChanges = diffResult.diff_lines && diffResult.diff_lines.length > 0;
-  const stats = calculateDiffStats(diffResult);
+  const stats = getDiffStats(diffResult);
 
   return (
     <div className={className}>
@@ -113,14 +114,3 @@ export function FileDiff({ filePath, className }: FileDiffProps) {
   );
 }
 
-function calculateDiffStats(diffResult: DiffResult) {
-  let additions = 0;
-  let deletions = 0;
-
-  diffResult.diff_lines?.forEach(line => {
-    if (line.line_type === 'added') additions++;
-    if (line.line_type === 'deleted') deletions++;
-  });
-
-  return { additions, deletions };
-}

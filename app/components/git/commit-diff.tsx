@@ -7,8 +7,10 @@ import { DiffViewer } from './diff-viewer';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { GitCommitIcon, ChevronDownIcon, ChevronRightIcon } from 'lucide-react';
+import { GitCommitIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { getDiffStats, calculateTotalStats } from '@/lib/git/diff-utils';
+import { FileExpander } from './file-expander';
 
 interface CommitDiffProps {
   fromCommit: string;
@@ -135,42 +137,22 @@ export function CommitDiff({ fromCommit, toCommit, className }: CommitDiffProps)
         {diffResults.map((diffResult) => {
           const filePath = diffResult.file_path || '';
           const isExpanded = expandedFiles.has(filePath);
-          const fileStats = calculateDiffStats(diffResult);
+          const fileStats = getDiffStats(diffResult);
           
           return (
-            <div key={filePath} className="border rounded-md">
-              <button
-                onClick={() => toggleFileExpansion(filePath)}
-                className="w-full px-4 py-2 flex items-center justify-between hover:bg-muted/50 transition-colors"
-              >
-                <div className="flex items-center gap-2">
-                  {isExpanded ? (
-                    <ChevronDownIcon className="w-4 h-4" />
-                  ) : (
-                    <ChevronRightIcon className="w-4 h-4" />
-                  )}
-                  <span className="font-mono text-sm">{filePath}</span>
-                </div>
-                <div className="flex items-center gap-4 text-sm">
-                  <span className="text-green-600 dark:text-green-400">
-                    +{fileStats.additions}
-                  </span>
-                  <span className="text-red-600 dark:text-red-400">
-                    -{fileStats.deletions}
-                  </span>
-                </div>
-              </button>
-
-              {isExpanded && (
-                <div className="border-t">
-                  <DiffViewer
-                    diffResult={diffResult}
-                    viewMode={viewMode}
-                    showLineNumbers={true}
-                  />
-                </div>
-              )}
-            </div>
+            <FileExpander
+              key={filePath}
+              filePath={filePath}
+              isExpanded={isExpanded}
+              onToggle={() => toggleFileExpansion(filePath)}
+              stats={fileStats}
+            >
+              <DiffViewer
+                diffResult={diffResult}
+                viewMode={viewMode}
+                showLineNumbers={true}
+              />
+            </FileExpander>
           );
         })}
       </div>
@@ -178,27 +160,3 @@ export function CommitDiff({ fromCommit, toCommit, className }: CommitDiffProps)
   );
 }
 
-function calculateDiffStats(diffResult: DiffResult) {
-  let additions = 0;
-  let deletions = 0;
-
-  diffResult.diff_lines?.forEach(line => {
-    if (line.line_type === 'added') additions++;
-    if (line.line_type === 'deleted') deletions++;
-  });
-
-  return { additions, deletions };
-}
-
-function calculateTotalStats(diffResults: DiffResult[]) {
-  let additions = 0;
-  let deletions = 0;
-
-  diffResults.forEach(result => {
-    const stats = calculateDiffStats(result);
-    additions += stats.additions;
-    deletions += stats.deletions;
-  });
-
-  return { additions, deletions };
-}

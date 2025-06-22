@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Badge } from "@/components/ui/badge";
 import {
   Tooltip,
   TooltipContent,
@@ -14,7 +13,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { toast } from "sonner";
-import { GitBranch, GitCommit, AlertCircle, CheckCircle, Loader2, Settings, Eye, ChevronDown, GitPullRequest, History } from "lucide-react";
+import { GitCommit, AlertCircle, CheckCircle, Loader2, Settings, Eye, ChevronDown, GitPullRequest, History } from "lucide-react";
 import { getApiClient } from "@/lib/api";
 import type { GitSyncResponse } from "@/lib/api/client";
 import { GitConfigDialog } from "./git-config-dialog";

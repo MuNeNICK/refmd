@@ -10,12 +10,11 @@ import { Button } from '@/components/ui/button';
 import { 
   GitBranchIcon, 
   RefreshCwIcon,
-  ChevronDownIcon, 
-  ChevronRightIcon,
-  FileIcon,
   AlertCircleIcon
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { getDiffStats, calculateTotalStats } from '@/lib/git/diff-utils';
+import { FileExpander } from './file-expander';
 
 interface WorkingDiffPanelProps {
   documentPath?: string;
@@ -167,46 +166,23 @@ export function WorkingDiffPanel({
             {relevantDiffs.map((diffResult) => {
               const filePath = diffResult.file_path || '';
               const isExpanded = expandedFiles.has(filePath);
-              const fileStats = calculateDiffStats(diffResult);
+              const fileStats = getDiffStats(diffResult);
               
               return (
-                <div key={filePath} className="border rounded">
-                  <button
-                    onClick={() => toggleFileExpansion(filePath)}
-                    className="w-full px-3 py-2 flex items-center justify-between hover:bg-muted/50 transition-colors text-sm"
-                  >
-                    <div className="flex items-center gap-2">
-                      {isExpanded ? (
-                        <ChevronDownIcon className="w-4 h-4" />
-                      ) : (
-                        <ChevronRightIcon className="w-4 h-4" />
-                      )}
-                      <FileIcon className="w-3 h-3" />
-                      <span className="font-mono text-xs truncate">
-                        {filePath}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-3 text-xs">
-                      <span className="text-green-600 dark:text-green-400">
-                        +{fileStats.additions}
-                      </span>
-                      <span className="text-red-600 dark:text-red-400">
-                        -{fileStats.deletions}
-                      </span>
-                    </div>
-                  </button>
-
-                  {isExpanded && (
-                    <div className="border-t">
-                      <DiffViewer
-                        diffResult={diffResult}
-                        viewMode={viewMode}
-                        showLineNumbers={true}
-                        className=""
-                      />
-                    </div>
-                  )}
-                </div>
+                <FileExpander
+                  key={filePath}
+                  filePath={filePath}
+                  isExpanded={isExpanded}
+                  onToggle={() => toggleFileExpansion(filePath)}
+                  stats={fileStats}
+                >
+                  <DiffViewer
+                    diffResult={diffResult}
+                    viewMode={viewMode}
+                    showLineNumbers={true}
+                    className=""
+                  />
+                </FileExpander>
               );
             })}
           </div>
@@ -224,27 +200,3 @@ export function WorkingDiffPanel({
   );
 }
 
-function calculateDiffStats(diffResult: DiffResult) {
-  let additions = 0;
-  let deletions = 0;
-
-  diffResult.diff_lines?.forEach(line => {
-    if (line.line_type === 'added') additions++;
-    if (line.line_type === 'deleted') deletions++;
-  });
-
-  return { additions, deletions };
-}
-
-function calculateTotalStats(diffResults: DiffResult[]) {
-  let additions = 0;
-  let deletions = 0;
-
-  diffResults.forEach(result => {
-    const stats = calculateDiffStats(result);
-    additions += stats.additions;
-    deletions += stats.deletions;
-  });
-
-  return { additions, deletions };
-}

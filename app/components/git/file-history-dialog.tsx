@@ -21,8 +21,6 @@ import {
   AlertCircle,
   RefreshCw,
   Eye,
-  ChevronRight,
-  ChevronDown,
   Columns2,
   AlignLeft
 } from "lucide-react";

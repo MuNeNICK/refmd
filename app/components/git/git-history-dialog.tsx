@@ -24,9 +24,6 @@ import {
   Eye,
   User,
   GitBranch,
-  FileText,
-  ChevronRight,
-  ChevronDown,
   Columns2,
   AlignLeft,
 } from 'lucide-react';
@@ -35,6 +32,9 @@ import type { GitCommit, DiffResult } from '@/lib/api/client';
 import { GitDiffDialog } from './git-diff-dialog';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { getDiffStats } from '@/lib/git/diff-utils';
+import { FileExpander } from './file-expander';
+import { DiffViewer } from './diff-viewer';
 
 interface GitHistoryDialogProps {
   open: boolean;
@@ -119,130 +119,8 @@ export function GitHistoryDialog({
     });
   };
 
-  const getDiffStats = (diff: DiffResult) => {
-    let additions = 0;
-    let deletions = 0;
-    
-    if (diff.diff_lines) {
-      diff.diff_lines.forEach(line => {
-        if (line.line_type === 'added') additions++;
-        else if (line.line_type === 'deleted') deletions++;
-      });
-    }
-    
-    return { additions, deletions };
-  };
 
-  const getLineTypeClass = (lineType: string | undefined) => {
-    switch (lineType) {
-      case 'added':
-        return 'bg-green-50 dark:bg-green-950/30 text-green-900 dark:text-green-100';
-      case 'deleted':
-        return 'bg-red-50 dark:bg-red-950/30 text-red-900 dark:text-red-100';
-      default:
-        return '';
-    }
-  };
 
-  const getLinePrefix = (lineType: string | undefined) => {
-    switch (lineType) {
-      case 'added':
-        return '+';
-      case 'deleted':
-        return '-';
-      default:
-        return ' ';
-    }
-  };
-
-  const createSplitView = (diff: DiffResult) => {
-    if (!diff.diff_lines) return { leftLines: [], rightLines: [] };
-    
-    const leftLines: Array<{ lineNumber?: number; content: string; type: string }> = [];
-    const rightLines: Array<{ lineNumber?: number; content: string; type: string }> = [];
-    
-    let i = 0;
-    while (i < diff.diff_lines.length) {
-      const line = diff.diff_lines[i];
-      
-      if (line.line_type === 'context') {
-        leftLines.push({
-          lineNumber: line.old_line_number,
-          content: line.content || '',
-          type: 'context'
-        });
-        rightLines.push({
-          lineNumber: line.new_line_number,
-          content: line.content || '',
-          type: 'context'
-        });
-        i++;
-      } else if (line.line_type === 'deleted') {
-        // Look ahead for matching added lines
-        let addedIndex = i + 1;
-        while (addedIndex < diff.diff_lines.length && 
-               diff.diff_lines[addedIndex].line_type === 'deleted') {
-          addedIndex++;
-        }
-        
-        const deletedLines = [];
-        const addedLines = [];
-        
-        // Collect all deleted lines
-        let j = i;
-        while (j < addedIndex) {
-          deletedLines.push(diff.diff_lines[j]);
-          j++;
-        }
-        
-        // Collect all added lines
-        while (addedIndex < diff.diff_lines.length && 
-               diff.diff_lines[addedIndex].line_type === 'added') {
-          addedLines.push(diff.diff_lines[addedIndex]);
-          addedIndex++;
-        }
-        
-        // Pair up deleted and added lines
-        const maxLength = Math.max(deletedLines.length, addedLines.length);
-        for (let k = 0; k < maxLength; k++) {
-          if (k < deletedLines.length) {
-            leftLines.push({
-              lineNumber: deletedLines[k].old_line_number,
-              content: deletedLines[k].content || '',
-              type: 'deleted'
-            });
-          } else {
-            leftLines.push({ content: '', type: 'empty' });
-          }
-          
-          if (k < addedLines.length) {
-            rightLines.push({
-              lineNumber: addedLines[k].new_line_number,
-              content: addedLines[k].content || '',
-              type: 'added'
-            });
-          } else {
-            rightLines.push({ content: '', type: 'empty' });
-          }
-        }
-        
-        i = addedIndex;
-      } else if (line.line_type === 'added') {
-        // Standalone added line (no corresponding deletion)
-        leftLines.push({ content: '', type: 'empty' });
-        rightLines.push({
-          lineNumber: line.new_line_number,
-          content: line.content || '',
-          type: 'added'
-        });
-        i++;
-      } else {
-        i++;
-      }
-    }
-    
-    return { leftLines, rightLines };
-  };
 
   return (
     <>
@@ -433,120 +311,23 @@ export function GitHistoryDialog({
                               </div>
                               
                               {commitDiffs.map((diff) => {
-                                const { additions, deletions } = getDiffStats(diff);
+                                const stats = getDiffStats(diff);
                                 const isExpanded = diff.file_path ? expandedFiles.has(diff.file_path) : false;
                                 
                                 return (
-                                  <div key={diff.file_path} className="border rounded-lg">
-                                    <button
-                                      className="w-full flex items-center gap-2 p-3 hover:bg-accent/50 transition-colors"
-                                      onClick={() => diff.file_path && toggleFile(diff.file_path)}
-                                    >
-                                      {isExpanded ? (
-                                        <ChevronDown className="h-4 w-4 flex-shrink-0" />
-                                      ) : (
-                                        <ChevronRight className="h-4 w-4 flex-shrink-0" />
-                                      )}
-                                      <FileText className="h-4 w-4 flex-shrink-0" />
-                                      <span className="font-mono text-sm flex-1 text-left truncate">
-                                        {diff.file_path}
-                                      </span>
-                                      <div className="flex items-center gap-2 text-xs">
-                                        <span className="text-green-600 dark:text-green-400">
-                                          +{additions}
-                                        </span>
-                                        <span className="text-red-600 dark:text-red-400">
-                                          -{deletions}
-                                        </span>
-                                      </div>
-                                    </button>
-                                    
-                                    {isExpanded && diff.diff_lines && diff.diff_lines.length > 0 && (
-                                      <div className="border-t">
-                                        {viewMode === 'unified' ? (
-                                          <div className="font-mono text-xs overflow-x-auto max-h-96">
-                                            <table className="w-full">
-                                              <tbody>
-                                                {diff.diff_lines.map((line, idx) => (
-                                                  <tr
-                                                    key={idx}
-                                                    className={cn(
-                                                      'hover:bg-accent/25',
-                                                      getLineTypeClass(line.line_type)
-                                                    )}
-                                                  >
-                                                    <td className="w-12 px-2 py-0.5 text-right text-muted-foreground select-none">
-                                                      {line.old_line_number || ''}
-                                                    </td>
-                                                    <td className="w-12 px-2 py-0.5 text-right text-muted-foreground select-none">
-                                                      {line.new_line_number || ''}
-                                                    </td>
-                                                    <td className="px-2 py-0.5 select-none">
-                                                      {getLinePrefix(line.line_type)}
-                                                    </td>
-                                                    <td className="px-2 py-0.5 whitespace-pre-wrap break-all">
-                                                      {line.content}
-                                                    </td>
-                                                  </tr>
-                                                ))}
-                                              </tbody>
-                                            </table>
-                                          </div>
-                                        ) : (
-                                          <div className="font-mono text-xs overflow-x-auto max-h-96">
-                                            <div className="flex">
-                                              <div className="flex-1 border-r">
-                                                <table className="w-full">
-                                                  <tbody>
-                                                    {createSplitView(diff).leftLines.map((line, idx) => (
-                                                      <tr
-                                                        key={idx}
-                                                        className={cn(
-                                                          'hover:bg-accent/25',
-                                                          line.type === 'deleted' && 'bg-red-50 dark:bg-red-950/30 text-red-900 dark:text-red-100',
-                                                          line.type === 'empty' && 'bg-gray-50 dark:bg-gray-950/30'
-                                                        )}
-                                                      >
-                                                        <td className="w-12 px-2 py-0.5 text-right text-muted-foreground select-none">
-                                                          {line.lineNumber || ''}
-                                                        </td>
-                                                        <td className="px-2 py-0.5 whitespace-pre-wrap break-all">
-                                                          {line.content}
-                                                        </td>
-                                                      </tr>
-                                                    ))}
-                                                  </tbody>
-                                                </table>
-                                              </div>
-                                              <div className="flex-1">
-                                                <table className="w-full">
-                                                  <tbody>
-                                                    {createSplitView(diff).rightLines.map((line, idx) => (
-                                                      <tr
-                                                        key={idx}
-                                                        className={cn(
-                                                          'hover:bg-accent/25',
-                                                          line.type === 'added' && 'bg-green-50 dark:bg-green-950/30 text-green-900 dark:text-green-100',
-                                                          line.type === 'empty' && 'bg-gray-50 dark:bg-gray-950/30'
-                                                        )}
-                                                      >
-                                                        <td className="w-12 px-2 py-0.5 text-right text-muted-foreground select-none">
-                                                          {line.lineNumber || ''}
-                                                        </td>
-                                                        <td className="px-2 py-0.5 whitespace-pre-wrap break-all">
-                                                          {line.content}
-                                                        </td>
-                                                      </tr>
-                                                    ))}
-                                                  </tbody>
-                                                </table>
-                                              </div>
-                                            </div>
-                                          </div>
-                                        )}
+                                  <FileExpander
+                                    key={diff.file_path}
+                                    filePath={diff.file_path || ''}
+                                    isExpanded={isExpanded}
+                                    onToggle={() => diff.file_path && toggleFile(diff.file_path)}
+                                    stats={stats}
+                                  >
+                                    {diff.diff_lines && diff.diff_lines.length > 0 && (
+                                      <div className="p-4">
+                                        <DiffViewer diffResult={diff} viewMode={viewMode} />
                                       </div>
                                     )}
-                                  </div>
+                                  </FileExpander>
                                 );
                               })}
                             </div>
@@ -751,120 +532,23 @@ export function GitHistoryDialog({
                             </div>
                             
                             {commitDiffs.map((diff) => {
-                              const { additions, deletions } = getDiffStats(diff);
+                              const stats = getDiffStats(diff);
                               const isExpanded = diff.file_path ? expandedFiles.has(diff.file_path) : false;
                               
                               return (
-                                <div key={diff.file_path} className="border rounded-lg">
-                                  <button
-                                    className="w-full flex items-center gap-2 p-3 hover:bg-accent/50 transition-colors"
-                                    onClick={() => diff.file_path && toggleFile(diff.file_path)}
-                                  >
-                                    {isExpanded ? (
-                                      <ChevronDown className="h-4 w-4 flex-shrink-0" />
-                                    ) : (
-                                      <ChevronRight className="h-4 w-4 flex-shrink-0" />
-                                    )}
-                                    <FileText className="h-4 w-4 flex-shrink-0" />
-                                    <span className="font-mono text-sm flex-1 text-left truncate">
-                                      {diff.file_path}
-                                    </span>
-                                    <div className="flex items-center gap-2 text-xs">
-                                      <span className="text-green-600 dark:text-green-400">
-                                        +{additions}
-                                      </span>
-                                      <span className="text-red-600 dark:text-red-400">
-                                        -{deletions}
-                                      </span>
-                                    </div>
-                                  </button>
-                                  
-                                  {isExpanded && diff.diff_lines && diff.diff_lines.length > 0 && (
-                                    <div className="border-t">
-                                      {viewMode === 'unified' ? (
-                                        <div className="font-mono text-xs overflow-x-auto max-h-64">
-                                          <table className="w-full">
-                                            <tbody>
-                                              {diff.diff_lines.map((line, idx) => (
-                                                <tr
-                                                  key={idx}
-                                                  className={cn(
-                                                    'hover:bg-accent/25',
-                                                    getLineTypeClass(line.line_type)
-                                                  )}
-                                                >
-                                                  <td className="w-10 px-1 py-0.5 text-right text-muted-foreground select-none text-[10px]">
-                                                    {line.old_line_number || ''}
-                                                  </td>
-                                                  <td className="w-10 px-1 py-0.5 text-right text-muted-foreground select-none text-[10px]">
-                                                    {line.new_line_number || ''}
-                                                  </td>
-                                                  <td className="px-1 py-0.5 select-none text-[10px]">
-                                                    {getLinePrefix(line.line_type)}
-                                                  </td>
-                                                  <td className="px-1 py-0.5 whitespace-pre-wrap break-all text-[10px]">
-                                                    {line.content}
-                                                  </td>
-                                                </tr>
-                                              ))}
-                                            </tbody>
-                                          </table>
-                                        </div>
-                                      ) : (
-                                        <div className="font-mono text-[10px] overflow-x-auto max-h-64">
-                                          <div className="flex min-w-full">
-                                            <div className="flex-1 border-r min-w-0">
-                                              <table className="w-full">
-                                                <tbody>
-                                                  {createSplitView(diff).leftLines.map((line, idx) => (
-                                                    <tr
-                                                      key={idx}
-                                                      className={cn(
-                                                        'hover:bg-accent/25',
-                                                        line.type === 'deleted' && 'bg-red-50 dark:bg-red-950/30 text-red-900 dark:text-red-100',
-                                                        line.type === 'empty' && 'bg-gray-50 dark:bg-gray-950/30'
-                                                      )}
-                                                    >
-                                                      <td className="w-8 px-1 py-0.5 text-right text-muted-foreground select-none">
-                                                        {line.lineNumber || ''}
-                                                      </td>
-                                                      <td className="px-1 py-0.5 whitespace-pre-wrap break-all">
-                                                        {line.content}
-                                                      </td>
-                                                    </tr>
-                                                  ))}
-                                                </tbody>
-                                              </table>
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                              <table className="w-full">
-                                                <tbody>
-                                                  {createSplitView(diff).rightLines.map((line, idx) => (
-                                                    <tr
-                                                      key={idx}
-                                                      className={cn(
-                                                        'hover:bg-accent/25',
-                                                        line.type === 'added' && 'bg-green-50 dark:bg-green-950/30 text-green-900 dark:text-green-100',
-                                                        line.type === 'empty' && 'bg-gray-50 dark:bg-gray-950/30'
-                                                      )}
-                                                    >
-                                                      <td className="w-8 px-1 py-0.5 text-right text-muted-foreground select-none">
-                                                        {line.lineNumber || ''}
-                                                      </td>
-                                                      <td className="px-1 py-0.5 whitespace-pre-wrap break-all">
-                                                        {line.content}
-                                                      </td>
-                                                    </tr>
-                                                  ))}
-                                                </tbody>
-                                              </table>
-                                            </div>
-                                          </div>
-                                        </div>
-                                      )}
+                                <FileExpander
+                                  key={diff.file_path}
+                                  filePath={diff.file_path || ''}
+                                  isExpanded={isExpanded}
+                                  onToggle={() => diff.file_path && toggleFile(diff.file_path)}
+                                  stats={stats}
+                                >
+                                  {diff.diff_lines && diff.diff_lines.length > 0 && (
+                                    <div className="p-4">
+                                      <DiffViewer diffResult={diff} viewMode={viewMode} />
                                     </div>
                                   )}
-                                </div>
+                                </FileExpander>
                               );
                             })}
                           </div>
