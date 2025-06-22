@@ -738,6 +738,127 @@ __pycache__/
         
         Ok(commits)
     }
+
+    pub async fn get_file_history(&self, user_id: Uuid, file_path: &str, limit: Option<usize>) -> Result<Vec<GitCommit>> {
+        let repo_path = self.get_user_repo_path(user_id);
+        
+        // Remove user_id prefix from file_path if present
+        let cleaned_path = if file_path.starts_with(&format!("{}/", user_id)) {
+            file_path.strip_prefix(&format!("{}/", user_id)).unwrap()
+        } else {
+            file_path
+        };
+        
+        tracing::info!("get_file_history - original path: {}, cleaned path: {}", file_path, cleaned_path);
+        
+        let repo = Repository::open(&repo_path)?;
+        let mut revwalk = repo.revwalk()?;
+        revwalk.push_head()?;
+        revwalk.set_sorting(git2::Sort::TIME)?;
+        
+        let limit = limit.unwrap_or(50);
+        let mut commits = Vec::new();
+        let mut found = 0;
+        
+        for oid in revwalk {
+            if found >= limit {
+                break;
+            }
+            
+            let oid = oid?;
+            let commit = repo.find_commit(oid)?;
+            
+            // Check if this commit modified the file
+            let mut file_changed = false;
+            
+            if commit.parent_count() == 0 {
+                // First commit - check if file exists
+                let tree = commit.tree()?;
+                if tree.get_path(std::path::Path::new(cleaned_path)).is_ok() {
+                    file_changed = true;
+                }
+            } else {
+                // Check if file was modified in this commit
+                for parent in commit.parents() {
+                    let parent_tree = parent.tree()?;
+                    let commit_tree = commit.tree()?;
+                    
+                    let mut diff_options = git2::DiffOptions::new();
+                    diff_options.pathspec(cleaned_path);
+                    
+                    let diff = repo.diff_tree_to_tree(
+                        Some(&parent_tree),
+                        Some(&commit_tree),
+                        Some(&mut diff_options)
+                    )?;
+                    
+                    if diff.deltas().len() > 0 {
+                        file_changed = true;
+                        break;
+                    }
+                }
+            }
+            
+            if file_changed {
+                let author = commit.author();
+                let author_name = author.name().unwrap_or("Unknown").to_string();
+                let author_email = author.email().unwrap_or("unknown@example.com").to_string();
+                
+                let timestamp = commit.time().seconds();
+                let datetime = DateTime::<Utc>::from_timestamp(timestamp, 0)
+                    .unwrap_or_else(|| Utc::now());
+                
+                // Get diff stats for this specific file
+                let mut diff_stats = DiffStats::default();
+                
+                if commit.parent_count() <= 1 {
+                    if let Some(parent) = commit.parents().next() {
+                        let parent_tree = parent.tree()?;
+                        let commit_tree = commit.tree()?;
+                        
+                        let mut diff_options = git2::DiffOptions::new();
+                        diff_options.pathspec(cleaned_path);
+                        
+                        let diff = repo.diff_tree_to_tree(
+                            Some(&parent_tree),
+                            Some(&commit_tree),
+                            Some(&mut diff_options)
+                        )?;
+                        
+                        let stats = diff.stats()?;
+                        diff_stats.files_changed = stats.files_changed();
+                        diff_stats.insertions = stats.insertions();
+                        diff_stats.deletions = stats.deletions();
+                    } else {
+                        // First commit - count file as new
+                        let tree = commit.tree()?;
+                        let mut diff_options = git2::DiffOptions::new();
+                        diff_options.pathspec(cleaned_path);
+                        
+                        let diff = repo.diff_tree_to_tree(None, Some(&tree), Some(&mut diff_options))?;
+                        
+                        let stats = diff.stats()?;
+                        diff_stats.files_changed = stats.files_changed();
+                        diff_stats.insertions = stats.insertions();
+                        diff_stats.deletions = stats.deletions();
+                    }
+                }
+                
+                commits.push(GitCommit {
+                    id: oid.to_string(),
+                    message: commit.message().unwrap_or("No message").to_string(),
+                    author_name,
+                    author_email,
+                    timestamp: datetime,
+                    diff_stats: Some(diff_stats),
+                });
+                
+                found += 1;
+            }
+        }
+        
+        Ok(commits)
+    }
 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]

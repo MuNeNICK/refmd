@@ -1,14 +1,29 @@
-export interface DiffStats {
-    files_changed: number;
-    insertions: number;
-    deletions: number;
-}
+/* generated using openapi-typescript-codegen -- do not edit */
+/* istanbul ignore file */
+/* tslint:disable */
+/* eslint-disable */
+import type { DiffStats } from './DiffStats';
+export type GitCommit = {
+    /**
+     * Commit hash
+     */
+    id?: string;
+    /**
+     * Commit message
+     */
+    message?: string;
+    /**
+     * Author name
+     */
+    author_name?: string;
+    /**
+     * Author email
+     */
+    author_email?: string;
+    /**
+     * Commit timestamp
+     */
+    timestamp?: string;
+    diff_stats?: DiffStats | null;
+};
 
-export interface GitCommit {
-    id: string;
-    message: string;
-    author_name: string;
-    author_email: string;
-    timestamp: string;
-    diff_stats?: DiffStats;
-}

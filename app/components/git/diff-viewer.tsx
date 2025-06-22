@@ -151,7 +151,7 @@ function SplitDiffView({
     <div className={cn("font-mono text-sm overflow-x-auto", className)}>
       <div className="flex">
         {/* Old (left) side */}
-        <div className="w-1/2 border-r">
+        <div className="flex-1 border-r overflow-x-auto">
           {processedLines.map((pair, index) => (
             <div
               key={`old-${index}`}
@@ -186,7 +186,7 @@ function SplitDiffView({
         </div>
 
         {/* New (right) side */}
-        <div className="w-1/2">
+        <div className="flex-1 overflow-x-auto">
           {processedLines.map((pair, index) => (
             <div
               key={`new-${index}`}

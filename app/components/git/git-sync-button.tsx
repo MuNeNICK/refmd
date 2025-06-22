@@ -183,16 +183,6 @@ export function GitSyncButton({ className, onShowDiff }: GitSyncButtonProps) {
                     </span>
                   </div>
                   
-                  {!statusError && gitConfig && gitStatus?.repository_initialized && (
-                    <div className="flex items-center gap-1 shrink-0">
-                      {gitStatus?.current_branch && (
-                        <Badge variant="outline" className="text-xs">
-                          <GitBranch className="h-3 w-3 mr-1" />
-                          {gitStatus.current_branch}
-                        </Badge>
-                      )}
-                    </div>
-                  )}
                 </div>
               </SidebarMenuButton>
             </TooltipTrigger>

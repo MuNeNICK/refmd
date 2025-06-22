@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { getApiClient } from '@/lib/api';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -28,11 +28,7 @@ export function CommitDiffPanel({ commitId, className }: CommitDiffPanelProps) {
   const [expandedFiles, setExpandedFiles] = useState<Set<string>>(new Set());
   const api = getApiClient();
 
-  useEffect(() => {
-    fetchCommitDiff();
-  }, [commitId]);
-
-  const fetchCommitDiff = async () => {
+  const fetchCommitDiff = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -43,14 +39,18 @@ export function CommitDiffPanel({ commitId, className }: CommitDiffPanelProps) {
       setDiffs(diffResults);
       
       // Auto-expand all files by default
-      setExpandedFiles(new Set(diffResults.map(d => d.file_path)));
+      setExpandedFiles(new Set(diffResults.map(d => d.file_path).filter((path): path is string => path !== undefined)));
     } catch (err) {
       console.error('Failed to fetch commit diff:', err);
       setError('Failed to load commit changes');
     } finally {
       setLoading(false);
     }
-  };
+  }, [commitId, api]);
+
+  useEffect(() => {
+    fetchCommitDiff();
+  }, [fetchCommitDiff]);
 
   const toggleFile = (filePath: string) => {
     setExpandedFiles(prev => {
@@ -68,10 +68,12 @@ export function CommitDiffPanel({ commitId, className }: CommitDiffPanelProps) {
     let additions = 0;
     let deletions = 0;
     
-    diff.diff_lines.forEach(line => {
-      if (line.line_type === 'added') additions++;
-      else if (line.line_type === 'deleted') deletions++;
-    });
+    if (diff.diff_lines) {
+      diff.diff_lines.forEach(line => {
+        if (line.line_type === 'added') additions++;
+        else if (line.line_type === 'deleted') deletions++;
+      });
+    }
     
     return { additions, deletions };
   };
@@ -154,13 +156,13 @@ export function CommitDiffPanel({ commitId, className }: CommitDiffPanelProps) {
 
         {diffs.map((diff) => {
           const { additions, deletions } = getDiffStats(diff);
-          const isExpanded = expandedFiles.has(diff.file_path);
+          const isExpanded = diff.file_path ? expandedFiles.has(diff.file_path) : false;
 
           return (
             <div key={diff.file_path} className="border rounded-lg">
               <button
                 className="w-full flex items-center gap-2 p-3 hover:bg-accent/50 transition-colors"
-                onClick={() => toggleFile(diff.file_path)}
+                onClick={() => diff.file_path && toggleFile(diff.file_path)}
               >
                 {isExpanded ? (
                   <ChevronDown className="h-4 w-4 flex-shrink-0" />
@@ -181,7 +183,7 @@ export function CommitDiffPanel({ commitId, className }: CommitDiffPanelProps) {
                 </div>
               </button>
 
-              {isExpanded && diff.diff_lines.length > 0 && (
+              {isExpanded && diff.diff_lines && diff.diff_lines.length > 0 && (
                 <div className="border-t">
                   <div className="font-mono text-xs overflow-x-auto">
                     <table className="w-full">

@@ -13,6 +13,7 @@ interface DocumentNode {
   children?: DocumentNode[];
   created_at?: string;
   updated_at?: string;
+  file_path?: string;
 }
 
 interface FileTreeContextType {
@@ -70,7 +71,8 @@ function buildTree(documents: DatabaseDocument[]): DocumentNode[] {
       type: nodeType,
       children: [],
       created_at: doc.created_at,
-      updated_at: doc.updated_at
+      updated_at: doc.updated_at,
+      file_path: 'file_path' in doc ? (doc as Document & { file_path?: string }).file_path : undefined
     });
   });
   

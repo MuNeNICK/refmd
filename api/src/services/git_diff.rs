@@ -257,4 +257,117 @@ impl GitDiffService {
         let final_results = results.borrow().clone();
         Ok(final_results)
     }
+
+    pub fn get_file_commit_diff(&self, from: &str, to: &str, file_path: &str) -> Result<DiffResult> {
+        tracing::info!("get_file_commit_diff - from: {}, to: {}, file_path: {}", from, to, file_path);
+        
+        // Handle the case where 'from' might be invalid (e.g., first commit)
+        let (from_tree, to_tree) = if from.ends_with("^") && from.len() > 41 {
+            // This is a parent reference that might not exist for the first commit
+            let to_oid = self.repository.revparse_single(to)?.id();
+            let to_commit = self.repository.find_commit(to_oid)?;
+            
+            // Check if this commit has a parent
+            if to_commit.parent_count() == 0 {
+                // First commit - compare against empty tree
+                (None, Some(to_commit.tree()?))
+            } else {
+                // Normal case - get parent tree
+                let parent = to_commit.parent(0)?;
+                (Some(parent.tree()?), Some(to_commit.tree()?))
+            }
+        } else {
+            // Normal case - both commits exist
+            let from_oid = self.repository.revparse_single(from)?.id();
+            let to_oid = self.repository.revparse_single(to)?.id();
+            
+            let from_commit = self.repository.find_commit(from_oid)?;
+            let to_commit = self.repository.find_commit(to_oid)?;
+            
+            (Some(from_commit.tree()?), Some(to_commit.tree()?))
+        };
+        
+        let mut diff_options = DiffOptions::new();
+        diff_options.pathspec(file_path);
+        diff_options.context_lines(3);
+        
+        let diff = self.repository.diff_tree_to_tree(
+            from_tree.as_ref(),
+            to_tree.as_ref(),
+            Some(&mut diff_options),
+        )?;
+        
+        tracing::info!("Diff created, delta count: {}", diff.deltas().len());
+        
+        let mut diff_result = DiffResult {
+            file_path: file_path.to_string(),
+            diff_lines: Vec::new(),
+            old_content: None,
+            new_content: None,
+        };
+        
+        let current_old_line = std::cell::RefCell::new(0u32);
+        let current_new_line = std::cell::RefCell::new(0u32);
+        let current_file_path = std::cell::RefCell::new(String::new());
+        
+        diff.foreach(
+            &mut |delta, _| {
+                let path = delta.new_file().path()
+                    .map(|p| p.to_string_lossy().to_string())
+                    .unwrap_or_else(|| delta.old_file().path()
+                        .map(|p| p.to_string_lossy().to_string())
+                        .unwrap_or_default());
+                *current_file_path.borrow_mut() = path.clone();
+                true
+            },
+            None,
+            Some(&mut |_, hunk| {
+                *current_old_line.borrow_mut() = hunk.old_start() - 1;
+                *current_new_line.borrow_mut() = hunk.new_start() - 1;
+                true
+            }),
+            Some(&mut |_, _, line| {
+                let content = String::from_utf8_lossy(line.content()).to_string();
+                
+                match line.origin() {
+                    '+' => {
+                        *current_new_line.borrow_mut() += 1;
+                        diff_result.diff_lines.push(DiffLine {
+                            line_type: DiffLineType::Added,
+                            old_line_number: None,
+                            new_line_number: Some(*current_new_line.borrow()),
+                            content: content.trim_end().to_string(),
+                        });
+                    }
+                    '-' => {
+                        *current_old_line.borrow_mut() += 1;
+                        diff_result.diff_lines.push(DiffLine {
+                            line_type: DiffLineType::Deleted,
+                            old_line_number: Some(*current_old_line.borrow()),
+                            new_line_number: None,
+                            content: content.trim_end().to_string(),
+                        });
+                    }
+                    ' ' => {
+                        *current_old_line.borrow_mut() += 1;
+                        *current_new_line.borrow_mut() += 1;
+                        diff_result.diff_lines.push(DiffLine {
+                            line_type: DiffLineType::Context,
+                            old_line_number: Some(*current_old_line.borrow()),
+                            new_line_number: Some(*current_new_line.borrow()),
+                            content: content.trim_end().to_string(),
+                        });
+                    }
+                    _ => {}
+                }
+                true
+            }),
+        )?;
+        
+        if !current_file_path.borrow().is_empty() {
+            diff_result.file_path = current_file_path.borrow().clone();
+        }
+        
+        Ok(diff_result)
+    }
 }

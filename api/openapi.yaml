@@ -893,6 +893,68 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
 
+  /git/commits:
+    get:
+      tags:
+        - Git Sync
+      summary: Get commit history
+      operationId: getCommitHistory
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 50
+          description: Maximum number of commits to return
+      responses:
+        '200':
+          description: Commit history retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/GitCommit'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /git/commits/file/{file_path}:
+    get:
+      tags:
+        - Git Sync
+      summary: Get file commit history
+      operationId: getFileCommitHistory
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: file_path
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Path to the file relative to the repository root
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 50
+          description: Maximum number of commits to return
+      responses:
+        '200':
+          description: File commit history retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/GitCommit'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
   /git/diff/files/{file_path}:
     get:
       tags:
@@ -954,6 +1016,46 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/DiffResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /git/diff/commits/{from}/{to}/file/{file_path}:
+    get:
+      tags:
+        - Git Sync
+      summary: Get file diff between commits
+      description: Get diff for a specific file between two commits
+      operationId: getFileCommitDiff
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: from
+          in: path
+          required: true
+          schema:
+            type: string
+          description: From commit hash
+        - name: to
+          in: path
+          required: true
+          schema:
+            type: string
+          description: To commit hash
+        - name: file_path
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Path to the file relative to the repository root
+      responses:
+        '200':
+          description: File commit diff retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiffResult'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -2128,6 +2230,42 @@ components:
         created_at:
           type: string
           format: date-time
+
+    GitCommit:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Commit hash
+        message:
+          type: string
+          description: Commit message
+        author_name:
+          type: string
+          description: Author name
+        author_email:
+          type: string
+          description: Author email
+        timestamp:
+          type: string
+          format: date-time
+          description: Commit timestamp
+        diff_stats:
+          $ref: '#/components/schemas/DiffStats'
+          nullable: true
+
+    DiffStats:
+      type: object
+      properties:
+        files_changed:
+          type: integer
+          format: int32
+        insertions:
+          type: integer
+          format: int32
+        deletions:
+          type: integer
+          format: int32
 
     DiffResult:
       type: object

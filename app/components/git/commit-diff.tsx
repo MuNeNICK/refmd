@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { getApiClient } from '@/lib/api';
 import { DiffResult } from '@/lib/api/client';
 import { DiffViewer } from './diff-viewer';
@@ -24,11 +24,7 @@ export function CommitDiff({ fromCommit, toCommit, className }: CommitDiffProps)
   const [expandedFiles, setExpandedFiles] = useState<Set<string>>(new Set());
   const api = getApiClient();
 
-  useEffect(() => {
-    loadCommitDiff();
-  }, [fromCommit, toCommit]);
-
-  const loadCommitDiff = async () => {
+  const loadCommitDiff = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -42,9 +38,13 @@ export function CommitDiff({ fromCommit, toCommit, className }: CommitDiffProps)
     } finally {
       setLoading(false);
     }
-  };
+  }, [api, fromCommit, toCommit]);
 
-  const toggleFileExpansion = (filePath: string) => {
+  useEffect(() => {
+    loadCommitDiff();
+  }, [loadCommitDiff]);
+
+  const toggleFileExpansion = useCallback((filePath: string) => {
     const newExpanded = new Set(expandedFiles);
     if (newExpanded.has(filePath)) {
       newExpanded.delete(filePath);
@@ -52,15 +52,15 @@ export function CommitDiff({ fromCommit, toCommit, className }: CommitDiffProps)
       newExpanded.add(filePath);
     }
     setExpandedFiles(newExpanded);
-  };
+  }, [expandedFiles]);
 
-  const expandAll = () => {
+  const expandAll = useCallback(() => {
     setExpandedFiles(new Set(diffResults.map(r => r.file_path).filter((p): p is string => p !== undefined)));
-  };
+  }, [diffResults]);
 
-  const collapseAll = () => {
+  const collapseAll = useCallback(() => {
     setExpandedFiles(new Set());
-  };
+  }, []);
 
   if (loading) {
     return (

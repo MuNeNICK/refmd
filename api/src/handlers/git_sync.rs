@@ -203,6 +203,23 @@ pub async fn get_commit_history(
     Ok(Json(commits))
 }
 
+// GET /api/git/commits/file/{file_path:.*} - Get file commit history
+pub async fn get_file_commit_history(
+    State(state): State<Arc<AppState>>,
+    Extension(auth_user): Extension<AuthUser>,
+    Path(file_path): Path<String>,
+) -> crate::error::Result<Json<Vec<GitCommit>>> {
+    let git_config_repo = Arc::new(GitConfigRepository::new(state.db_pool.clone()));
+    let git_sync_service = GitSyncService::new(
+        git_config_repo,
+        state.config.upload_dir.clone().into(),
+        &state.config.jwt_secret
+    )?;
+    
+    let commits = git_sync_service.get_file_history(auth_user.user_id, &file_path, Some(50)).await?;
+    Ok(Json(commits))
+}
+
 // GET /api/git/diff/files/{file_path:.*} - Get file diff
 pub async fn get_file_diff(
     State(state): State<Arc<AppState>>,
@@ -307,6 +324,51 @@ pub async fn get_working_diff(
     let git_diff_service = GitDiffService::new(&user_dir)?;
     let diff_results = git_diff_service.get_working_diff()?;
     Ok(Json(diff_results))
+}
+
+// GET /api/git/diff/commits/{from}/{to}/file/{file_path:.*} - Get file-specific commit diff
+pub async fn get_file_commit_diff(
+    State(state): State<Arc<AppState>>,
+    Extension(auth_user): Extension<AuthUser>,
+    Path((from, to, file_path)): Path<(String, String, String)>,
+) -> crate::error::Result<Json<DiffResult>> {
+    let user_dir = std::path::Path::new(&state.config.upload_dir)
+        .join(auth_user.user_id.to_string());
+    
+    // Check if directory exists
+    if !user_dir.exists() {
+        return Ok(Json(DiffResult {
+            file_path: file_path.clone(),
+            diff_lines: vec![],
+            old_content: None,
+            new_content: None,
+        }));
+    }
+    
+    // Check if it's a git repository
+    if !user_dir.join(".git").exists() {
+        return Ok(Json(DiffResult {
+            file_path: file_path.clone(),
+            diff_lines: vec![],
+            old_content: None,
+            new_content: None,
+        }));
+    }
+    
+    // Remove user_id prefix from file_path if present
+    let cleaned_path = if file_path.starts_with(&format!("{}/", auth_user.user_id)) {
+        file_path.strip_prefix(&format!("{}/", auth_user.user_id)).unwrap().to_string()
+    } else {
+        file_path.clone()
+    };
+    
+    tracing::info!("File commit diff request - original: {}, cleaned: {}, from: {}, to: {}", 
+        file_path, cleaned_path, from, to);
+    
+    let git_diff_service = GitDiffService::new(&user_dir)?;
+    let diff_result = git_diff_service.get_file_commit_diff(&from, &to, &cleaned_path)?;
+    
+    Ok(Json(diff_result))
 }
 
 // GET /api/git/conflicts - Get current conflicts
@@ -496,12 +558,14 @@ pub fn routes(state: Arc<AppState>) -> Router {
         .route("/status", get(get_status))
         .route("/logs", get(get_sync_logs))
         .route("/commits", get(get_commit_history))
+        .route("/commits/file/*file_path", get(get_file_commit_history))
         .route("/pull", post(pull_from_remote))
         .route("/conflicts", get(get_conflicts))
         .route("/conflicts/resolve", post(resolve_conflict))
         .route("/conflicts/abort", post(abort_merge))
         .route("/diff/files/*file_path", get(get_file_diff))
         .route("/diff/commits/:from/:to", get(get_commit_diff))
+        .route("/diff/commits/:from/:to/file/*file_path", get(get_file_commit_diff))
         .route("/diff/staged", get(get_staged_diff))
         .route("/diff/working", get(get_working_diff))
         .route("/gitignore", post(create_gitignore))

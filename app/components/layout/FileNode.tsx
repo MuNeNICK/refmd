@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useCallback, memo } from 'react';
-import { FileText, Edit, Trash2, MoreHorizontal, NotebookText } from 'lucide-react';
+import { FileText, Edit, Trash2, MoreHorizontal, NotebookText, History } from 'lucide-react';
 import { 
   SidebarMenuItem, 
   SidebarMenuButton, 
@@ -12,10 +12,13 @@ import {
   DropdownMenu, 
   DropdownMenuContent, 
   DropdownMenuItem, 
-  DropdownMenuTrigger 
+  DropdownMenuTrigger,
+  DropdownMenuSeparator 
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import { DeleteConfirmationDialog } from '@/components/ui/delete-confirmation-dialog';
+import { FileHistoryDialog } from '@/components/git/file-history-dialog';
+import { getApiUrl } from '@/lib/config';
 
 interface DocumentNode {
   id: string;
@@ -25,6 +28,7 @@ interface DocumentNode {
   children?: DocumentNode[];
   created_at?: string;
   updated_at?: string;
+  file_path?: string;
 }
 
 interface FileNodeProps {
@@ -33,6 +37,7 @@ interface FileNodeProps {
   isSelected: boolean;
   isDragging: boolean;
   isDropTarget: boolean;
+  isAuthenticated?: boolean;
   onSelect: (id: string, type: 'file' | 'folder' | 'scrap') => void;
   onRename: (id: string, newTitle: string) => void;
   onDelete: (id: string) => void;
@@ -50,6 +55,7 @@ export const FileNode = memo(function FileNode({
   isSelected,
   isDragging,
   isDropTarget,
+  isAuthenticated = false,
   onSelect,
   onRename,
   onDelete,
@@ -63,6 +69,8 @@ export const FileNode = memo(function FileNode({
   const [isEditing, setIsEditing] = useState(false);
   const [editingTitle, setEditingTitle] = useState(node.title);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showHistoryDialog, setShowHistoryDialog] = useState(false);
+  const [documentFilePath, setDocumentFilePath] = useState<string | null>(null);
 
   const handleStartRename = useCallback(() => {
     setIsEditing(true);
@@ -97,6 +105,33 @@ export const FileNode = memo(function FileNode({
   const handleSelect = useCallback(() => {
     onSelect(node.id, node.type);
   }, [node.id, node.type, onSelect]);
+
+  const handleShowHistory = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('refmd_access_token');
+      const apiUrl = getApiUrl();
+      const response = await fetch(`${apiUrl}/documents/${node.id}/file-path`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to get file path');
+      }
+      
+      const data = await response.json();
+      if (data.file_path) {
+        setDocumentFilePath(data.file_path);
+        setShowHistoryDialog(true);
+      } else {
+        alert('File path not available for this document');
+      }
+    } catch (error) {
+      console.error('Failed to fetch document details:', error);
+      alert('Failed to fetch document details');
+    }
+  }, [node.id]);
 
   return (
     <SidebarMenuItem>
@@ -159,6 +194,13 @@ export const FileNode = memo(function FileNode({
                   <Edit className="h-4 w-4 mr-2" />
                   Rename
                 </DropdownMenuItem>
+                {isAuthenticated && (
+                  <DropdownMenuItem onClick={handleShowHistory}>
+                    <History className="h-4 w-4 mr-2" />
+                    View File History
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={() => setShowDeleteDialog(true)}
                   className="text-red-600"
@@ -178,6 +220,17 @@ export const FileNode = memo(function FileNode({
         title={node.title}
         onConfirm={handleDelete}
       />
+
+      {documentFilePath && (
+        <FileHistoryDialog
+          filePath={documentFilePath}
+          isOpen={showHistoryDialog}
+          onClose={() => {
+            setShowHistoryDialog(false);
+            setDocumentFilePath(null);
+          }}
+        />
+      )}
     </SidebarMenuItem>
   );
 },

@@ -360,6 +360,7 @@ function FileTreeComponent({ onDocumentSelect, selectedDocumentId }: FileTreePro
         isSelected={isSelected}
         isDragging={isDragging}
         isDropTarget={false}
+        isAuthenticated={!!user}
         onSelect={(id, type) => onDocumentSelect(id, type)}
         onRename={renameDocument}
         onDelete={deleteDocument}
@@ -371,7 +372,7 @@ function FileTreeComponent({ onDocumentSelect, selectedDocumentId }: FileTreePro
         onDragOver={handleDragOver}
       />
     );
-  }, [expandedFolders, selectedDocumentId, dragState, hasChildDropTarget, toggleFolder, onDocumentSelect, renameDocument, deleteDocument, createNewDocument, handleDragStart, handleDragEnd, handleDragEnter, handleDragLeave, handleDrop, handleDragOver]);
+  }, [expandedFolders, selectedDocumentId, dragState, hasChildDropTarget, toggleFolder, onDocumentSelect, renameDocument, deleteDocument, createNewDocument, handleDragStart, handleDragEnd, handleDragEnter, handleDragLeave, handleDrop, handleDragOver, user]);
 
   if (loading) {
     return (

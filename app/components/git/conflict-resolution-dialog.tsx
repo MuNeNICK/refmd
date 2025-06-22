@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { getApiClient } from '@/lib/api';
 import {
   Dialog,
@@ -52,13 +52,7 @@ export function ConflictResolutionDialog({
   const [error, setError] = useState<string | null>(null);
   const api = getApiClient();
 
-  useEffect(() => {
-    if (open) {
-      fetchConflicts();
-    }
-  }, [open]);
-
-  const fetchConflicts = async () => {
+  const fetchConflicts = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -73,9 +67,15 @@ export function ConflictResolutionDialog({
     } finally {
       setLoading(false);
     }
-  };
+  }, [api]);
 
-  const handleResolveConflict = async () => {
+  useEffect(() => {
+    if (open) {
+      fetchConflicts();
+    }
+  }, [open, fetchConflicts]);
+
+  const handleResolveConflict = useCallback(async () => {
     if (!selectedFile) return;
 
     try {
@@ -104,9 +104,9 @@ export function ConflictResolutionDialog({
     } finally {
       setLoading(false);
     }
-  };
+  }, [api, conflicts, fetchConflicts, onOpenChange, onResolved, resolutionType, manualContent, selectedFile]);
 
-  const handleAbortMerge = async () => {
+  const handleAbortMerge = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -119,7 +119,7 @@ export function ConflictResolutionDialog({
     } finally {
       setLoading(false);
     }
-  };
+  }, [api, onOpenChange, onResolved]);
 
   const getConflictTypeLabel = (type: string) => {
     switch (type) {

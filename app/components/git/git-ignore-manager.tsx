@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { getApiClient } from '@/lib/api';
 import {
   Dialog,
@@ -44,13 +44,7 @@ export function GitIgnoreManager({
   const [mode, setMode] = useState<'list' | 'bulk'>('list');
   const api = getApiClient();
 
-  useEffect(() => {
-    if (open) {
-      fetchPatterns();
-    }
-  }, [open]);
-
-  const fetchPatterns = async () => {
+  const fetchPatterns = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -63,9 +57,15 @@ export function GitIgnoreManager({
     } finally {
       setLoading(false);
     }
-  };
+  }, [api]);
 
-  const handleAddPattern = async () => {
+  useEffect(() => {
+    if (open) {
+      fetchPatterns();
+    }
+  }, [open, fetchPatterns]);
+
+  const handleAddPattern = useCallback(async () => {
     if (!newPattern.trim()) return;
 
     try {
@@ -83,9 +83,9 @@ export function GitIgnoreManager({
     } finally {
       setLoading(false);
     }
-  };
+  }, [api, newPattern, fetchPatterns]);
 
-  const handleRemovePattern = async (pattern: string) => {
+  const handleRemovePattern = useCallback(async (pattern: string) => {
     try {
       setLoading(true);
       setError(null);
@@ -99,9 +99,9 @@ export function GitIgnoreManager({
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const handleSaveBulkPatterns = async () => {
+  const handleSaveBulkPatterns = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -122,9 +122,9 @@ export function GitIgnoreManager({
     } finally {
       setLoading(false);
     }
-  };
+  }, [api, bulkPatterns, fetchPatterns]);
 
-  const handleIgnoreCurrentDocument = async () => {
+  const handleIgnoreCurrentDocument = useCallback(async () => {
     if (!currentDocumentPath) return;
 
     try {
@@ -142,7 +142,7 @@ export function GitIgnoreManager({
     } finally {
       setLoading(false);
     }
-  };
+  }, [api, currentDocumentPath, fetchPatterns, onOpenChange]);
 
   const isDocumentIgnored = currentDocumentPath && patterns.includes(currentDocumentPath);
 

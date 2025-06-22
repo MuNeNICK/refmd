@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { getApiClient } from '@/lib/api';
 import { DiffResult } from '@/lib/api/client';
 import { DiffViewer } from './diff-viewer';
@@ -35,11 +35,7 @@ export function WorkingDiffPanel({
   const [expandedFiles, setExpandedFiles] = useState<Set<string>>(new Set());
   const api = getApiClient();
 
-  useEffect(() => {
-    loadDiffs();
-  }, []);
-
-  const loadDiffs = async () => {
+  const loadDiffs = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -60,14 +56,18 @@ export function WorkingDiffPanel({
     } finally {
       setLoading(false);
     }
-  };
+  }, [api, documentPath]);
 
-  const handleRefresh = async () => {
+  useEffect(() => {
+    loadDiffs();
+  }, [loadDiffs]);
+
+  const handleRefresh = useCallback(async () => {
     await loadDiffs();
     onRefresh?.();
-  };
+  }, [loadDiffs, onRefresh]);
 
-  const toggleFileExpansion = (filePath: string) => {
+  const toggleFileExpansion = useCallback((filePath: string) => {
     const newExpanded = new Set(expandedFiles);
     if (newExpanded.has(filePath)) {
       newExpanded.delete(filePath);
@@ -75,7 +75,7 @@ export function WorkingDiffPanel({
       newExpanded.add(filePath);
     }
     setExpandedFiles(newExpanded);
-  };
+  }, [expandedFiles]);
 
   const relevantDiffs = documentPath 
     ? workingDiffs.filter(d => d.file_path === documentPath)

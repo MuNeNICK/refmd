@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { getApiClient } from '@/lib/api';
 import { DiffResult } from '@/lib/api/client';
 import { DiffViewer } from './diff-viewer';
@@ -21,11 +21,7 @@ export function FileDiff({ filePath, className }: FileDiffProps) {
   const [viewMode, setViewMode] = useState<'unified' | 'split'>('unified');
   const api = getApiClient();
 
-  useEffect(() => {
-    loadFileDiff();
-  }, [filePath]);
-
-  const loadFileDiff = async () => {
+  const loadFileDiff = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -37,7 +33,11 @@ export function FileDiff({ filePath, className }: FileDiffProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [api, filePath]);
+
+  useEffect(() => {
+    loadFileDiff();
+  }, [loadFileDiff]);
 
   if (loading) {
     return (

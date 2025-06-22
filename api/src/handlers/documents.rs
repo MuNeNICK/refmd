@@ -95,6 +95,7 @@ pub fn routes(state: Arc<AppState>) -> Router {
         // Routes requiring auth
         .route("/", get(list_documents).post(create_document))
         .route("/:id", delete(delete_document))
+        .route("/:id/file-path", get(get_document_file_path))
         .layer(from_fn_with_state(state.clone(), auth_middleware))
         // Routes supporting optional auth (for share tokens)
         .route("/:id", get(get_document_with_share).put(update_document_with_share))
@@ -179,6 +180,28 @@ async fn get_document_with_share(
         .ok_or_else(|| crate::error::Error::NotFound("Document not found".to_string()))?;
     
     Ok(Json(document.into()))
+}
+
+// GET /api/documents/:id/file-path
+async fn get_document_file_path(
+    State(state): State<Arc<AppState>>,
+    Extension(auth_user): Extension<AuthUser>,
+    Path(id): Path<Uuid>,
+) -> Result<Json<serde_json::Value>> {
+    // Get document and check ownership
+    let document = state.document_repository
+        .get_by_id(id)
+        .await?
+        .ok_or_else(|| crate::error::Error::NotFound("Document not found".to_string()))?;
+    
+    // Check if user owns the document
+    if document.owner_id != auth_user.user_id {
+        return Err(crate::error::Error::Forbidden);
+    }
+    
+    Ok(Json(serde_json::json!({
+        "file_path": document.file_path
+    })))
 }
 
 async fn update_document(

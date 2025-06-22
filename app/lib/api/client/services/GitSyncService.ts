@@ -5,12 +5,12 @@
 import type { ConflictInfo } from '../models/ConflictInfo';
 import type { CreateGitConfigRequest } from '../models/CreateGitConfigRequest';
 import type { DiffResult } from '../models/DiffResult';
+import type { GitCommit } from '../models/GitCommit';
 import type { GitConfigResponse } from '../models/GitConfigResponse';
 import type { GitStatus } from '../models/GitStatus';
 import type { GitSyncLogResponse } from '../models/GitSyncLogResponse';
 import type { GitSyncResponse } from '../models/GitSyncResponse';
 import type { MergeResolution } from '../models/MergeResolution';
-import type { GitCommit } from '../models/GitCommit';
 import type { CancelablePromise } from '../core/CancelablePromise';
 import type { BaseHttpRequest } from '../core/BaseHttpRequest';
 export class GitSyncService {
@@ -128,13 +128,44 @@ export class GitSyncService {
     }
     /**
      * Get commit history
+     * @param limit Maximum number of commits to return
      * @returns GitCommit Commit history retrieved successfully
      * @throws ApiError
      */
-    public getCommitHistory(): CancelablePromise<Array<GitCommit>> {
+    public getCommitHistory(
+        limit: number = 50,
+    ): CancelablePromise<Array<GitCommit>> {
         return this.httpRequest.request({
             method: 'GET',
             url: '/git/commits',
+            query: {
+                'limit': limit,
+            },
+            errors: {
+                401: `Unauthorized`,
+            },
+        });
+    }
+    /**
+     * Get file commit history
+     * @param filePath Path to the file relative to the repository root
+     * @param limit Maximum number of commits to return
+     * @returns GitCommit File commit history retrieved successfully
+     * @throws ApiError
+     */
+    public getFileCommitHistory(
+        filePath: string,
+        limit: number = 50,
+    ): CancelablePromise<Array<GitCommit>> {
+        return this.httpRequest.request({
+            method: 'GET',
+            url: '/git/commits/file/{file_path}',
+            path: {
+                'file_path': filePath,
+            },
+            query: {
+                'limit': limit,
+            },
             errors: {
                 401: `Unauthorized`,
             },
@@ -181,6 +212,34 @@ export class GitSyncService {
             path: {
                 'from': from,
                 'to': to,
+            },
+            errors: {
+                400: `Bad request`,
+                401: `Unauthorized`,
+            },
+        });
+    }
+    /**
+     * Get file diff between commits
+     * Get diff for a specific file between two commits
+     * @param from From commit hash
+     * @param to To commit hash
+     * @param filePath Path to the file relative to the repository root
+     * @returns DiffResult File commit diff retrieved successfully
+     * @throws ApiError
+     */
+    public getFileCommitDiff(
+        from: string,
+        to: string,
+        filePath: string,
+    ): CancelablePromise<DiffResult> {
+        return this.httpRequest.request({
+            method: 'GET',
+            url: '/git/diff/commits/{from}/{to}/file/{file_path}',
+            path: {
+                'from': from,
+                'to': to,
+                'file_path': filePath,
             },
             errors: {
                 400: `Bad request`,
