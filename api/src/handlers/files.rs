@@ -1,5 +1,5 @@
 use axum::{
-    extract::{Extension, Path, Query, State},
+    extract::{Extension, Path, Query, State, DefaultBodyLimit},
     response::{IntoResponse, Response},
     http::{header, StatusCode},
     Router,
@@ -31,6 +31,8 @@ pub fn routes(state: Arc<AppState>) -> Router {
         // Public routes with optional auth - for embedded files in documents
         .route("/documents/:filename", get(download_file_by_name))
         .layer(from_fn_with_state(state.clone(), optional_auth_middleware))
+        // Increase body size limit to 50MB for file uploads (default is 2MB)
+        .layer(DefaultBodyLimit::max(50 * 1024 * 1024))
         .with_state(state)
 }
 
@@ -197,6 +199,16 @@ fn detect_content_type(filename: &str, data: &[u8]) -> String {
             Some("webp") => "image/webp".to_string(),
             Some("svg") => "image/svg+xml".to_string(),
             Some("zip") => "application/zip".to_string(),
+            // Video formats
+            Some("mp4") => "video/mp4".to_string(),
+            Some("mkv") => "video/x-matroska".to_string(),
+            Some("webm") => "video/webm".to_string(),
+            Some("avi") => "video/x-msvideo".to_string(),
+            Some("mov") => "video/quicktime".to_string(),
+            // Audio formats
+            Some("mp3") => "audio/mpeg".to_string(),
+            Some("wav") => "audio/wav".to_string(),
+            Some("ogg") => "audio/ogg".to_string(),
             _ => detected.to_string(),
         }
     } else {

@@ -72,15 +72,17 @@ export function ScrapMarkdown({ content, documentId }: ScrapMarkdownProps) {
       </FileAttachment>
     ),
     p: ({ children, ...props }) => {
-      // Check if the paragraph contains only an image to avoid hydration errors
+      // Check if the paragraph contains only an image or file attachment to avoid hydration errors
       const childArray = React.Children.toArray(children);
-      const hasOnlyImage = childArray.length === 1 && 
+      const hasOnlyImageOrFile = childArray.length === 1 && 
         React.isValidElement(childArray[0]) && 
         (childArray[0].type === 'img' || 
          childArray[0].type === AuthenticatedImage ||
-         (childArray[0].props && typeof childArray[0].props === 'object' && childArray[0].props !== null && 'src' in childArray[0].props));
+         childArray[0].type === FileAttachment ||
+         (childArray[0].props && typeof childArray[0].props === 'object' && childArray[0].props !== null && 
+          ('src' in childArray[0].props || 'href' in childArray[0].props)));
       
-      if (hasOnlyImage) {
+      if (hasOnlyImageOrFile) {
         return <div className="my-2" {...props}>{children}</div>;
       }
       

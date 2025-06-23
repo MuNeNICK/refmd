@@ -246,20 +246,23 @@ function PreviewPaneComponent({
                           </FileAttachment>
                         ),
                         p: ({ children, ...props }) => {
-                          // Check if the paragraph contains only an image
+                          // Check if the paragraph contains only an image or file attachment
                           const childArray = React.Children.toArray(children);
-                          const hasOnlyImage = childArray.length === 1 && 
+                          const hasOnlyImageOrFile = childArray.length === 1 && 
                             React.isValidElement(childArray[0]) && 
                             (childArray[0].type === 'img' || 
                              childArray[0].type === AuthenticatedImage ||
+                             childArray[0].type === FileAttachment ||
                              (typeof childArray[0].type === 'function' && 
                               // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                              (childArray[0].type as any).displayName === 'AuthenticatedImage') ||
+                              ((childArray[0].type as any).displayName === 'AuthenticatedImage' ||
+                               // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                               (childArray[0].type as any).displayName === 'FileAttachment')) ||
                              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                             (childArray[0].props && (childArray[0].props as any).src));
+                             (childArray[0].props && ((childArray[0].props as any).src || (childArray[0].props as any).href)));
                           
-                          // If paragraph contains only an image, render as div to avoid hydration errors
-                          if (hasOnlyImage) {
+                          // If paragraph contains only an image or file attachment, render as div to avoid hydration errors
+                          if (hasOnlyImageOrFile) {
                             return <div className="my-4" {...props}>{children}</div>;
                           }
                           

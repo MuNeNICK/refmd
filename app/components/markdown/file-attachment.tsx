@@ -1,11 +1,13 @@
 "use client";
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Download, FileText, Image, FileIcon, Film, Music, Archive, Code } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { getApiUrl } from '@/lib/config';
+import { AuthenticatedAudio } from './authenticated-audio';
+import { AuthenticatedVideo } from './authenticated-video';
 
 interface FileAttachmentProps {
   href: string;
@@ -95,6 +97,8 @@ const getFileIcon = (extension: string) => {
 
 
 export function FileAttachment({ href, children, className, documentId, token }: FileAttachmentProps) {
+  const [showPreview, setShowPreview] = useState(false);
+  
   // Convert relative paths to API paths for file links
   let processedHref = href;
   const apiBaseUrl = getApiUrl();
@@ -162,73 +166,109 @@ export function FileAttachment({ href, children, className, documentId, token }:
       </a>
     );
   }
+  
+  // Check if this is a previewable media file
+  const isAudio = ['mp3', 'wav', 'flac', 'aac', 'ogg', 'wma'].includes(extension);
+  const isVideo = ['mp4', 'avi', 'mov', 'wmv', 'flv', 'webm', 'mkv'].includes(extension);
+  const isPreviewable = isAudio || isVideo;
 
   return (
-    <span className={cn(
-      "flex items-center gap-2 px-4 py-3 border rounded-md bg-card hover:bg-accent/50 transition-colors group file-attachment w-full",
-      className
-    )}>
-      <span className="flex-shrink-0">
-        {fileIcon}
-      </span>
-      
-      <span className="text-sm font-medium text-foreground flex-1" title={displayFileName}>
-        {displayFileName}
-      </span>
-      
-      {extension && (
-        <Badge variant="secondary" className="text-xs">
-          {extension.toUpperCase()}
-        </Badge>
+    <div className={cn("w-full", className)}>
+      <span className={cn(
+        "flex items-center gap-2 px-4 py-3 border rounded-md bg-card hover:bg-accent/50 transition-colors group file-attachment w-full",
+        isPreviewable && "cursor-pointer"
       )}
-      
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={async (e) => {
-          e.preventDefault();
-          try {
-            // Get auth token
-            const { getTokens } = await import('@/lib/api');
-            const { accessToken } = getTokens();
-            
-            // If there's a share token, append it to the URL
-            let fetchUrl = processedHref;
-            if (token) {
-              const separator = processedHref.includes('?') ? '&' : '?';
-              fetchUrl = `${processedHref}${separator}token=${token}`;
-            }
-            
-            // Fetch file with authentication
-            const response = await fetch(fetchUrl, {
-              headers: accessToken ? {
-                'Authorization': `Bearer ${accessToken}`
-              } : {}
-            });
-            
-            if (!response.ok) {
-              throw new Error('Failed to download file');
-            }
-            
-            // Get the blob and create download link
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = displayFileName;
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
-          } catch (error) {
-            console.error('Download failed:', error);
-          }
-        }}
-        title="Download file"
-        className="h-8 w-8 ml-auto opacity-60 hover:opacity-100"
+      onClick={() => {
+        if (isPreviewable) {
+          setShowPreview(!showPreview);
+        }
+      }}
       >
-        <Download className="h-3 w-3" />
-      </Button>
-    </span>
+        <span className="flex-shrink-0">
+          {fileIcon}
+        </span>
+        
+        <span className="text-sm font-medium text-foreground flex-1" title={displayFileName}>
+          {displayFileName}
+        </span>
+        
+        {extension && (
+          <Badge variant="secondary" className="text-xs">
+            {extension.toUpperCase()}
+          </Badge>
+        )}
+        
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            try {
+              // Get auth token
+              const { getTokens } = await import('@/lib/api');
+              const { accessToken } = getTokens();
+              
+              // If there's a share token, append it to the URL
+              let fetchUrl = processedHref;
+              if (token) {
+                const separator = processedHref.includes('?') ? '&' : '?';
+                fetchUrl = `${processedHref}${separator}token=${token}`;
+              }
+              
+              // Fetch file with authentication
+              const response = await fetch(fetchUrl, {
+                headers: accessToken ? {
+                  'Authorization': `Bearer ${accessToken}`
+                } : {}
+              });
+              
+              if (!response.ok) {
+                throw new Error('Failed to download file');
+              }
+              
+              // Get the blob and create download link
+              const blob = await response.blob();
+              const url = window.URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = displayFileName;
+              document.body.appendChild(a);
+              a.click();
+              window.URL.revokeObjectURL(url);
+              document.body.removeChild(a);
+            } catch (error) {
+              console.error('Download failed:', error);
+            }
+          }}
+          title="Download file"
+          className="h-8 w-8 ml-auto opacity-60 hover:opacity-100"
+        >
+          <Download className="h-3 w-3" />
+        </Button>
+      </span>
+      
+      {/* Preview section for audio/video files */}
+      {showPreview && isPreviewable && (
+        <div className="mt-3 p-4 border rounded-md bg-background">
+          {isAudio && (
+            <AuthenticatedAudio
+              src={href}
+              documentId={documentId}
+              token={token}
+              className="w-full"
+            />
+          )}
+          {isVideo && (
+            <AuthenticatedVideo
+              src={href}
+              documentId={documentId}
+              token={token}
+              className="w-full"
+            />
+          )}
+        </div>
+      )}
+    </div>
   );
 }

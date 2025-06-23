@@ -21,9 +21,11 @@ export function FileUpload({ onUpload, className }: FileUploadProps) {
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
-      "image/*": [".png", ".jpg", ".jpeg", ".gif", ".webp"],
+      "image/*": [".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".bmp"],
       "application/pdf": [".pdf"],
       "text/*": [".txt", ".md"],
+      "audio/*": [".mp3", ".wav", ".flac", ".aac", ".ogg", ".wma"],
+      "video/*": [".mp4", ".avi", ".mov", ".wmv", ".flv", ".webm", ".mkv"],
     },
   });
 
@@ -47,7 +49,7 @@ export function FileUpload({ onUpload, className }: FileUploadProps) {
             : "Drag & drop files here, or click to select"}
         </p>
         <p className="text-xs text-muted-foreground">
-          Supports images, PDFs, and text files
+          Supports images, PDFs, text files, audio, and video files
         </p>
       </div>
     </div>
