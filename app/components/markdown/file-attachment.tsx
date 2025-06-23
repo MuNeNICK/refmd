@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import { getApiUrl } from '@/lib/config';
 import { AuthenticatedAudio } from './authenticated-audio';
 import { AuthenticatedVideo } from './authenticated-video';
+import { AuthenticatedPdf } from './authenticated-pdf';
 
 interface FileAttachmentProps {
   href: string;
@@ -170,7 +171,8 @@ export function FileAttachment({ href, children, className, documentId, token }:
   // Check if this is a previewable media file
   const isAudio = ['mp3', 'wav', 'flac', 'aac', 'ogg', 'wma'].includes(extension);
   const isVideo = ['mp4', 'avi', 'mov', 'wmv', 'flv', 'webm', 'mkv'].includes(extension);
-  const isPreviewable = isAudio || isVideo;
+  const isPdf = extension === 'pdf';
+  const isPreviewable = isAudio || isVideo || isPdf;
 
   return (
     <div className={cn("w-full", className)}>
@@ -248,7 +250,7 @@ export function FileAttachment({ href, children, className, documentId, token }:
         </Button>
       </span>
       
-      {/* Preview section for audio/video files */}
+      {/* Preview section for audio/video/pdf files */}
       {showPreview && isPreviewable && (
         <div className="mt-3 p-4 border rounded-md bg-background">
           {isAudio && (
@@ -261,6 +263,14 @@ export function FileAttachment({ href, children, className, documentId, token }:
           )}
           {isVideo && (
             <AuthenticatedVideo
+              src={href}
+              documentId={documentId}
+              token={token}
+              className="w-full"
+            />
+          )}
+          {isPdf && (
+            <AuthenticatedPdf
               src={href}
               documentId={documentId}
               token={token}
