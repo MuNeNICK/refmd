@@ -30,6 +30,7 @@ export interface MarkdownEditorProps {
   onEditorReady?: (insertText: (text: string) => void) => void;
   userName?: string;
   userId?: string;
+  documentPath?: string;
 }
 
 function generateUserColor(userId?: string, light = false): string {
@@ -78,6 +79,7 @@ export function MarkdownEditor({
   
   // Track content statistics
   const [contentStats, setContentStats] = useState({ wordCount: 0, charCount: 0 });
+  
   
   // Insert text at cursor position
   const insertTextAtCursor = useCallback((text: string) => {
@@ -617,48 +619,48 @@ export function MarkdownEditor({
         onFileUpload={onFileUpload}
       />
       <div className="flex-1 overflow-hidden relative">
-        <Editor
-          height="100%"
-          defaultLanguage="markdown"
-          theme={theme === 'dark' ? 'vs-dark' : 'light'}
-          onMount={handleEditorMount}
-          options={{
-            automaticLayout: true,
-            fontSize: 16,
-            fontFamily: "'JetBrains Mono', 'Fira Code', Consolas, monospace",
-          }}
-          loading={
-            <div className="flex items-center justify-center h-full">
-              <div className="text-muted-foreground">Loading editor...</div>
-            </div>
-          }
-        />
-        
-        {/* Cursor display for active users */}
-        {awareness && connected && (
-          <CursorDisplay awareness={awareness} className="z-10" />
-        )}
-        
-        {/* Drag and Drop Overlay */}
-        {isDragOver && (
-          <div 
-            className="absolute inset-0 bg-primary/20 border-2 border-dashed border-primary z-50 flex items-center justify-center backdrop-blur-sm pointer-events-none"
-            style={{ 
-              transition: 'opacity 150ms ease-in-out',
-              animation: 'none'
+          <Editor
+            height="100%"
+            defaultLanguage="markdown"
+            theme={theme === 'dark' ? 'vs-dark' : 'light'}
+            onMount={handleEditorMount}
+            options={{
+              automaticLayout: true,
+              fontSize: 16,
+              fontFamily: "'JetBrains Mono', 'Fira Code', Consolas, monospace",
             }}
-          >
-            <div className="text-center text-primary">
-              <div className="h-12 w-12 mx-auto mb-4 flex items-center justify-center">
-                <svg className="h-12 w-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                </svg>
+            loading={
+              <div className="flex items-center justify-center h-full">
+                <div className="text-muted-foreground">Loading editor...</div>
               </div>
-              <p className="text-lg font-medium">Drop files to upload</p>
-              <p className="text-sm opacity-75">Supports images, PDFs, and text files</p>
+            }
+          />
+          
+          {/* Cursor display for active users */}
+          {awareness && connected && (
+            <CursorDisplay awareness={awareness} className="z-10" />
+          )}
+          
+          {/* Drag and Drop Overlay */}
+          {isDragOver && (
+            <div 
+              className="absolute inset-0 bg-primary/20 border-2 border-dashed border-primary z-50 flex items-center justify-center backdrop-blur-sm pointer-events-none"
+              style={{ 
+                transition: 'opacity 150ms ease-in-out',
+                animation: 'none'
+              }}
+            >
+              <div className="text-center text-primary">
+                <div className="h-12 w-12 mx-auto mb-4 flex items-center justify-center">
+                  <svg className="h-12 w-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                  </svg>
+                </div>
+                <p className="text-lg font-medium">Drop files to upload</p>
+                <p className="text-sm opacity-75">Supports images, PDFs, and text files</p>
+              </div>
             </div>
-          </div>
-        )}
+          )}
       </div>
       
       {/* Editor footer with content statistics */}

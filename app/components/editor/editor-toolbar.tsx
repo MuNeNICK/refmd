@@ -45,7 +45,7 @@ function EditorToolbarComponent({
   syncScroll, 
   onSyncScrollToggle, 
   onFileUpload,
-  viewMode 
+  viewMode,
 }: EditorToolbarProps) {
   const primaryButtons: (ToolbarButton | "separator")[] = [
     { icon: <Bold className="h-4 w-4" />, command: "bold", title: "Bold" },

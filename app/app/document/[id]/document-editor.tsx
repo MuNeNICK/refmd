@@ -291,6 +291,7 @@ export default function DocumentEditor({
               onEditorReady={handleEditorReady}
               userName={user?.name || undefined}
               userId={user?.id || undefined}
+              documentPath={initialDocument?.file_path || undefined}
             />
           )}
           
@@ -326,6 +327,7 @@ export default function DocumentEditor({
                   onEditorReady={handleEditorReady}
                   userName={user?.name || undefined}
                   userId={user?.id || undefined}
+                  documentPath={initialDocument?.file_path || undefined}
                 />
               </Panel>
               <PanelResizeHandle className="w-1 bg-border hover:bg-accent transition-colors" />

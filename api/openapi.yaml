@@ -749,6 +749,616 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  # ===== Git Sync =====
+  /git/config:
+    post:
+      tags:
+        - Git Sync
+      summary: Create or update Git configuration
+      operationId: createOrUpdateGitConfig
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateGitConfigRequest'
+      responses:
+        '200':
+          description: Git configuration created or updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GitConfigResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    get:
+      tags:
+        - Git Sync
+      summary: Get Git configuration
+      operationId: getGitConfig
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Git configuration retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GitConfigResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags:
+        - Git Sync
+      summary: Delete Git configuration
+      operationId: deleteGitConfig
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Git configuration deleted successfully
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /git/init:
+    post:
+      tags:
+        - Git Sync
+      summary: Initialize Git repository
+      operationId: initGitRepository
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Repository initialized successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /git/deinit:
+    post:
+      tags:
+        - Git Sync
+      summary: Deinitialize Git repository
+      operationId: deinitGitRepository
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Repository deinitialized successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /git/sync:
+    post:
+      tags:
+        - Git Sync
+      summary: Manual sync
+      operationId: manualGitSync
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Sync completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GitSyncResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /git/status:
+    get:
+      tags:
+        - Git Sync
+      summary: Get Git status
+      operationId: getGitStatus
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Git status retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GitStatus'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /git/logs:
+    get:
+      tags:
+        - Git Sync
+      summary: Get sync logs
+      operationId: getGitSyncLogs
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Sync logs retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/GitSyncLogResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /git/commits:
+    get:
+      tags:
+        - Git Sync
+      summary: Get commit history
+      operationId: getCommitHistory
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 50
+          description: Maximum number of commits to return
+      responses:
+        '200':
+          description: Commit history retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/GitCommit'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /git/commits/file/{file_path}:
+    get:
+      tags:
+        - Git Sync
+      summary: Get file commit history
+      operationId: getFileCommitHistory
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: file_path
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Path to the file relative to the repository root
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 50
+          description: Maximum number of commits to return
+      responses:
+        '200':
+          description: File commit history retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/GitCommit'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /git/diff/files/{file_path}:
+    get:
+      tags:
+        - Git Sync
+      summary: Get file diff
+      description: Get uncommitted changes for a specific file
+      operationId: getFileDiff
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: file_path
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Path to the file relative to the repository root
+      responses:
+        '200':
+          description: File diff retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiffResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /git/diff/commits/{from}/{to}:
+    get:
+      tags:
+        - Git Sync
+      summary: Get commit diff
+      description: Get diff between two commits
+      operationId: getCommitDiff
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: from
+          in: path
+          required: true
+          schema:
+            type: string
+          description: From commit hash
+        - name: to
+          in: path
+          required: true
+          schema:
+            type: string
+          description: To commit hash
+      responses:
+        '200':
+          description: Commit diff retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DiffResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /git/diff/commits/{from}/{to}/file/{file_path}:
+    get:
+      tags:
+        - Git Sync
+      summary: Get file diff between commits
+      description: Get diff for a specific file between two commits
+      operationId: getFileCommitDiff
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: from
+          in: path
+          required: true
+          schema:
+            type: string
+          description: From commit hash
+        - name: to
+          in: path
+          required: true
+          schema:
+            type: string
+          description: To commit hash
+        - name: file_path
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Path to the file relative to the repository root
+      responses:
+        '200':
+          description: File commit diff retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiffResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /git/diff/staged:
+    get:
+      tags:
+        - Git Sync
+      summary: Get staged diff
+      description: Get diff of staged changes
+      operationId: getStagedDiff
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Staged diff retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DiffResult'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /git/diff/working:
+    get:
+      tags:
+        - Git Sync
+      summary: Get working directory diff
+      description: Get diff of working directory changes
+      operationId: getWorkingDiff
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Working directory diff retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DiffResult'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /git/pull:
+    post:
+      tags:
+        - Git Sync
+      summary: Pull from remote
+      description: Pull changes from remote repository
+      operationId: pullFromRemote
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Pull completed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  has_conflicts:
+                    type: boolean
+                  conflicts:
+                    $ref: '#/components/schemas/ConflictInfo'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /git/conflicts:
+    get:
+      tags:
+        - Git Sync
+      summary: Get conflicts
+      description: Get current merge conflicts
+      operationId: getConflicts
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Conflicts retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConflictInfo'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /git/conflicts/resolve:
+    post:
+      tags:
+        - Git Sync
+      summary: Resolve conflict
+      description: Resolve a merge conflict for a specific file
+      operationId: resolveConflict
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MergeResolution'
+      responses:
+        '200':
+          description: Conflict resolved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /git/conflicts/abort:
+    post:
+      tags:
+        - Git Sync
+      summary: Abort merge
+      description: Abort the current merge operation
+      operationId: abortMerge
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Merge aborted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /git/gitignore:
+    post:
+      tags:
+        - Git Sync
+      summary: Create default gitignore
+      description: Create a default .gitignore file
+      operationId: createGitignore
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Gitignore created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /git/gitignore/patterns:
+    get:
+      tags:
+        - Git Sync
+      summary: Get gitignore patterns
+      description: Get current .gitignore patterns
+      operationId: getGitignorePatterns
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Patterns retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  patterns:
+                    type: array
+                    items:
+                      type: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags:
+        - Git Sync
+      summary: Add gitignore patterns
+      description: Add patterns to .gitignore
+      operationId: addGitignorePatterns
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - patterns
+              properties:
+                patterns:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: Patterns added successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /git/gitignore/check:
+    post:
+      tags:
+        - Git Sync
+      summary: Check if path is ignored
+      description: Check if a path is ignored by .gitignore
+      operationId: checkPathIgnored
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - path
+              properties:
+                path:
+                  type: string
+      responses:
+        '200':
+          description: Check completed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  path:
+                    type: string
+                  is_ignored:
+                    type: boolean
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
   # ===== Socket.IO Stats =====
   /socketio/documents/{id}/active-users:
     get:
@@ -1527,6 +2137,284 @@ components:
         permission:
           type: string
           enum: [view, edit]
+
+    # ===== Git Sync =====
+    CreateGitConfigRequest:
+      type: object
+      required:
+        - repository_url
+        - auth_type
+        - auth_data
+      properties:
+        repository_url:
+          type: string
+          description: Git repository URL
+          example: "https://github.com/user/repo.git"
+        branch_name:
+          type: string
+          description: Branch name to sync with
+          default: "main"
+          example: "main"
+        auth_type:
+          type: string
+          enum: [ssh, token]
+          description: Authentication type
+          example: "token"
+        auth_data:
+          type: object
+          description: Authentication data (SSH private key or token)
+          example: { "token": "ghp_xxxxxxxxxxxxxxxxxxxx" }
+        auto_sync:
+          type: boolean
+          description: Enable automatic sync on document save
+          default: true
+
+    GitConfigResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        repository_url:
+          type: string
+        branch_name:
+          type: string
+        auth_type:
+          type: string
+          enum: [ssh, token]
+        auto_sync:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    GitSyncResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        commit_hash:
+          type: string
+          nullable: true
+        files_changed:
+          type: integer
+          format: int32
+
+    GitStatus:
+      type: object
+      properties:
+        repository_initialized:
+          type: boolean
+        has_remote:
+          type: boolean
+        current_branch:
+          type: string
+          nullable: true
+        uncommitted_changes:
+          type: integer
+          format: int32
+        untracked_files:
+          type: integer
+          format: int32
+        last_sync:
+          type: string
+          format: date-time
+          nullable: true
+        sync_enabled:
+          type: boolean
+
+    GitSyncLogResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        operation:
+          type: string
+          enum: [init, commit, push, pull]
+        status:
+          type: string
+          enum: [success, error]
+        message:
+          type: string
+          nullable: true
+        commit_hash:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+
+    GitCommit:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Commit hash
+        message:
+          type: string
+          description: Commit message
+        author_name:
+          type: string
+          description: Author name
+        author_email:
+          type: string
+          description: Author email
+        timestamp:
+          type: string
+          format: date-time
+          description: Commit timestamp
+        diff_stats:
+          $ref: '#/components/schemas/DiffStats'
+          nullable: true
+
+    DiffStats:
+      type: object
+      properties:
+        files_changed:
+          type: integer
+          format: int32
+        insertions:
+          type: integer
+          format: int32
+        deletions:
+          type: integer
+          format: int32
+
+    DiffResult:
+      type: object
+      properties:
+        file_path:
+          type: string
+          description: Path to the file being diffed
+        diff_lines:
+          type: array
+          items:
+            $ref: '#/components/schemas/DiffLine'
+        old_content:
+          type: string
+          nullable: true
+          description: Original file content (optional)
+        new_content:
+          type: string
+          nullable: true
+          description: New file content (optional)
+
+    DiffLine:
+      type: object
+      properties:
+        line_type:
+          type: string
+          enum: [added, deleted, context]
+          description: Type of change for this line
+        old_line_number:
+          type: integer
+          nullable: true
+          description: Line number in the original file
+        new_line_number:
+          type: integer
+          nullable: true
+          description: Line number in the new file
+        content:
+          type: string
+          description: The actual line content
+
+    ConflictInfo:
+      type: object
+      properties:
+        has_conflicts:
+          type: boolean
+          description: Whether there are any conflicts
+        conflicted_files:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConflictedFile'
+        can_auto_merge:
+          type: boolean
+          description: Whether conflicts can be auto-merged
+        merge_message:
+          type: string
+          nullable: true
+          description: Message about the merge status
+
+    ConflictedFile:
+      type: object
+      properties:
+        file_path:
+          type: string
+          description: Path to the conflicted file
+        conflict_type:
+          type: string
+          enum: [both_modified, both_added, deleted_by_us, deleted_by_them, unknown]
+          description: Type of conflict
+        our_version:
+          type: string
+          nullable: true
+          description: Our version of the file content
+        their_version:
+          type: string
+          nullable: true
+          description: Their version of the file content
+        base_version:
+          type: string
+          nullable: true
+          description: Base version of the file content
+        markers:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConflictMarker'
+
+    ConflictMarker:
+      type: object
+      properties:
+        start_line:
+          type: integer
+          description: Line number where conflict starts
+        middle_line:
+          type: integer
+          description: Line number of the separator
+        end_line:
+          type: integer
+          description: Line number where conflict ends
+        our_content:
+          type: array
+          items:
+            type: string
+          description: Our version content lines
+        their_content:
+          type: array
+          items:
+            type: string
+          description: Their version content lines
+
+    MergeResolution:
+      type: object
+      required:
+        - file_path
+        - resolution_type
+      properties:
+        file_path:
+          type: string
+          description: Path to the file to resolve
+        resolution_type:
+          type: string
+          enum: [use_ours, use_theirs, manual, delete]
+          description: How to resolve the conflict
+        resolved_content:
+          type: string
+          nullable: true
+          description: Manual resolution content (required if resolution_type is manual)
 
     # ===== Error =====
     ErrorResponse:

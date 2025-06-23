@@ -8,6 +8,7 @@ import { FetchHttpRequest } from './core/FetchHttpRequest';
 import { AuthenticationService } from './services/AuthenticationService';
 import { DocumentsService } from './services/DocumentsService';
 import { FilesService } from './services/FilesService';
+import { GitSyncService } from './services/GitSyncService';
 import { ScrapsService } from './services/ScrapsService';
 import { SharingService } from './services/SharingService';
 import { SocketIoService } from './services/SocketIoService';
@@ -17,6 +18,7 @@ export class RefMDClient {
     public readonly authentication: AuthenticationService;
     public readonly documents: DocumentsService;
     public readonly files: FilesService;
+    public readonly gitSync: GitSyncService;
     public readonly scraps: ScrapsService;
     public readonly sharing: SharingService;
     public readonly socketIo: SocketIoService;
@@ -37,6 +39,7 @@ export class RefMDClient {
         this.authentication = new AuthenticationService(this.request);
         this.documents = new DocumentsService(this.request);
         this.files = new FilesService(this.request);
+        this.gitSync = new GitSyncService(this.request);
         this.scraps = new ScrapsService(this.request);
         this.sharing = new SharingService(this.request);
         this.socketIo = new SocketIoService(this.request);

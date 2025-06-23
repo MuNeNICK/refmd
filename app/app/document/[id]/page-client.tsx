@@ -4,6 +4,7 @@ import React, { useState, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import MainLayout from '@/components/layout/main-layout';
 import { ShareDialog } from '@/components/collaboration/share-dialog';
+import { GitIgnoreManager } from '@/components/git/git-ignore-manager';
 import { ViewMode } from '@/components/layout/header';
 import { getApiClient } from '@/lib/api';
 import type { Document } from '@/lib/api/client/models/Document';
@@ -40,6 +41,7 @@ export default function PageClient({ documentId, initialDocument, token }: PageC
   const [connected, setConnected] = useState(false);
   const [activeUsers, setActiveUsers] = useState(1);
   const [currentContent, setCurrentContent] = useState(initialDocument?.content || '');
+  const [showGitIgnore, setShowGitIgnore] = useState(false);
 
   // Handle mobile view mode
   React.useEffect(() => {
@@ -62,6 +64,10 @@ export default function PageClient({ documentId, initialDocument, token }: PageC
 
   const handleShare = () => {
     setShareDialogOpen(true);
+  };
+
+  const handleGitIgnore = () => {
+    setShowGitIgnore(true);
   };
 
   const handleDownload = async () => {
@@ -169,6 +175,7 @@ export default function PageClient({ documentId, initialDocument, token }: PageC
         onSave={handleSave}
         onShare={handleShare}
         onDownload={handleDownload}
+        onGitIgnore={handleGitIgnore}
         showEditorFeatures={!isViewOnly}
         hideFileTree={isShareLink}
         isViewOnly={isViewOnly}
@@ -191,6 +198,12 @@ export default function PageClient({ documentId, initialDocument, token }: PageC
         onOpenChange={setShareDialogOpen}
         resourceId={documentId}
         resourceType="document"
+      />
+      
+      <GitIgnoreManager
+        open={showGitIgnore}
+        onOpenChange={setShowGitIgnore}
+        currentDocumentPath={initialDocument?.file_path || undefined}
       />
     </>
   );

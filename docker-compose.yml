@@ -20,6 +20,7 @@ services:
     ports:
       - "8888:8888"
     environment:
+      - FRONTEND_URL=http://localhost:3000
       - DATABASE_URL=postgresql://refmd:refmd@postgres:5432/refmd
       - PORT=8888
       - JWT_SECRET=dev-secret-key-change-in-production
@@ -28,7 +29,9 @@ services:
       - BCRYPT_COST=12
       - UPLOAD_MAX_SIZE=10485760
       - UPLOAD_DIR=/app/documents
-      - FRONTEND_URL=http://localhost:3000
+      - GIT_SYNC_ENABLED=true
+      - GIT_AUTO_SYNC=true
+      - GIT_SYNC_INTERVAL=300
     volumes:
       - ./documents:/app/documents
     depends_on:

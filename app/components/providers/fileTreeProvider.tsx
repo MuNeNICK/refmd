@@ -13,6 +13,7 @@ interface DocumentNode {
   children?: DocumentNode[];
   created_at?: string;
   updated_at?: string;
+  file_path?: string;
 }
 
 interface FileTreeContextType {
@@ -70,7 +71,8 @@ function buildTree(documents: DatabaseDocument[]): DocumentNode[] {
       type: nodeType,
       children: [],
       created_at: doc.created_at,
-      updated_at: doc.updated_at
+      updated_at: doc.updated_at,
+      file_path: 'file_path' in doc ? (doc as Document & { file_path?: string }).file_path : undefined
     });
   });
   
@@ -202,6 +204,8 @@ export function FileTreeProvider({ children }: { children: React.ReactNode }) {
   const refreshDocuments = useCallback(() => {
     // Invalidate and refetch the documents query
     queryClient.invalidateQueries({ queryKey: ['documents', user?.id] });
+    // Also refresh git status when documents are refreshed
+    queryClient.invalidateQueries({ queryKey: ['git-status'] });
   }, [queryClient, user]);
 
   const updateDocuments = useCallback((newDocuments: DocumentNode[]) => {

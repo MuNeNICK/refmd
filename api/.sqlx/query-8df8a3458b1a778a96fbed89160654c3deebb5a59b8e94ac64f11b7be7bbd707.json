@@ -1,0 +1,70 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, user_id, repository_url, branch_name, auth_type, auth_data, auto_sync, created_at, updated_at FROM git_configs WHERE user_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "user_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "repository_url",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "branch_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "auth_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "auth_data",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 6,
+        "name": "auto_sync",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 7,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 8,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "8df8a3458b1a778a96fbed89160654c3deebb5a59b8e94ac64f11b7be7bbd707"
+}

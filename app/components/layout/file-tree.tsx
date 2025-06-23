@@ -5,6 +5,7 @@ import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarHeader,
@@ -20,6 +21,9 @@ import { FileNode } from './FileNode';
 import { FolderNode } from './FolderNode';
 import { FileTreeActions } from './FileTreeActions';
 import { useFileTreeDrag } from '@/lib/hooks/useFileTreeDrag';
+import { GitSyncButton } from '@/components/git/git-sync-button';
+import { GitDiffDialog } from '@/components/git/git-diff-dialog';
+import { useAuth } from '@/lib/auth/authContext';
 
 interface DocumentNode {
   id: string;
@@ -39,6 +43,8 @@ interface FileTreeProps {
 function FileTreeComponent({ onDocumentSelect, selectedDocumentId }: FileTreeProps) {
   const { documents, expandedFolders, loading, toggleFolder, expandFolder, expandParentFolders, refreshDocuments, updateDocuments } = useFileTree();
   const router = useRouter();
+  const { user } = useAuth();
+  const [showGitDiff, setShowGitDiff] = React.useState(false);
 
   // Expand parent folders when a document is selected
   React.useEffect(() => {
@@ -354,6 +360,7 @@ function FileTreeComponent({ onDocumentSelect, selectedDocumentId }: FileTreePro
         isSelected={isSelected}
         isDragging={isDragging}
         isDropTarget={false}
+        isAuthenticated={!!user}
         onSelect={(id, type) => onDocumentSelect(id, type)}
         onRename={renameDocument}
         onDelete={deleteDocument}
@@ -365,7 +372,7 @@ function FileTreeComponent({ onDocumentSelect, selectedDocumentId }: FileTreePro
         onDragOver={handleDragOver}
       />
     );
-  }, [expandedFolders, selectedDocumentId, dragState, hasChildDropTarget, toggleFolder, onDocumentSelect, renameDocument, deleteDocument, createNewDocument, handleDragStart, handleDragEnd, handleDragEnter, handleDragLeave, handleDrop, handleDragOver]);
+  }, [expandedFolders, selectedDocumentId, dragState, hasChildDropTarget, toggleFolder, onDocumentSelect, renameDocument, deleteDocument, createNewDocument, handleDragStart, handleDragEnd, handleDragEnter, handleDragLeave, handleDrop, handleDragOver, user]);
 
   if (loading) {
     return (
@@ -458,6 +465,21 @@ function FileTreeComponent({ onDocumentSelect, selectedDocumentId }: FileTreePro
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+      
+      {user && (
+        <SidebarFooter>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <GitSyncButton onShowDiff={() => setShowGitDiff(true)} />
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarFooter>
+      )}
+      
+      <GitDiffDialog 
+        open={showGitDiff} 
+        onOpenChange={setShowGitDiff} 
+      />
     </div>
   );
 }

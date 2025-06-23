@@ -27,7 +27,8 @@ import {
   X,
   Wifi,
   WifiOff,
-  Users
+  Users,
+  FileX
 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -48,6 +49,7 @@ interface HeaderProps {
   onSave?: () => void;
   onShare?: () => void;
   onDownload?: () => void;
+  onGitIgnore?: () => void;
   // Show editor features only when in document view
   showEditorFeatures?: boolean;
   hideSidebarToggle?: boolean;
@@ -65,6 +67,7 @@ export function Header({
   onViewModeChange,
   onShare,
   onDownload,
+  onGitIgnore,
   showEditorFeatures = false,
   hideSidebarToggle = false,
   isViewOnly = false,
@@ -284,6 +287,18 @@ export function Header({
               >
                 <Download className="h-4 w-4" />
               </Button>
+              
+              {onGitIgnore && (
+                <Button
+                  onClick={onGitIgnore}
+                  variant="ghost"
+                  size="icon"
+                  className="hidden lg:flex h-9 w-9"
+                  title="Git Ignore"
+                >
+                  <FileX className="h-4 w-4" />
+                </Button>
+              )}
 
               <div className="hidden sm:block w-px h-6 bg-border mx-1" />
             </div>
@@ -473,6 +488,19 @@ export function Header({
                       >
                         <Download className="h-4 w-4 mr-2" />
                         Download
+                      </Button>
+                    )}
+                    {showEditorFeatures && onGitIgnore && (
+                      <Button
+                        onClick={() => {
+                          onGitIgnore();
+                          setMobileMenuOpen(false);
+                        }}
+                        variant="ghost"
+                        className="w-full justify-start"
+                      >
+                        <FileX className="h-4 w-4 mr-2" />
+                        Git Ignore
                       </Button>
                     )}
                   </div>

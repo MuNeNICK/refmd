@@ -12,6 +12,9 @@ pub struct Config {
     pub upload_max_size: usize,
     pub upload_dir: String,
     pub frontend_url: Option<String>,
+    pub git_sync_enabled: bool,
+    pub git_auto_sync: bool,
+    pub git_sync_interval: u64,
 }
 
 impl Config {
@@ -39,6 +42,18 @@ impl Config {
             upload_dir: std::env::var("UPLOAD_DIR")
                 .unwrap_or_else(|_| "./uploads".to_string()),
             frontend_url: std::env::var("FRONTEND_URL").ok(),
+            git_sync_enabled: std::env::var("GIT_SYNC_ENABLED")
+                .unwrap_or_else(|_| "false".to_string())
+                .parse()
+                .unwrap_or(false),
+            git_auto_sync: std::env::var("GIT_AUTO_SYNC")
+                .unwrap_or_else(|_| "false".to_string())
+                .parse()
+                .unwrap_or(false),
+            git_sync_interval: std::env::var("GIT_SYNC_INTERVAL")
+                .unwrap_or_else(|_| "300".to_string())
+                .parse()
+                .unwrap_or(300),
         })
     }
 }
