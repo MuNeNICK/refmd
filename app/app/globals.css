@@ -667,6 +667,18 @@
   white-space: nowrap;
 }
 
+/* Vim mode styles - removed separate status bar styles since it's now integrated into the footer */
+
+/* Fix for monaco-vim adding extra bottom padding */
+.monaco-editor .overflow-guard {
+  padding-bottom: 0 !important;
+}
+
+/* Ensure the editor container fills available space */
+.monaco-editor-container {
+  height: 100% !important;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
