@@ -24,7 +24,6 @@ interface MainLayoutProps {
   onSave?: () => void;
   onShare?: () => void;
   onDownload?: () => void;
-  onGitIgnore?: () => void;
   showEditorFeatures?: boolean;
   hideFileTree?: boolean;
   isViewOnly?: boolean;
@@ -43,7 +42,6 @@ export default function MainLayout({
   onSave,
   onShare,
   onDownload,
-  onGitIgnore,
   showEditorFeatures = false,
   hideFileTree = false,
   isViewOnly = false
@@ -108,7 +106,6 @@ export default function MainLayout({
           onSave={onSave}
           onShare={onShare}
           onDownload={onDownload}
-          onGitIgnore={onGitIgnore}
           showEditorFeatures={showEditorFeatures}
           hideSidebarToggle={hideFileTree || false}
           isViewOnly={isViewOnly}

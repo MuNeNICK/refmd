@@ -33,6 +33,7 @@ interface DocumentNode {
   children?: DocumentNode[];
   created_at?: string;
   updated_at?: string;
+  file_path?: string;
 }
 
 interface FileTreeProps {
@@ -319,6 +320,22 @@ function FileTreeComponent({ onDocumentSelect, selectedDocumentId }: FileTreePro
     return checkRecursively(node.children);
   }, [dragState.dropTarget]);
 
+  // Helper function to find a document by ID
+  const findDocument = useCallback((nodes: DocumentNode[], id: string): DocumentNode | null => {
+    for (const node of nodes) {
+      if (node.id === id) return node;
+      if (node.children) {
+        const found = findDocument(node.children, id);
+        if (found) return found;
+      }
+    }
+    return null;
+  }, []);
+
+  // Get the file path of the selected document
+  const selectedDocument = selectedDocumentId ? findDocument(documents, selectedDocumentId) : null;
+  const selectedDocumentPath = selectedDocument?.file_path;
+
   // Node rendering function
   const renderNode = useCallback((node: DocumentNode, parentId?: string) => {
     const isExpanded = expandedFolders.has(node.id);
@@ -470,7 +487,7 @@ function FileTreeComponent({ onDocumentSelect, selectedDocumentId }: FileTreePro
         <SidebarFooter>
           <SidebarMenu>
             <SidebarMenuItem>
-              <GitSyncButton onShowDiff={() => setShowGitDiff(true)} />
+              <GitSyncButton onShowDiff={() => setShowGitDiff(true)} currentDocumentPath={selectedDocumentPath} />
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarFooter>

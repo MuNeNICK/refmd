@@ -13,12 +13,13 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { toast } from "sonner";
-import { GitCommit, AlertCircle, CheckCircle, Loader2, Settings, Eye, ChevronDown, GitPullRequest, History } from "lucide-react";
+import { GitCommit, AlertCircle, CheckCircle, Loader2, Settings, Eye, ChevronDown, GitPullRequest, History, FileX } from "lucide-react";
 import { getApiClient } from "@/lib/api";
 import type { GitSyncResponse } from "@/lib/api/client";
 import { GitConfigDialog } from "./git-config-dialog";
 import { ConflictResolutionDialog } from "./conflict-resolution-dialog";
 import { GitHistoryDialog } from "./git-history-dialog";
+import { GitIgnoreManager } from "./git-ignore-manager";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,13 +32,15 @@ import { Button } from "@/components/ui/button";
 interface GitSyncButtonProps {
   className?: string;
   onShowDiff?: () => void;
+  currentDocumentPath?: string;
 }
 
-export function GitSyncButton({ className, onShowDiff }: GitSyncButtonProps) {
+export function GitSyncButton({ className, onShowDiff, currentDocumentPath }: GitSyncButtonProps) {
   const queryClient = useQueryClient();
   const [showConfig, setShowConfig] = useState(false);
   const [showConflicts, setShowConflicts] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [showGitIgnore, setShowGitIgnore] = useState(false);
   const { isMobile } = useSidebar();
 
   // Fetch Git status
@@ -216,6 +219,10 @@ export function GitSyncButton({ className, onShowDiff }: GitSyncButtonProps) {
                   <History className="mr-2 h-4 w-4" />
                   View History
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setShowGitIgnore(true)}>
+                  <FileX className="mr-2 h-4 w-4" />
+                  Git Ignore
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
               </>
             )}
@@ -243,6 +250,12 @@ export function GitSyncButton({ className, onShowDiff }: GitSyncButtonProps) {
       <GitHistoryDialog
         open={showHistory}
         onOpenChange={setShowHistory}
+      />
+      
+      <GitIgnoreManager
+        open={showGitIgnore}
+        onOpenChange={setShowGitIgnore}
+        currentDocumentPath={currentDocumentPath}
       />
     </>
   );
