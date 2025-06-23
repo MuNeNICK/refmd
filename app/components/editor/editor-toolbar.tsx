@@ -22,6 +22,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import type { ViewMode } from "@/components/layout/header";
+import { VimModeToggle } from "./vim-mode-toggle";
 
 interface EditorToolbarProps {
   onCommand: (command: string, value?: number) => void;
@@ -30,6 +31,8 @@ interface EditorToolbarProps {
   onSyncScrollToggle?: () => void;
   onFileUpload?: () => void;
   viewMode?: ViewMode;
+  isVimMode?: boolean;
+  onVimModeToggle?: () => void;
 }
 
 interface ToolbarButton {
@@ -46,6 +49,8 @@ function EditorToolbarComponent({
   onSyncScrollToggle, 
   onFileUpload,
   viewMode,
+  isVimMode,
+  onVimModeToggle,
 }: EditorToolbarProps) {
   const primaryButtons: (ToolbarButton | "separator")[] = [
     { icon: <Bold className="h-4 w-4" />, command: "bold", title: "Bold" },
@@ -117,6 +122,14 @@ function EditorToolbarComponent({
         {/* Spacer to push buttons to the right */}
         <div className="flex-1" />
         
+        {/* Vim mode toggle */}
+        {onVimModeToggle && (
+          <VimModeToggle
+            isVimMode={isVimMode || false}
+            onToggle={onVimModeToggle}
+          />
+        )}
+        
         {/* File upload button */}
         {onFileUpload && (
           <Button
@@ -136,7 +149,7 @@ function EditorToolbarComponent({
             variant="ghost"
             size="sm"
             onClick={onSyncScrollToggle}
-            className="p-1 sm:p-1.5 h-auto w-auto transition-colors ml-2 text-muted-foreground hover:bg-accent hover:text-accent-foreground relative"
+            className="p-1 sm:p-1.5 h-auto w-auto transition-colors text-muted-foreground hover:bg-accent hover:text-accent-foreground relative"
             title={syncScroll ? "Disable scroll sync" : "Enable scroll sync"}
           >
             <ArrowUpDown className="h-4 w-4" />
@@ -162,6 +175,23 @@ function EditorToolbarComponent({
       {showMore && (
         <div className="md:hidden bg-background border-b border-border px-2 py-2">
           <div className="flex flex-wrap gap-1">
+            {/* Vim mode toggle for mobile */}
+            {onVimModeToggle && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  onVimModeToggle();
+                  setShowMore(false);
+                }}
+                className="p-2 h-auto w-auto transition-colors flex items-center gap-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                title={isVimMode ? "Disable Vim mode" : "Enable Vim mode"}
+              >
+                <span className="font-mono text-xs font-semibold">Vim</span>
+                <span className="text-xs">{isVimMode ? 'On' : 'Off'}</span>
+              </Button>
+            )}
+            
             {/* File upload button for mobile */}
             {onFileUpload && (
               <Button

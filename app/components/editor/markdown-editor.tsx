@@ -72,6 +72,10 @@ export function MarkdownEditor({
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
   const monacoBindingRef = useRef<unknown>(null);
   const monacoRef = useRef<unknown>(null);
+  // Import type from monaco-vim
+  const vimModeRef = useRef<{ dispose: () => void } | null>(null);
+  const vimStatusBarRef = useRef<HTMLDivElement | null>(null);
+  const [vimStatus, setVimStatus] = useState<string>('');
   
   
   // Track when editor is mounted
@@ -79,6 +83,14 @@ export function MarkdownEditor({
   
   // Track content statistics
   const [contentStats, setContentStats] = useState({ wordCount: 0, charCount: 0 });
+  
+  // Track Vim mode state
+  const [isVimMode, setIsVimMode] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('editorVimMode') === 'true';
+    }
+    return false;
+  });
   
   
   // Insert text at cursor position
@@ -262,6 +274,112 @@ export function MarkdownEditor({
     };
   }, [awareness]);
 
+  // Toggle Vim mode
+  const toggleVimMode = useCallback(() => {
+    const newVimMode = !isVimMode;
+    setIsVimMode(newVimMode);
+    
+    // Save preference
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('editorVimMode', newVimMode.toString());
+    }
+  }, [isVimMode]);
+  
+  // Initialize or dispose Vim mode
+  useEffect(() => {
+    if (!monacoEditor || !monacoRef.current) return;
+    
+    const initVimMode = async () => {
+      if (isVimMode && !vimModeRef.current) {
+        try {
+          // Dynamically import monaco-vim
+          const { initVimMode: initVim } = await import('monaco-vim');
+          
+          // Create hidden status bar element if it doesn't exist
+          if (!vimStatusBarRef.current) {
+            const statusBar = document.createElement('div');
+            statusBar.style.display = 'none';
+            statusBar.style.position = 'fixed';
+            statusBar.style.visibility = 'hidden';
+            statusBar.style.top = '-9999px';
+            statusBar.style.left = '-9999px';
+            statusBar.style.width = '1px';
+            statusBar.style.height = '1px';
+            statusBar.style.overflow = 'hidden';
+            document.body.appendChild(statusBar);
+            vimStatusBarRef.current = statusBar;
+            
+            // Set up mutation observer to track status changes
+            const observer = new MutationObserver(() => {
+              const statusText = vimStatusBarRef.current?.textContent || '';
+              setVimStatus(statusText);
+            });
+            
+            observer.observe(statusBar, { 
+              childList: true, 
+              characterData: true, 
+              subtree: true 
+            });
+          }
+          
+          // Initialize Vim mode
+          vimModeRef.current = initVim(monacoEditor, vimStatusBarRef.current);
+          
+          // Fix any extra padding/margin that monaco-vim might add
+          const editorContainer = monacoEditor.getContainerDomNode();
+          if (editorContainer) {
+            const overflowGuard = editorContainer.querySelector('.overflow-guard');
+            if (overflowGuard) {
+              (overflowGuard as HTMLElement).style.paddingBottom = '0';
+            }
+          }
+          
+          // Focus editor to ensure Vim mode is active
+          monacoEditor.focus();
+        } catch (error) {
+          console.error('Failed to initialize Vim mode:', error);
+        }
+      } else if (!isVimMode && vimModeRef.current) {
+        // Dispose Vim mode
+        try {
+          vimModeRef.current.dispose();
+          vimModeRef.current = null;
+          
+          // Clear vim status
+          setVimStatus('');
+          
+          // Restore normal mode
+          monacoEditor.focus();
+        } catch (error) {
+          console.error('Failed to dispose Vim mode:', error);
+        }
+      }
+    };
+    
+    initVimMode();
+    
+    return () => {
+      // Cleanup on unmount
+      if (vimModeRef.current) {
+        try {
+          vimModeRef.current.dispose();
+          vimModeRef.current = null;
+        } catch (error) {
+          console.error('Error disposing Vim mode on unmount:', error);
+        }
+      }
+      
+      // Clear vim status
+      setVimStatus('');
+      
+      // Remove status bar on unmount
+      if (vimStatusBarRef.current && vimStatusBarRef.current.parentNode) {
+        vimStatusBarRef.current.parentNode.removeChild(vimStatusBarRef.current);
+        vimStatusBarRef.current = null;
+      }
+    };
+  }, [isVimMode, monacoEditor, monacoRef]);
+  
   // Handle editor mount
   const handleEditorMount: OnMount = useCallback((editor, monaco) => {
     editorRef.current = editor;
@@ -617,6 +735,8 @@ export function MarkdownEditor({
         onSyncScrollToggle={onSyncScrollToggle}
         viewMode={viewMode || "editor"}
         onFileUpload={onFileUpload}
+        isVimMode={isVimMode}
+        onVimModeToggle={toggleVimMode}
       />
       <div className="flex-1 overflow-hidden relative">
           <Editor
@@ -666,6 +786,16 @@ export function MarkdownEditor({
       {/* Editor footer with content statistics */}
       <div className="flex-shrink-0 border-t bg-muted/30 px-4 py-1">
         <div className="flex items-center justify-between text-xs text-muted-foreground">
+          {/* Vim status on the left, like traditional Vim */}
+          <div className="flex items-center min-w-[200px]">
+            {isVimMode && vimStatus ? (
+              <span className="font-mono font-semibold">{vimStatus}</span>
+            ) : (
+              <span className="invisible">--</span> // Placeholder to maintain height
+            )}
+          </div>
+          
+          {/* Word and character count on the right */}
           <div className="flex items-center gap-4">
             <span>{contentStats.wordCount} words</span>
             <span>{contentStats.charCount} characters</span>
