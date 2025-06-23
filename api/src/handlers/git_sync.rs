@@ -98,10 +98,32 @@ pub async fn create_or_update_config(
         // Note: auth_data is already encrypted in encrypted_request
         
         let updated_config = git_config_repo.update(auth_user.user_id, update_request).await?;
+        
+        // Initialize repository if not already initialized
+        let git_sync_service = GitSyncService::new(
+            git_config_repo.clone(),
+            state.config.upload_dir.clone().into(),
+            &state.config.jwt_secret
+        )?;
+        
+        let status = git_sync_service.get_status(auth_user.user_id).await?;
+        if !status.repository_initialized {
+            git_sync_service.init_repository(auth_user.user_id).await?;
+        }
+        
         Ok(Json(updated_config.into()))
     } else {
         // Create new config
         let new_config = git_config_repo.create(auth_user.user_id, encrypted_request).await?;
+        
+        // Initialize repository after creating config
+        let git_sync_service = GitSyncService::new(
+            git_config_repo.clone(),
+            state.config.upload_dir.clone().into(),
+            &state.config.jwt_secret
+        )?;
+        git_sync_service.init_repository(auth_user.user_id).await?;
+        
         Ok(Json(new_config.into()))
     }
 }
@@ -170,6 +192,22 @@ pub async fn init_repository(
     Ok(Json(serde_json::json!({
         "success": true,
         "message": "Repository initialized successfully"
+    })))
+}
+
+// POST /api/git/deinit - Deinitialize repository
+pub async fn deinit_repository(
+    State(state): State<Arc<AppState>>,
+    Extension(auth_user): Extension<AuthUser>,
+) -> crate::error::Result<Json<serde_json::Value>> {
+    let git_config_repo = Arc::new(GitConfigRepository::new(state.db_pool.clone()));
+    let git_sync_service = GitSyncService::new(git_config_repo, state.config.upload_dir.clone().into(), &state.config.jwt_secret)?;
+    
+    git_sync_service.deinit_repository(auth_user.user_id).await?;
+    
+    Ok(Json(serde_json::json!({
+        "success": true,
+        "message": "Repository deinitialized successfully"
     })))
 }
 
@@ -554,6 +592,7 @@ pub fn routes(state: Arc<AppState>) -> Router {
         .route("/config", get(get_config))
         .route("/config", delete(delete_config))
         .route("/init", post(init_repository))
+        .route("/deinit", post(deinit_repository))
         .route("/sync", post(manual_sync))
         .route("/status", get(get_status))
         .route("/logs", get(get_sync_logs))

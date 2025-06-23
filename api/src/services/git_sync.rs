@@ -248,7 +248,17 @@ impl GitSyncService {
             
             // Push current branch to remote branch
             let refspec = format!("refs/heads/{}:refs/heads/{}", current_branch, config.branch_name);
-            remote.push(&[&refspec], Some(&mut push_options))
+            
+            // Try to push, this might fail if the remote branch doesn't exist
+            let push_result = remote.push(&[&refspec], Some(&mut push_options));
+            
+            // If push fails because remote branch doesn't exist, try with force to create it
+            if push_result.is_err() {
+                let force_refspec = format!("+refs/heads/{}:refs/heads/{}", current_branch, config.branch_name);
+                remote.push(&[&force_refspec], Some(&mut push_options))
+            } else {
+                push_result
+            }
         };
 
         // Clean up push tracking after operation
@@ -264,14 +274,27 @@ impl GitSyncService {
                 Ok(())
             },
             Err(e) => {
+                let error_message = e.to_string();
+                let detailed_error = if error_message.contains("authentication") || error_message.contains("401") {
+                    "Authentication failed. Please check your Git credentials in settings."
+                } else if error_message.contains("not found") || error_message.contains("404") {
+                    "Repository not found. Please check the repository URL."
+                } else if error_message.contains("permission") || error_message.contains("403") {
+                    "Permission denied. Please check your repository access rights."
+                } else if error_message.contains("network") || error_message.contains("connect") {
+                    "Network error. Please check your internet connection."
+                } else {
+                    &error_message
+                };
+                
                 self.git_config_repo.log_sync_operation(
                     user_id,
                     "push",
                     "error",
-                    Some(&e.to_string()),
+                    Some(detailed_error),
                     None,
                 ).await?;
-                Err(Error::BadRequest(format!("Failed to push: {}", e)))
+                Err(Error::BadRequest(format!("Git push failed: {}", detailed_error)))
             }
         };
         
@@ -858,6 +881,52 @@ __pycache__/
         }
         
         Ok(commits)
+    }
+
+    pub async fn deinit_repository(&self, user_id: Uuid) -> Result<()> {
+        let repo_path = self.get_user_repo_path(user_id);
+        
+        // Check if user directory exists first
+        if !repo_path.exists() {
+            return Err(Error::BadRequest("No repository directory found for this user".to_string()));
+        }
+        
+        let git_dir = repo_path.join(".git");
+        
+        // Check if .git directory exists
+        if !git_dir.exists() {
+            return Err(Error::BadRequest("No Git repository found to deinitialize".to_string()));
+        }
+        
+        // Remove .git directory
+        if let Err(e) = tokio::fs::remove_dir_all(&git_dir).await {
+            tracing::error!("Failed to remove .git directory: {}", e);
+            return Err(Error::BadRequest(format!("Failed to remove .git directory: {}", e)));
+        }
+        
+        // Remove .gitignore file if it exists
+        let gitignore_path = repo_path.join(".gitignore");
+        if gitignore_path.exists() {
+            if let Err(e) = tokio::fs::remove_file(&gitignore_path).await {
+                tracing::warn!("Failed to remove .gitignore file: {}", e);
+                // Don't fail the operation if .gitignore removal fails
+            }
+        }
+        
+        // Delete Git configuration from database if it exists
+        // Ignore errors as the config might not exist
+        let _ = self.git_config_repo.delete(user_id).await;
+        
+        // Log the operation - ignore errors as this is not critical
+        let _ = self.git_config_repo.log_sync_operation(
+            user_id,
+            "deinit",
+            "success",
+            Some("Repository deinitialized and configuration removed"),
+            None,
+        ).await;
+        
+        Ok(())
     }
 }
 

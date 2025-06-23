@@ -100,19 +100,11 @@ export function GitSyncButton({ className, onShowDiff }: GitSyncButtonProps) {
     },
   });
 
-  const handleSync = () => {
-    if (!gitStatus?.repository_initialized) {
-      initMutation.mutate();
-    } else {
-      syncMutation.mutate();
-    }
-  };
-
   const handleMainClick = () => {
-    if (statusError || !gitConfig) {
+    if (statusError || !gitConfig || !gitStatus?.repository_initialized) {
       setShowConfig(true);
     } else {
-      handleSync();
+      syncMutation.mutate();
     }
   };
 
@@ -120,11 +112,11 @@ export function GitSyncButton({ className, onShowDiff }: GitSyncButtonProps) {
     if (syncMutation.isPending || initMutation.isPending || statusLoading) {
       return <Loader2 className="h-4 w-4 animate-spin shrink-0" />;
     }
-    if (statusError || !gitConfig) {
+    if (statusError) {
       return <AlertCircle className="h-4 w-4 text-destructive shrink-0" />;
     }
-    if (!gitStatus?.repository_initialized) {
-      return <AlertCircle className="h-4 w-4 text-orange-500 shrink-0" />;
+    if (!gitConfig || !gitStatus?.repository_initialized) {
+      return <AlertCircle className="h-4 w-4 text-gray-500 shrink-0" />;
     }
     
     const hasChanges = (gitStatus.uncommitted_changes || 0) + (gitStatus.untracked_files || 0) > 0;
@@ -150,7 +142,7 @@ export function GitSyncButton({ className, onShowDiff }: GitSyncButtonProps) {
 
   const getTooltipText = () => {
     if (statusError || !gitConfig) return "Git configuration required";
-    if (!gitStatus?.repository_initialized) return "Click to initialize repository";
+    if (!gitStatus?.repository_initialized) return "Click to configure Git";
     
     const hasChanges = (gitStatus.uncommitted_changes || 0) + (gitStatus.untracked_files || 0) > 0;
     if (hasChanges) return "Click to sync changes";

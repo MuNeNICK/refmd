@@ -11,6 +11,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -44,6 +54,7 @@ interface FormData {
 
 export function GitConfigDialog({ open, onOpenChange }: GitConfigDialogProps) {
   const queryClient = useQueryClient();
+  const [showDeinitConfirm, setShowDeinitConfirm] = useState(false);
   const [formData, setFormData] = useState<FormData>({
     repository_url: "",
     branch_name: "main",
@@ -56,6 +67,14 @@ export function GitConfigDialog({ open, onOpenChange }: GitConfigDialogProps) {
   const { data: existingConfig, isLoading } = useQuery({
     queryKey: ["git-config"],
     queryFn: () => getApiClient().gitSync.getGitConfig(),
+    enabled: open,
+    retry: false,
+  });
+
+  // Fetch git status
+  const { data: gitStatus } = useQuery({
+    queryKey: ["git-status"],
+    queryFn: () => getApiClient().gitSync.getGitStatus(),
     enabled: open,
     retry: false,
   });
@@ -89,18 +108,19 @@ export function GitConfigDialog({ open, onOpenChange }: GitConfigDialogProps) {
     },
   });
 
-  // Delete config mutation
-  const deleteConfigMutation = useMutation({
-    mutationFn: () => getApiClient().gitSync.deleteGitConfig(),
+
+  // Deinit repository mutation
+  const deinitMutation = useMutation({
+    mutationFn: () => getApiClient().gitSync.deinitGitRepository(),
     onSuccess: () => {
-      toast.success("Git settings deleted successfully");
+      toast.success("Successfully stopped using Git");
       queryClient.invalidateQueries({ queryKey: ["git-config"] });
       queryClient.invalidateQueries({ queryKey: ["git-status"] });
       onOpenChange(false);
     },
     onError: (error: unknown) => {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      toast.error(`Failed to delete settings: ${errorMessage}`);
+      toast.error(`Failed to stop using Git: ${errorMessage}`);
     },
   });
 
@@ -135,15 +155,19 @@ export function GitConfigDialog({ open, onOpenChange }: GitConfigDialogProps) {
     });
   };
 
-  const handleDelete = () => {
-    if (confirm("Are you sure you want to delete Git settings?")) {
-      deleteConfigMutation.mutate();
-    }
+  const handleDeinit = () => {
+    setShowDeinitConfirm(true);
+  };
+
+  const confirmDeinit = () => {
+    deinitMutation.mutate();
+    setShowDeinitConfirm(false);
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>Git Sync Settings</DialogTitle>
           <DialogDescription>
@@ -275,14 +299,14 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
             <DialogFooter className="flex justify-between">
               <div>
-                {existingConfig && (
+                {(existingConfig || gitStatus?.repository_initialized) && (
                   <Button
                     type="button"
                     variant="destructive"
-                    onClick={handleDelete}
-                    disabled={deleteConfigMutation.isPending}
+                    onClick={handleDeinit}
+                    disabled={deinitMutation.isPending}
                   >
-                    {deleteConfigMutation.isPending ? "Deleting..." : "Delete Settings"}
+                    {deinitMutation.isPending ? "Stopping..." : "Stop Using Git"}
                   </Button>
                 )}
               </div>
@@ -306,5 +330,36 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
         )}
       </DialogContent>
     </Dialog>
+
+    <AlertDialog open={showDeinitConfirm} onOpenChange={setShowDeinitConfirm}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Stop using Git?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This action will remove all Git integration from your workspace.
+            <br />
+            <br />
+            <strong>The following will be deleted:</strong>
+            <ul className="list-disc list-inside mt-2 space-y-1">
+              <li>Git settings (repository URL, credentials)</li>
+              <li>Local Git history (.git directory)</li>
+              <li>.gitignore file</li>
+            </ul>
+            <br />
+            <strong>Your documents will be preserved.</strong>
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction 
+            onClick={confirmDeinit}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            Stop Using Git
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }

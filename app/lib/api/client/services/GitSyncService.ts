@@ -84,6 +84,24 @@ export class GitSyncService {
         });
     }
     /**
+     * Deinitialize Git repository
+     * @returns any Repository deinitialized successfully
+     * @throws ApiError
+     */
+    public deinitGitRepository(): CancelablePromise<{
+        success?: boolean;
+        message?: string;
+    }> {
+        return this.httpRequest.request({
+            method: 'POST',
+            url: '/git/deinit',
+            errors: {
+                400: `Bad request`,
+                401: `Unauthorized`,
+            },
+        });
+    }
+    /**
      * Manual sync
      * @returns GitSyncResponse Sync completed successfully
      * @throws ApiError
