@@ -265,6 +265,63 @@ export default function DocumentEditor({
     insertTextRef.current = insertText;
   }, []);
 
+  // Handle checkbox changes in preview
+  const handleCheckboxChange = useCallback((checkboxIndex: number, checked: boolean) => {
+    if (!doc) return;
+    
+    const yText = getText();
+    if (!yText) return;
+    
+    const content = yText.toString();
+    const lines = content.split('\n');
+    
+    // Find the nth checkbox in the document
+    let checkboxCount = 0;
+    let targetLineIndex = -1;
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      // Match task list item pattern: - [ ] or - [x]
+      if (/^\s*[-*+]\s+\[([ xX])\]/.test(line)) {
+        if (checkboxCount === checkboxIndex) {
+          targetLineIndex = i;
+          break;
+        }
+        checkboxCount++;
+      }
+    }
+    
+    if (targetLineIndex === -1) {
+      console.warn(`Checkbox not found at index ${checkboxIndex}`);
+      return;
+    }
+    
+    const line = lines[targetLineIndex];
+    const checkboxMatch = line.match(/^(\s*[-*+]\s+\[)([ xX])(\])/);
+    if (!checkboxMatch) {
+      console.warn(`Invalid checkbox format at line ${targetLineIndex}: ${line}`);
+      return;
+    }
+    
+    // Calculate the position in the document
+    let position = 0;
+    for (let i = 0; i < targetLineIndex; i++) {
+      position += lines[i].length + 1; // +1 for newline
+    }
+    
+    // Add the position of the checkbox state within the line
+    const prefixLength = checkboxMatch[1].length;
+    const statePosition = position + prefixLength;
+    
+    // Create a transaction to update the checkbox state
+    doc.transact(() => {
+      // Delete the old state character
+      yText.delete(statePosition, 1);
+      // Insert the new state character
+      yText.insert(statePosition, checked ? 'x' : ' ');
+    }, doc.clientID); // Use the doc's clientID as origin
+  }, [doc, getText]);
+
   // Memoize the PreviewPane to prevent unnecessary re-renders
   const MemoizedPreviewPane = useMemo(() => {
     return React.memo(PreviewPane);
@@ -304,6 +361,7 @@ export default function DocumentEditor({
               viewMode={viewMode}
               contentStats={{ wordCount: 0, charCount: 0 }}
               token={token}
+              onCheckboxChange={handleCheckboxChange}
             />
           )}
           
@@ -341,6 +399,7 @@ export default function DocumentEditor({
                     viewMode={viewMode}
                     contentStats={{ wordCount: 0, charCount: 0 }}
                     token={token}
+                    onCheckboxChange={handleCheckboxChange}
                   />
                 </div>
               </Panel>

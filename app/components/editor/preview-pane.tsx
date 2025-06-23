@@ -35,6 +35,7 @@ interface PreviewPaneProps {
   previewRef?: React.RefObject<HTMLDivElement>;
   contentStats?: { wordCount: number; charCount: number };
   token?: string;
+  onCheckboxChange?: (lineIndex: number, checked: boolean) => void;
 }
 
 function PreviewPaneComponent({ 
@@ -44,7 +45,8 @@ function PreviewPaneComponent({
   documentId,
   viewMode = "preview",
   previewRef,
-  token
+  token,
+  onCheckboxChange
 }: PreviewPaneProps) {
   const [showFloatingToc, setShowFloatingToc] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -169,6 +171,7 @@ function PreviewPaneComponent({
                   return (
                     <SafeMarkdown 
                       content={content}
+                      onCheckboxChange={onCheckboxChange}
                       components={{
                         img: ({ src, alt, width, height, ...props }) => {
                           if (!src) return null;
@@ -303,7 +306,7 @@ function PreviewPaneComponent({
                 } catch {
                   return <div>Error rendering markdown</div>;
                 }
-              }, [content, headingComponents, documentId, token])}
+              }, [content, headingComponents, documentId, token, onCheckboxChange])}
             </div>
           </div>
           {/* Table of Contents - only show in preview mode, not in split mode */}
@@ -368,6 +371,7 @@ export const PreviewPane = memo(PreviewPaneComponent, (prevProps, nextProps) => 
     prevProps.viewMode === nextProps.viewMode &&
     prevProps.documentId === nextProps.documentId &&
     prevProps.contentStats?.wordCount === nextProps.contentStats?.wordCount &&
-    prevProps.contentStats?.charCount === nextProps.contentStats?.charCount
+    prevProps.contentStats?.charCount === nextProps.contentStats?.charCount &&
+    prevProps.onCheckboxChange === nextProps.onCheckboxChange
   );
 });

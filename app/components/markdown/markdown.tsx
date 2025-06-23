@@ -19,6 +19,7 @@ import { CodeBlock } from '@/components/markdown/code-block'
 interface MarkdownProps {
   content: string
   components?: import('react-markdown').Components
+  onCheckboxChange?: (lineIndex: number, checked: boolean) => void
 }
 
 // Memoize plugin arrays to prevent recreation on every render
@@ -94,7 +95,7 @@ const DEFAULT_COMPONENTS: import('react-markdown').Components = {
   }
 }
 
-function MarkdownComponent({ content, components }: MarkdownProps) {
+function MarkdownComponent({ content, components, onCheckboxChange }: MarkdownProps) {
   const [renderingMode, setRenderingMode] = useState<'full' | 'safe' | 'minimal'>('full')
   const [hasError, setHasError] = useState(false)
   
@@ -139,13 +140,52 @@ function MarkdownComponent({ content, components }: MarkdownProps) {
     return () => window.removeEventListener('error', handleError)
   }, [])
   
-  // Memoize enhanced components to prevent recreation
-  const enhancedComponents = useMemo(() => ({
-    ...DEFAULT_COMPONENTS,
-    ...components,
-    // Filter out unrecognized tags
-    'anonymous': () => null,
-  }), [components])
+  // Create enhanced components
+  const enhancedComponents = useMemo(() => {
+    return {
+      ...DEFAULT_COMPONENTS,
+      ...components,
+      // Override input component for interactive checkboxes
+      input(props: React.ComponentPropsWithoutRef<'input'> & { node?: unknown }) {
+        // Check if this is a checkbox input (task list item)
+        if (props.type === 'checkbox') {
+          return (
+            <input
+              {...props}
+              className="task-list-checkbox"
+              disabled={!onCheckboxChange}
+              onChange={(e) => {
+                if (onCheckboxChange) {
+                  // Find the index of this checkbox by querying all checkboxes
+                  const target = e.target as HTMLInputElement
+                  const allCheckboxes = Array.from(
+                    target.closest('.markdown-preview')?.querySelectorAll('input.task-list-checkbox') || []
+                  )
+                  const index = allCheckboxes.indexOf(target)
+                  
+                  if (index !== -1) {
+                    onCheckboxChange(index, e.target.checked)
+                  }
+                }
+              }}
+            />
+          )
+        }
+        
+        // For non-checkbox inputs, delegate to the provided component if any,
+        // ensuring we work with both function and class components safely.
+        if (components?.input) {
+          const InputComponent = components.input as React.ComponentType<
+            React.ComponentPropsWithoutRef<'input'> & { node?: unknown }
+          >;
+          return <InputComponent {...props} />;
+        }
+        return <input {...props} />
+      },
+      // Filter out unrecognized tags
+      'anonymous': () => null,
+    }
+  }, [components, onCheckboxChange])
   
   // Full rendering with all plugins
   if (renderingMode === 'full' && !hasError) {
