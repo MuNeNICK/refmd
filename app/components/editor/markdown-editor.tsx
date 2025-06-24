@@ -397,7 +397,7 @@ export function MarkdownEditor({
       folding: true,
       wordWrap: 'on',
       wrappingStrategy: 'advanced',
-      scrollBeyondLastLine: false,
+      scrollBeyondLastLine: true,
       renderWhitespace: 'selection',
       quickSuggestions: {
         other: true,
@@ -768,6 +768,7 @@ export function MarkdownEditor({
               automaticLayout: true,
               fontSize: 16,
               fontFamily: "'JetBrains Mono', 'Fira Code', Consolas, monospace",
+              scrollBeyondLastLine: true,
             }}
             loading={
               <div className="flex items-center justify-center h-full">
