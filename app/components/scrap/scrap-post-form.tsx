@@ -9,6 +9,7 @@ import { useFileUpload } from '@/lib/hooks/useFileUpload';
 import { useDropzone } from 'react-dropzone';
 import { ScrapMarkdown } from './scrap-markdown';
 import { ScrapToolbar } from './scrap-toolbar';
+import { DocumentLinkDialog } from './document-link-dialog';
 import { applyMarkdownFormat } from '@/lib/utils/markdown-formatting';
 
 interface ScrapPostFormProps {
@@ -34,6 +35,7 @@ export function ScrapPostForm({
 }: ScrapPostFormProps) {
   const [content, setContent] = useState(initialContent);
   const [isPreviewMode, setIsPreviewMode] = useState(false);
+  const [showDocumentLinkDialog, setShowDocumentLinkDialog] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [isDragging, setIsDragging] = useState(false);
 
@@ -86,6 +88,14 @@ export function ScrapPostForm({
     }, 0);
   }, [content]);
 
+  // Handle document link insertion
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const handleDocumentLink = useCallback((documentId: string, documentTitle: string) => {
+    const linkText = `[[${documentId}]]`;
+    insertTextAtCursor(linkText);
+    setShowDocumentLinkDialog(false);
+  }, [insertTextAtCursor]);
+
   // File upload hook
   const { handleFileUpload, triggerFileUpload, fileInputRef, fileInputProps } = useFileUpload({
     documentId,
@@ -135,6 +145,20 @@ export function ScrapPostForm({
     }
   };
 
+  // Check for [[ trigger
+  const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const newContent = e.target.value;
+    setContent(newContent);
+    
+    // Check if user just typed [[
+    if (textareaRef.current) {
+      const cursorPos = textareaRef.current.selectionStart;
+      if (cursorPos >= 2 && newContent.substring(cursorPos - 2, cursorPos) === '[[') {
+        setShowDocumentLinkDialog(true);
+      }
+    }
+  };
+
   return (
     <Card className="p-3 sm:p-4 shadow-none">
       <form onSubmit={handleSubmit}>
@@ -174,7 +198,7 @@ export function ScrapPostForm({
               <Textarea
                 ref={textareaRef}
                 value={content}
-                onChange={(e) => setContent(e.target.value)}
+                onChange={handleTextareaChange}
                 onKeyDown={handleKeyDown}
                 placeholder={placeholder}
                 className="min-h-[100px] resize-none"
@@ -207,6 +231,7 @@ export function ScrapPostForm({
                 <ScrapToolbar
                   onFormatClick={handleMarkdownFormat}
                   onFileUpload={triggerFileUpload}
+                  onDocumentLink={() => setShowDocumentLinkDialog(true)}
                   disabled={isLoading}
                 />
               )}
@@ -245,6 +270,12 @@ export function ScrapPostForm({
         </div>
       </form>
       <input ref={fileInputRef} {...fileInputProps} />
+      
+      <DocumentLinkDialog
+        open={showDocumentLinkDialog}
+        onOpenChange={setShowDocumentLinkDialog}
+        onSelectDocument={handleDocumentLink}
+      />
     </Card>
   );
 }

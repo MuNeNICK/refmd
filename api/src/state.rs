@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use sqlx::PgPool;
 use crate::config::Config;
 use crate::crdt::{DocumentManager, AwarenessManager, DocumentPersistence};
-use crate::services::{crdt::CrdtService, document::DocumentService, file::FileService, share::ShareService, git_sync::GitSyncService, git_batch_sync::GitBatchSyncService};
+use crate::services::{crdt::CrdtService, document::DocumentService, file::FileService, share::ShareService, git_sync::GitSyncService, git_batch_sync::GitBatchSyncService, document_links::DocumentLinksService};
 use crate::repository::{DocumentRepository, ShareRepository, UserRepository, GitConfigRepository};
 
 #[derive(Clone)]
@@ -19,6 +19,7 @@ pub struct AppState {
     pub share_service: Arc<ShareService>,
     pub git_sync_service: Arc<GitSyncService>,
     pub git_batch_sync_service: Option<Arc<GitBatchSyncService>>,
+    pub document_links_service: Arc<DocumentLinksService>,
     pub document_repository: Arc<DocumentRepository>,
     pub share_repository: Arc<ShareRepository>,
     pub user_repository: Arc<UserRepository>,
@@ -64,6 +65,9 @@ impl AppState {
             None
         };
         
+        // Create document links service first
+        let document_links_service = Arc::new(DocumentLinksService::new(db_pool.clone()));
+        
         // Create document service with batch sync if enabled
         let document_service = Arc::new(DocumentService::new(
             document_repository.clone(),
@@ -71,7 +75,8 @@ impl AppState {
             crdt_service.clone(),
             git_batch_sync_service.clone(),
             Arc::new(config.clone()),
-        ));
+        ).with_links_service(document_links_service.clone()));
+        
         let frontend_url = config.frontend_url.clone().unwrap_or_else(|| "http://localhost:3000".to_string());
         
         let file_service = Arc::new(FileService::new(
@@ -102,6 +107,7 @@ impl AppState {
             share_service,
             git_sync_service,
             git_batch_sync_service,
+            document_links_service,
             document_repository,
             share_repository,
             user_repository,

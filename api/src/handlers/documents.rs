@@ -52,6 +52,7 @@ pub struct DocumentResponse {
     pub title: String,
     pub r#type: String,
     pub parent_id: Option<String>,
+    pub file_path: Option<String>,
     pub created_at: String,
     pub updated_at: String,
 }
@@ -64,6 +65,7 @@ impl From<Document> for DocumentResponse {
             title: doc.title,
             r#type: doc.r#type,
             parent_id: doc.parent_id.map(|id| id.to_string()),
+            file_path: doc.file_path,
             created_at: doc.created_at.to_rfc3339(),
             updated_at: doc.updated_at.to_rfc3339(),
         }
@@ -96,6 +98,10 @@ pub fn routes(state: Arc<AppState>) -> Router {
         .route("/", get(list_documents).post(create_document))
         .route("/:id", delete(delete_document))
         .route("/:id/file-path", get(get_document_file_path))
+        .route("/:id/backlinks", get(crate::handlers::document_links::get_backlinks))
+        .route("/:id/links", get(crate::handlers::document_links::get_outgoing_links))
+        .route("/:id/link-stats", get(crate::handlers::document_links::get_link_stats))
+        .route("/search", get(crate::handlers::document_links::search_documents))
         .layer(from_fn_with_state(state.clone(), auth_middleware))
         // Routes supporting optional auth (for share tokens)
         .route("/:id", get(get_document_with_share).put(update_document_with_share))

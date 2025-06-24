@@ -24,6 +24,8 @@ interface MainLayoutProps {
   onSave?: () => void;
   onShare?: () => void;
   onDownload?: () => void;
+  onBacklinksToggle?: () => void;
+  showBacklinks?: boolean;
   showEditorFeatures?: boolean;
   hideFileTree?: boolean;
   isViewOnly?: boolean;
@@ -42,6 +44,8 @@ export default function MainLayout({
   onSave,
   onShare,
   onDownload,
+  onBacklinksToggle,
+  showBacklinks,
   showEditorFeatures = false,
   hideFileTree = false,
   isViewOnly = false
@@ -106,6 +110,8 @@ export default function MainLayout({
           onSave={onSave}
           onShare={onShare}
           onDownload={onDownload}
+          onBacklinksToggle={onBacklinksToggle}
+          showBacklinks={showBacklinks}
           showEditorFeatures={showEditorFeatures}
           hideSidebarToggle={hideFileTree || false}
           isViewOnly={isViewOnly}

@@ -8,6 +8,7 @@ use crate::{
     db::models::Document,
     services::crdt::CrdtService,
     services::git_batch_sync::GitBatchSyncService,
+    services::document_links::DocumentLinksService,
     config::Config,
 };
 
@@ -17,6 +18,7 @@ pub struct DocumentService {
     crdt_service: Arc<CrdtService>,
     git_batch_sync_service: Option<Arc<GitBatchSyncService>>,
     config: Arc<Config>,
+    document_links_service: Option<Arc<DocumentLinksService>>,
 }
 
 impl DocumentService {
@@ -33,7 +35,13 @@ impl DocumentService {
             crdt_service,
             git_batch_sync_service,
             config,
+            document_links_service: None,
         }
+    }
+    
+    pub fn with_links_service(mut self, links_service: Arc<DocumentLinksService>) -> Self {
+        self.document_links_service = Some(links_service);
+        self
     }
     
     pub async fn create_document(&self, owner_id: Uuid, title: &str, content: Option<&str>, doc_type: &str, parent_id: Option<Uuid>) -> Result<Document> {
@@ -289,6 +297,14 @@ updated_at: {}
             }
         }
         
+        // Update document links
+        if let Some(ref links_service) = self.document_links_service {
+            if let Err(e) = links_service.update_document_links(document.id, &content, document.owner_id).await {
+                tracing::warn!("Failed to update document links for {}: {}", document.id, e);
+                // Don't fail the whole operation if link parsing fails
+            }
+        }
+        
         Ok(())
     }
     
@@ -388,6 +404,14 @@ updated_at: {}
         if self.config.git_auto_sync {
             if let Some(ref batch_sync) = self.git_batch_sync_service {
                 batch_sync.queue_sync(document.owner_id, document.title.clone()).await;
+            }
+        }
+        
+        // Update document links
+        if let Some(ref links_service) = self.document_links_service {
+            if let Err(e) = links_service.update_document_links(document.id, &content, document.owner_id).await {
+                tracing::warn!("Failed to update document links for {}: {}", document.id, e);
+                // Don't fail the whole operation if link parsing fails
             }
         }
         

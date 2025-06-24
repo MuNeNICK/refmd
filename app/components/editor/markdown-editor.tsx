@@ -9,6 +9,7 @@ import type { editor } from 'monaco-editor';
 import { EditorToolbar } from './editor-toolbar';
 import type { ViewMode } from '@/components/layout/header';
 import { CursorDisplay } from './cursor-display';
+import { WikiLinkCompletionProvider, WikiLinkHoverProvider, WikiLinkDefinitionProvider } from '@/lib/monaco/wiki-link-provider';
 
 // Dynamic import for y-monaco to avoid SSR issues
 
@@ -77,6 +78,8 @@ export function MarkdownEditor({
   const vimStatusBarRef = useRef<HTMLDivElement | null>(null);
   const [vimStatus, setVimStatus] = useState<string>('');
   
+  // Store disposables for wiki link providers
+  const wikiLinkProvidersRef = useRef<{ dispose: () => void }[]>([]);
   
   // Track when editor is mounted
   const [monacoEditor, setMonacoEditor] = useState<editor.IStandaloneCodeEditor | null>(null);
@@ -408,6 +411,17 @@ export function MarkdownEditor({
       suggestOnTriggerCharacters: true,
     });
 
+    // Dispose old wiki link providers if any
+    wikiLinkProvidersRef.current.forEach(disposable => disposable.dispose());
+    wikiLinkProvidersRef.current = [];
+    
+    // Register wiki link providers and store disposables
+    wikiLinkProvidersRef.current.push(
+      monaco.languages.registerCompletionItemProvider('markdown', new WikiLinkCompletionProvider()),
+      monaco.languages.registerHoverProvider('markdown', new WikiLinkHoverProvider()),
+      monaco.languages.registerDefinitionProvider('markdown', new WikiLinkDefinitionProvider())
+    );
+
     // Set up scroll listener with throttling
     let scrollRafId: number | null = null;
     editor.onDidScrollChange((e) => {
@@ -596,13 +610,11 @@ export function MarkdownEditor({
         
       case 'link':
         if (selectedText) {
-          newText = `[${selectedText}]()`;
+          newText = `[[${selectedText}]]`;
           replaceSelection = true;
-          // Position cursor inside the parentheses
-          cursorOffset = -1;
         } else {
-          newText = '[]()';
-          cursorOffset = 1;
+          newText = '[[]]';
+          cursorOffset = 2;
         }
         break;
         
@@ -726,6 +738,14 @@ export function MarkdownEditor({
     
     editor.focus();
   };
+  
+  // Cleanup wiki link providers on unmount
+  useEffect(() => {
+    return () => {
+      wikiLinkProvidersRef.current.forEach(disposable => disposable.dispose());
+      wikiLinkProvidersRef.current = [];
+    };
+  }, []);
 
   return (
     <div className="h-full bg-background dark:bg-[#1e1e1e] relative flex flex-col">

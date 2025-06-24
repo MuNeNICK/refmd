@@ -22,12 +22,13 @@ import {
   Sun,
   Github,
   Columns,
-  FileCode,
+  NotebookText,
   Eye,
   X,
   Wifi,
   WifiOff,
-  Users
+  Users,
+  Link2
 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -48,6 +49,8 @@ interface HeaderProps {
   onSave?: () => void;
   onShare?: () => void;
   onDownload?: () => void;
+  onBacklinksToggle?: () => void;
+  showBacklinks?: boolean;
   // Show editor features only when in document view
   showEditorFeatures?: boolean;
   hideSidebarToggle?: boolean;
@@ -65,6 +68,8 @@ export function Header({
   onViewModeChange,
   onShare,
   onDownload,
+  onBacklinksToggle,
+  showBacklinks,
   showEditorFeatures = false,
   hideSidebarToggle = false,
   isViewOnly = false,
@@ -225,7 +230,7 @@ export function Header({
                     )}
                     title="Editor only"
                   >
-                    <FileCode className="h-4 w-4" />
+                    <NotebookText className="h-4 w-4" />
                   </Button>
                   <Button
                     onClick={() => onViewModeChange?.("split")}
@@ -263,6 +268,19 @@ export function Header({
               )}
 
               <div className="hidden md:block w-px h-6 bg-border mx-1" />
+              
+              {/* Backlinks button */}
+              {onBacklinksToggle && (
+                <Button
+                  onClick={onBacklinksToggle}
+                  variant={showBacklinks ? "secondary" : "ghost"}
+                  size="icon"
+                  className="hidden md:flex h-9 w-9"
+                  title="Toggle backlinks"
+                >
+                  <Link2 className="h-4 w-4" />
+                </Button>
+              )}
               
               {/* Desktop actions */}
               <Button
@@ -416,7 +434,7 @@ export function Header({
                       variant={viewMode === "editor" ? "secondary" : "ghost"}
                       className="w-full justify-start"
                     >
-                      <FileCode className="h-4 w-4 mr-2" />
+                      <NotebookText className="h-4 w-4 mr-2" />
                       Editor
                     </Button>
                     <Button
@@ -449,6 +467,19 @@ export function Header({
                 <div className="border-t pt-4">
                   <h3 className="text-sm font-medium mb-2">Actions</h3>
                   <div className="space-y-1">
+                    {onBacklinksToggle && (
+                      <Button
+                        onClick={() => {
+                          onBacklinksToggle();
+                          setMobileMenuOpen(false);
+                        }}
+                        variant={showBacklinks ? "secondary" : "ghost"}
+                        className="w-full justify-start"
+                      >
+                        <Link2 className="h-4 w-4 mr-2" />
+                        {showBacklinks ? "Hide Links" : "Show Links"}
+                      </Button>
+                    )}
                     {onShare && (
                       <Button
                         onClick={() => {

@@ -462,6 +462,132 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /documents/{id}/backlinks:
+    get:
+      tags:
+        - Documents
+      summary: Get backlinks for a document
+      description: Returns all documents that link to this document
+      operationId: getDocumentBacklinks
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Backlinks retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BacklinksResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /documents/{id}/links:
+    get:
+      tags:
+        - Documents
+      summary: Get outgoing links from a document
+      description: Returns all documents that this document links to
+      operationId: getDocumentLinks
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Outgoing links retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OutgoingLinksResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /documents/{id}/link-stats:
+    get:
+      tags:
+        - Documents
+      summary: Get link statistics for a document
+      description: Returns counts of backlinks and outgoing links
+      operationId: getDocumentLinkStats
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Link statistics retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LinkStatsResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /documents/search:
+    get:
+      tags:
+        - Documents
+      summary: Search documents
+      description: Search documents by title for autocomplete and link suggestions
+      operationId: searchDocuments
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: q
+          in: query
+          required: true
+          description: Search query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          description: Maximum number of results
+          schema:
+            type: integer
+            default: 10
+            minimum: 1
+            maximum: 100
+      responses:
+        '200':
+          description: Search results retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SearchResult'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
   # ===== Files =====
   /files:
     get:
@@ -2544,6 +2670,102 @@ components:
       properties:
         content:
           type: string
+
+    # ===== Document Links =====
+    BacklinksResponse:
+      type: object
+      properties:
+        backlinks:
+          type: array
+          items:
+            $ref: '#/components/schemas/BacklinkInfo'
+        total_count:
+          type: integer
+
+    BacklinkInfo:
+      type: object
+      properties:
+        document_id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        document_type:
+          type: string
+          enum: [document, scrap, folder]
+        file_path:
+          type: string
+          nullable: true
+        link_type:
+          type: string
+          enum: [reference, embed, mention]
+        link_text:
+          type: string
+          nullable: true
+        link_count:
+          type: integer
+
+    OutgoingLinksResponse:
+      type: object
+      properties:
+        links:
+          type: array
+          items:
+            $ref: '#/components/schemas/OutgoingLink'
+        total_count:
+          type: integer
+
+    OutgoingLink:
+      type: object
+      properties:
+        document_id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        document_type:
+          type: string
+          enum: [document, scrap, folder]
+        file_path:
+          type: string
+          nullable: true
+        link_type:
+          type: string
+          enum: [reference, embed, mention]
+        link_text:
+          type: string
+          nullable: true
+        position_start:
+          type: integer
+          nullable: true
+        position_end:
+          type: integer
+          nullable: true
+
+    LinkStatsResponse:
+      type: object
+      properties:
+        backlink_count:
+          type: integer
+        outgoing_link_count:
+          type: integer
+
+    SearchResult:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        document_type:
+          type: string
+          enum: [document, scrap, folder]
+        path:
+          type: string
+        updated_at:
+          type: string
+          format: date-time
 
   responses:
     BadRequest:

@@ -9,6 +9,9 @@ pub mod git_sync;
 pub mod git_batch_sync;
 pub mod git_diff;
 pub mod git_conflict;
+pub mod link_parser;
+pub mod link_resolver;
+pub mod document_links;
 
 pub use git_sync::{GitCommit, DiffStats};
 

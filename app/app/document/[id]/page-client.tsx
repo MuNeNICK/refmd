@@ -40,6 +40,7 @@ export default function PageClient({ documentId, initialDocument, token }: PageC
   const [connected, setConnected] = useState(false);
   const [activeUsers, setActiveUsers] = useState(1);
   const [currentContent, setCurrentContent] = useState(initialDocument?.content || '');
+  const [showBacklinks, setShowBacklinks] = useState(false);
 
   // Handle mobile view mode
   React.useEffect(() => {
@@ -170,6 +171,8 @@ export default function PageClient({ documentId, initialDocument, token }: PageC
         onSave={handleSave}
         onShare={handleShare}
         onDownload={handleDownload}
+        onBacklinksToggle={() => setShowBacklinks(!showBacklinks)}
+        showBacklinks={showBacklinks}
         showEditorFeatures={!isViewOnly}
         hideFileTree={isShareLink}
         isViewOnly={isViewOnly}
@@ -179,11 +182,13 @@ export default function PageClient({ documentId, initialDocument, token }: PageC
           initialDocument={initialDocument}
           token={token}
           viewMode={viewMode}
+          showBacklinks={showBacklinks}
           onContentChange={handleContentChange}
           onSyncStatusChange={handleSyncStatusChange}
           onConnectionStatusChange={handleConnectionStatusChange}
           onActiveUsersChange={handleActiveUsersChange}
           onContentStatsChange={handleContentStatsChange}
+          onBacklinksClose={() => setShowBacklinks(false)}
         />
       </MainLayout>
       

@@ -10,6 +10,7 @@ pub mod shares;
 pub mod user;
 pub mod socketio;
 pub mod git_sync;
+pub mod document_links;
 
 pub fn routes(state: Arc<AppState>) -> Router {
     Router::new()

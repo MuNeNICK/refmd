@@ -14,7 +14,9 @@ import { remarkAlert } from '@/lib/remark-alert'
 import { remarkEmbed } from '@/lib/remark-embed'
 import { remarkMark, remarkRuby } from '@/lib/remark-extended'
 import { remarkBlockquoteTags } from '@/lib/remark-blockquote-tags'
+import { remarkWikiLink, remarkEmbedLink, remarkMentionLink } from '@/lib/remark-wiki-link'
 import { CodeBlock } from '@/components/markdown/code-block'
+import { WikiLink, DocumentEmbed } from '@/components/markdown/wiki-link'
 
 interface MarkdownProps {
   content: string
@@ -34,7 +36,10 @@ const FULL_REMARK_PLUGINS = [
   remarkBlockquoteTags,
   remarkDirective, 
   remarkAlert, 
-  remarkEmbed
+  remarkEmbed,
+  remarkWikiLink,
+  remarkEmbedLink,
+  remarkMentionLink
 ]
 
 const FULL_REHYPE_PLUGINS = [rehypeRaw, rehypeKatex]
@@ -43,6 +48,67 @@ const MINIMAL_REMARK_PLUGINS = [remarkGfm]
 
 // Default components with code highlighting
 const DEFAULT_COMPONENTS: import('react-markdown').Components = {
+  a({ href, className, children, ...props }) {
+    // Check if this is a wiki link or mention link by URL pattern or data attributes
+    const extendedProps = props as Record<string, unknown>
+    const isWikiLink = href?.startsWith('#wiki:') || extendedProps['data-wiki-target']
+    const isMentionLink = href?.startsWith('#mention:') || extendedProps['data-mention-target']
+    
+    if (isWikiLink || isMentionLink) {
+      // Extract target from URL or data attribute
+      let target = ''
+      if (extendedProps['data-wiki-target']) {
+        target = extendedProps['data-wiki-target'] as string
+      } else if (extendedProps['data-mention-target']) {
+        target = extendedProps['data-mention-target'] as string
+      } else if (isWikiLink && href) {
+        target = decodeURIComponent(href.replace('#wiki:', ''))
+      } else if (isMentionLink && href) {
+        target = decodeURIComponent(href.replace('#mention:', ''))
+      }
+      
+      return (
+        <WikiLink 
+          href={href || '#'} 
+          className={className}
+          data-wiki-target={isWikiLink ? target : undefined}
+          data-mention-target={isMentionLink ? target : undefined}
+          {...props}
+        >
+          {children}
+        </WikiLink>
+      )
+    }
+    
+    // Regular link
+    return (
+      <a href={href} className={className} {...props}>
+        {children}
+      </a>
+    )
+  },
+  div({ className, children, ...props }) {
+    // Check if this is a document embed
+    if (className?.includes('document-embed')) {
+      const extendedProps = props as Record<string, unknown>
+      return (
+        <DocumentEmbed 
+          className={className}
+          data-embed-target={extendedProps['data-embed-target'] as string}
+          {...props}
+        >
+          {children}
+        </DocumentEmbed>
+      )
+    }
+    
+    // Regular div
+    return (
+      <div className={className} {...props}>
+        {children}
+      </div>
+    )
+  },
   code({ node, className, children, ...props }) {
     const match = /language-(\w+)/.exec(className || '')
     
