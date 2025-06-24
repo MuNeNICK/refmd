@@ -41,16 +41,69 @@ export default function DashboardClient({ user, initialDocuments }: DashboardCli
       showEditorFeatures={false}
     >
       <div className="h-full bg-background">
-        {/* Desktop view - centered welcome message */}
-        <div className="hidden lg:flex h-full items-center justify-center">
-          <div className="text-center">
-            <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
-              Welcome back, {user?.name}!
-            </h1>
-            <p className="text-xl text-gray-600 dark:text-gray-300 mb-8">
-              Select a document from the sidebar or create a new one to get started.
-            </p>
-            <div className="text-sm text-gray-500 dark:text-gray-400">
+        {/* Desktop view - scrollable recent documents */}
+        <div className="hidden lg:block h-full overflow-y-auto">
+          <div className="max-w-2xl mx-auto px-8 py-12">
+            <div className="text-center mb-8">
+              <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
+                Welcome back, {user?.name}!
+              </h1>
+              <p className="text-xl text-gray-600 dark:text-gray-300">
+                Select a document from the sidebar or create a new one to get started.
+              </p>
+            </div>
+            
+            {/* Recent documents section */}
+            {documents.length > 0 ? (
+              <div>
+                <h2 className="text-lg font-semibold mb-4">Recent Documents</h2>
+                <div className="space-y-3">
+                  {documents.map((doc) => (
+                    <div 
+                      key={doc.id}
+                      className="p-4 border rounded-lg hover:bg-accent cursor-pointer transition-colors bg-card"
+                      onClick={() => doc.id && handleDocumentClick(doc.id)}
+                    >
+                      <div className="flex items-start gap-3">
+                        <FileText className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium truncate">
+                            {doc.title || 'Untitled Document'}
+                          </div>
+                          <div className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
+                            <Clock className="h-3 w-3" />
+                            {doc.updated_at && formatDate(doc.updated_at)}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                
+                {documents.length >= 10 && (
+                  <div className="text-center mt-4">
+                    <p className="text-sm text-muted-foreground">
+                      Showing 10 most recent documents. Use the file tree on the left to see all documents.
+                    </p>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="text-center">
+                <div className="border rounded-lg p-8 bg-card">
+                  <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                  <p className="text-muted-foreground mb-4">No documents yet</p>
+                  <button 
+                    className="text-sm text-primary hover:underline"
+                    onClick={() => router.push('/editor')}
+                  >
+                    Create your first document
+                  </button>
+                </div>
+              </div>
+            )}
+            
+            <div className="text-sm text-gray-500 dark:text-gray-400 text-center mt-8">
               Your documents are organized in the file tree on the left.
             </div>
           </div>

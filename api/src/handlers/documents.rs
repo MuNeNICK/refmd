@@ -38,6 +38,20 @@ fn default_document_type() -> String {
     "document".to_string()
 }
 
+#[derive(Debug, Serialize)]
+pub struct DocumentListResponse {
+    pub data: Vec<DocumentResponse>,
+    pub meta: Option<PaginationMeta>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct PaginationMeta {
+    pub page: Option<i32>,
+    pub limit: Option<i32>,
+    pub total: Option<i32>,
+    pub total_pages: Option<i32>,
+}
+
 #[derive(Debug, Deserialize)]
 pub struct UpdateDocumentRequest {
     pub title: Option<String>,
@@ -116,9 +130,14 @@ pub fn routes(state: Arc<AppState>) -> Router {
 async fn list_documents(
     State(state): State<Arc<AppState>>,
     Extension(auth_user): Extension<AuthUser>,
-) -> Result<Json<Vec<DocumentResponse>>> {
+) -> Result<Json<DocumentListResponse>> {
     let documents = state.document_service.list_documents(auth_user.user_id).await?;
-    let response: Vec<DocumentResponse> = documents.into_iter().map(Into::into).collect();
+    let data: Vec<DocumentResponse> = documents.into_iter().map(Into::into).collect();
+    
+    let response = DocumentListResponse {
+        data,
+        meta: None, // TODO: Implement pagination
+    };
     
     Ok(Json(response))
 }
