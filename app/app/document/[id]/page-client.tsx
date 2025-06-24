@@ -188,6 +188,7 @@ export default function PageClient({ documentId, initialDocument, token }: PageC
           onConnectionStatusChange={handleConnectionStatusChange}
           onActiveUsersChange={handleActiveUsersChange}
           onContentStatsChange={handleContentStatsChange}
+          onBacklinksClose={() => setShowBacklinks(false)}
         />
       </MainLayout>
       

@@ -6,15 +6,16 @@ import { getApiClient } from '@/lib/api'
 import { Document } from '@/lib/api/client/models/Document'
 import { BacklinkInfo } from '@/lib/api/client/models/BacklinkInfo'
 import { OutgoingLink } from '@/lib/api/client/models/OutgoingLink'
-import { FileText, Folder, NotebookText, ArrowLeft, Loader2 } from 'lucide-react'
+import { FileText, Folder, NotebookText, ArrowLeft, Loader2, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
-// import { Button } from '@/components/ui/button'
+import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 interface BacklinksPanelProps {
   documentId: string
   className?: string
+  onClose?: () => void
 }
 
 interface BacklinkItem {
@@ -23,7 +24,7 @@ interface BacklinkItem {
   linkType: 'reference' | 'embed' | 'mention'
 }
 
-export function BacklinksPanel({ documentId, className }: BacklinksPanelProps) {
+export function BacklinksPanel({ documentId, className, onClose }: BacklinksPanelProps) {
   const [backlinks, setBacklinks] = useState<BacklinkItem[]>([])
   const [outgoingLinks, setOutgoingLinks] = useState<BacklinkItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -166,11 +167,21 @@ export function BacklinksPanel({ documentId, className }: BacklinksPanelProps) {
 
   return (
     <div className={cn('flex flex-col h-full', className)}>
-      <div className="border-b p-3">
+      <div className="border-b p-3 flex items-center justify-between">
         <h3 className="font-semibold flex items-center gap-2">
           <ArrowLeft className="h-4 w-4" />
           Document Links
         </h3>
+        {onClose && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onClose}
+            className="h-8 w-8"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        )}
       </div>
 
       <Tabs 
