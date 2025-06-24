@@ -3,8 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { getApiUrl } from '@/lib/config';
-import { FileText, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Download } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { FileText } from 'lucide-react';
 
 interface AuthenticatedPdfProps {
   src: string;
@@ -18,9 +17,8 @@ export function AuthenticatedPdf({ src, documentId, token, className }: Authenti
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const blobUrlRef = useRef<string | null>(null);
-  const [numPages] = useState<number>(0);
-  const [currentPage, setCurrentPage] = useState<number>(1);
-  const [scale, setScale] = useState<number>(1);
+  const [currentPage] = useState<number>(1);
+  const [scale] = useState<number>(1);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -104,39 +102,6 @@ export function AuthenticatedPdf({ src, documentId, token, className }: Authenti
     };
   }, [src, documentId, token]);
 
-  const handleDownload = async () => {
-    if (!pdfUrl) return;
-    
-    try {
-      // Extract filename from src
-      let filename = 'document.pdf';
-      if (src.startsWith('./attachments/')) {
-        filename = src.substring(14);
-      } else if (src.startsWith('./')) {
-        filename = src.substring(2);
-      } else if (src.includes('/')) {
-        const segments = src.split('/');
-        filename = segments[segments.length - 1];
-      }
-      
-      // Decode if needed
-      try {
-        filename = decodeURIComponent(filename);
-      } catch {
-        // Use original if decode fails
-      }
-      
-      // Create download link
-      const a = document.createElement('a');
-      a.href = pdfUrl;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-    } catch (error) {
-      console.error('Download failed:', error);
-    }
-  };
 
   if (loading) {
     return (
