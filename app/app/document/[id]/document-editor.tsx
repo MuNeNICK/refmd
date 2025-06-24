@@ -13,12 +13,14 @@ import { toast } from 'sonner';
 import { PanelGroup, Panel, PanelResizeHandle } from '@/components/ui/resizable';
 import type { editor } from 'monaco-editor';
 import { useAuth } from '@/lib/auth/authContext';
+import { BacklinksPanel } from '@/components/document/backlinks-panel';
 
 interface DocumentEditorProps {
   documentId: string;
   initialDocument: Document | null;
   token?: string;
   viewMode: ViewMode;
+  showBacklinks?: boolean;
   onContentChange?: (content: string) => void;
   onSyncStatusChange?: (synced: boolean) => void;
   onConnectionStatusChange?: (connected: boolean) => void;
@@ -31,6 +33,7 @@ export default function DocumentEditor({
   initialDocument, 
   token,
   viewMode,
+  showBacklinks = false,
   onContentChange,
   onSyncStatusChange,
   onConnectionStatusChange,
@@ -329,9 +332,8 @@ export default function DocumentEditor({
 
   return (
     <>
-      <div className="h-full flex flex-col overflow-hidden" ref={editorContainerRef}>
-        <div className="flex-1 min-h-0 overflow-hidden">
-          {viewMode === "editor" && (
+      <div className="h-full flex overflow-hidden" ref={editorContainerRef}>
+        {viewMode === "editor" && !showBacklinks && (
             <MarkdownEditor
               doc={doc}
               awareness={awareness}
@@ -352,7 +354,36 @@ export default function DocumentEditor({
             />
           )}
           
-          {viewMode === "preview" && (
+          {viewMode === "editor" && showBacklinks && (
+            <PanelGroup direction="horizontal" className="h-full w-full">
+              <Panel defaultSize={70} minSize={30}>
+                <MarkdownEditor
+                  doc={doc}
+                  awareness={awareness}
+                  connected={connected}
+                  onMount={handleEditorMount}
+                  onScroll={handleEditorScroll}
+                  scrollToLine={selectedLine}
+                  onContentStatsChange={onContentStatsChange}
+                  syncScroll={syncScroll}
+                  onSyncScrollToggle={() => setSyncScroll(!syncScroll)}
+                  viewMode={viewMode}
+                  onFileUpload={triggerFileUpload}
+                  isDragOver={isDragOver}
+                  onEditorReady={handleEditorReady}
+                  userName={user?.name || undefined}
+                  userId={user?.id || undefined}
+                  documentPath={initialDocument?.file_path || undefined}
+                />
+              </Panel>
+              <PanelResizeHandle className="w-1 bg-border hover:bg-accent transition-colors" />
+              <Panel defaultSize={30} minSize={20} maxSize={50}>
+                <BacklinksPanel documentId={documentId} className="h-full border-l" />
+              </Panel>
+            </PanelGroup>
+          )}
+          
+          {viewMode === "preview" && !showBacklinks && (
             <MemoizedPreviewPane
               content={content}
               onScroll={handlePreviewScroll}
@@ -365,7 +396,28 @@ export default function DocumentEditor({
             />
           )}
           
-          {viewMode === "split" && (
+          {viewMode === "preview" && showBacklinks && (
+            <PanelGroup direction="horizontal" className="h-full w-full">
+              <Panel defaultSize={70} minSize={30}>
+                <MemoizedPreviewPane
+                  content={content}
+                  onScroll={handlePreviewScroll}
+                  scrollPercentage={editorScrollPercentage}
+                  documentId={documentId}
+                  viewMode={viewMode}
+                  contentStats={{ wordCount: 0, charCount: 0 }}
+                  token={token}
+                  onCheckboxChange={handleCheckboxChange}
+                />
+              </Panel>
+              <PanelResizeHandle className="w-1 bg-border hover:bg-accent transition-colors" />
+              <Panel defaultSize={30} minSize={20} maxSize={50}>
+                <BacklinksPanel documentId={documentId} className="h-full border-l" />
+              </Panel>
+            </PanelGroup>
+          )}
+          
+          {viewMode === "split" && !showBacklinks && (
             <PanelGroup direction="horizontal" className="h-full w-full">
               <Panel defaultSize={50} minSize={30}>
                 <MarkdownEditor
@@ -405,7 +457,51 @@ export default function DocumentEditor({
               </Panel>
             </PanelGroup>
           )}
-        </div>
+          
+          {viewMode === "split" && showBacklinks && (
+            <PanelGroup direction="horizontal" className="h-full w-full">
+              <Panel defaultSize={35} minSize={20}>
+                <MarkdownEditor
+                  doc={doc}
+                  awareness={awareness}
+                  connected={connected}
+                  onMount={handleEditorMount}
+                  onScroll={handleEditorScroll}
+                  scrollPercentage={syncScroll ? previewScrollPercentage : undefined}
+                  scrollToLine={selectedLine}
+                  onContentStatsChange={onContentStatsChange}
+                  syncScroll={syncScroll}
+                  onSyncScrollToggle={() => setSyncScroll(!syncScroll)}
+                  viewMode={viewMode}
+                  onFileUpload={triggerFileUpload}
+                  isDragOver={isDragOver}
+                  onEditorReady={handleEditorReady}
+                  userName={user?.name || undefined}
+                  userId={user?.id || undefined}
+                  documentPath={initialDocument?.file_path || undefined}
+                />
+              </Panel>
+              <PanelResizeHandle className="w-1 bg-border hover:bg-accent transition-colors" />
+              <Panel defaultSize={35} minSize={20}>
+                <div className="h-full border-l">
+                  <MemoizedPreviewPane
+                    content={content}
+                    onScroll={handlePreviewScroll}
+                    scrollPercentage={syncScroll ? editorScrollPercentage : undefined}
+                    documentId={documentId}
+                    viewMode={viewMode}
+                    contentStats={{ wordCount: 0, charCount: 0 }}
+                    token={token}
+                    onCheckboxChange={handleCheckboxChange}
+                  />
+                </div>
+              </Panel>
+              <PanelResizeHandle className="w-1 bg-border hover:bg-accent transition-colors" />
+              <Panel defaultSize={30} minSize={20} maxSize={40}>
+                <BacklinksPanel documentId={documentId} className="h-full border-l" />
+              </Panel>
+            </PanelGroup>
+          )}
       </div>
       
       {/* Hidden file input for toolbar upload */}

@@ -18,6 +18,7 @@ import {
   ArrowUpDown,
   Ban,
   Upload,
+  ArrowLeft,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -33,6 +34,8 @@ interface EditorToolbarProps {
   viewMode?: ViewMode;
   isVimMode?: boolean;
   onVimModeToggle?: () => void;
+  onBacklinksToggle?: () => void;
+  showBacklinks?: boolean;
 }
 
 interface ToolbarButton {
@@ -51,6 +54,8 @@ function EditorToolbarComponent({
   viewMode,
   isVimMode,
   onVimModeToggle,
+  onBacklinksToggle,
+  showBacklinks,
 }: EditorToolbarProps) {
   const primaryButtons: (ToolbarButton | "separator")[] = [
     { icon: <Bold className="h-4 w-4" />, command: "bold", title: "Bold" },

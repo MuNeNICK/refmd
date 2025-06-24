@@ -2,9 +2,13 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
+import type { BacklinksResponse } from '../models/BacklinksResponse';
 import type { CreateDocumentRequest } from '../models/CreateDocumentRequest';
 import type { Document } from '../models/Document';
 import type { DocumentListResponse } from '../models/DocumentListResponse';
+import type { LinkStatsResponse } from '../models/LinkStatsResponse';
+import type { OutgoingLinksResponse } from '../models/OutgoingLinksResponse';
+import type { SearchResult } from '../models/SearchResult';
 import type { UpdateDocumentRequest } from '../models/UpdateDocumentRequest';
 import type { CancelablePromise } from '../core/CancelablePromise';
 import type { BaseHttpRequest } from '../core/BaseHttpRequest';
@@ -261,6 +265,99 @@ export class DocumentsService {
                 401: `Unauthorized`,
                 403: `Forbidden`,
                 404: `Not found`,
+            },
+        });
+    }
+    /**
+     * Get backlinks for a document
+     * Returns all documents that link to this document
+     * @param id
+     * @returns BacklinksResponse Backlinks retrieved successfully
+     * @throws ApiError
+     */
+    public getDocumentBacklinks(
+        id: string,
+    ): CancelablePromise<BacklinksResponse> {
+        return this.httpRequest.request({
+            method: 'GET',
+            url: '/documents/{id}/backlinks',
+            path: {
+                'id': id,
+            },
+            errors: {
+                401: `Unauthorized`,
+                403: `Forbidden`,
+                404: `Not found`,
+            },
+        });
+    }
+    /**
+     * Get outgoing links from a document
+     * Returns all documents that this document links to
+     * @param id
+     * @returns OutgoingLinksResponse Outgoing links retrieved successfully
+     * @throws ApiError
+     */
+    public getDocumentLinks(
+        id: string,
+    ): CancelablePromise<OutgoingLinksResponse> {
+        return this.httpRequest.request({
+            method: 'GET',
+            url: '/documents/{id}/links',
+            path: {
+                'id': id,
+            },
+            errors: {
+                401: `Unauthorized`,
+                403: `Forbidden`,
+                404: `Not found`,
+            },
+        });
+    }
+    /**
+     * Get link statistics for a document
+     * Returns counts of backlinks and outgoing links
+     * @param id
+     * @returns LinkStatsResponse Link statistics retrieved successfully
+     * @throws ApiError
+     */
+    public getDocumentLinkStats(
+        id: string,
+    ): CancelablePromise<LinkStatsResponse> {
+        return this.httpRequest.request({
+            method: 'GET',
+            url: '/documents/{id}/link-stats',
+            path: {
+                'id': id,
+            },
+            errors: {
+                401: `Unauthorized`,
+                403: `Forbidden`,
+                404: `Not found`,
+            },
+        });
+    }
+    /**
+     * Search documents
+     * Search documents by title for autocomplete and link suggestions
+     * @param q Search query
+     * @param limit Maximum number of results
+     * @returns SearchResult Search results retrieved successfully
+     * @throws ApiError
+     */
+    public searchDocuments(
+        q: string,
+        limit: number = 10,
+    ): CancelablePromise<Array<SearchResult>> {
+        return this.httpRequest.request({
+            method: 'GET',
+            url: '/documents/search',
+            query: {
+                'q': q,
+                'limit': limit,
+            },
+            errors: {
+                401: `Unauthorized`,
             },
         });
     }

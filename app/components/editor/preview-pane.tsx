@@ -14,6 +14,7 @@ import dynamic from 'next/dynamic';
 import { PlantUMLDiagram } from "@/components/markdown/plantuml-diagram";
 import { FileAttachment } from "@/components/markdown/file-attachment";
 import { AuthenticatedImage } from "@/components/markdown/authenticated-image";
+import { WikiLink } from "@/components/markdown/wiki-link";
 import { getApiUrl } from "@/lib/config";
 
 const MermaidDiagram = dynamic(() => import("@/components/markdown/mermaid-diagram").then(mod => ({ default: mod.MermaidDiagram })), {
@@ -240,11 +241,39 @@ function PreviewPaneComponent({
                             />
                           );
                         },
-                        a: ({ href, children, ...props }) => (
-                          <FileAttachment href={href || '#'} documentId={documentId} token={token} {...props}>
-                            {children}
-                          </FileAttachment>
-                        ),
+                        a: ({ href, children, ...props }) => {
+                          // Check if this is a wiki link or mention link
+                          const isWikiLink = href?.startsWith('#wiki:');
+                          const isMentionLink = href?.startsWith('#mention:');
+                          
+                          if (isWikiLink || isMentionLink) {
+                            // Extract target from URL
+                            let target = '';
+                            if (isWikiLink && href) {
+                              target = decodeURIComponent(href.replace('#wiki:', ''));
+                            } else if (isMentionLink && href) {
+                              target = decodeURIComponent(href.replace('#mention:', ''));
+                            }
+                            
+                            return (
+                              <WikiLink 
+                                href={href || '#'} 
+                                data-wiki-target={isWikiLink ? target : undefined}
+                                data-mention-target={isMentionLink ? target : undefined}
+                                {...props}
+                              >
+                                {children}
+                              </WikiLink>
+                            );
+                          }
+                          
+                          // For non-wiki links, use FileAttachment as before
+                          return (
+                            <FileAttachment href={href || '#'} documentId={documentId} token={token} {...props}>
+                              {children}
+                            </FileAttachment>
+                          );
+                        },
                         p: ({ children, ...props }) => {
                           // Check if the paragraph contains only an image or file attachment
                           const childArray = React.Children.toArray(children);
