@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { visit } from 'unist-util-visit'
 import type { Plugin } from 'unified'
-import type { Root, Text, Link, PhrasingContent } from 'mdast'
+import type { Root, Text, Link } from 'mdast'
 
 interface WikiLinkNode {
   type: 'wikiLink'
@@ -111,7 +111,7 @@ export const remarkEmbedLink: Plugin<[], Root> = () => {
       const matches = Array.from(value.matchAll(embedLinkRegex))
       if (matches.length === 0) return
 
-      const nodes: (Text | { type: string; data: { hName: string; hProperties: Record<string, string> }; children: Text[] })[] = []
+      const nodes: any[] = []
       let lastIndex = 0
 
       for (const match of matches) {
@@ -127,7 +127,7 @@ export const remarkEmbedLink: Plugin<[], Root> = () => {
         }
 
         // Create an embed node (rendered as a div with special class)
-        const embedNode = {
+        const embedNode: any = {
           type: 'paragraph',
           data: {
             hName: 'div',

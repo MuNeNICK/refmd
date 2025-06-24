@@ -133,7 +133,7 @@ export function DocumentLinkCard({ document, className, variant = 'default' }: D
           {/* Updated time - with min height to match file-attachment button */}
           <span className="flex items-center gap-1 text-xs text-muted-foreground opacity-60 group-hover:opacity-100 transition-opacity h-8">
             <Clock className="h-3 w-3" />
-            <span>{formatDate(document.updated_at)}</span>
+            <span>{formatDate(document.updated_at || '')}</span>
           </span>
         </span>
       </div>

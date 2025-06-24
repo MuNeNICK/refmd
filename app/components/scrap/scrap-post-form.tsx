@@ -89,6 +89,7 @@ export function ScrapPostForm({
   }, [content]);
 
   // Handle document link insertion
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleDocumentLink = useCallback((documentId: string, documentTitle: string) => {
     const linkText = `[[${documentId}]]`;
     insertTextAtCursor(linkText);

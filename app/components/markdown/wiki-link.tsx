@@ -29,9 +29,11 @@ export function WikiLink({
   href: _href, 
   title, 
   children, 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   className,
   'data-wiki-target': wikiTarget,
   'data-mention-target': mentionTarget,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   ...props 
 }: WikiLinkProps) {
   const router = useRouter()
@@ -40,8 +42,9 @@ export function WikiLink({
   const [documentType, setDocumentType] = useState<string>('document')
   const [documentMetadata, setDocumentMetadata] = useState<ApiDocument | null>(null)
   const [isLoadingMetadata, setIsLoadingMetadata] = useState(false)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [isTooltipOpen, setIsTooltipOpen] = useState(false)
-  const loadMetadataTimeoutRef = useRef<NodeJS.Timeout>()
+  const loadMetadataTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   
   const target = wikiTarget || mentionTarget || title || ''
   
@@ -172,6 +175,7 @@ export function WikiLink({
   }, [resolvedId, documentMetadata])
 
   // Handle tooltip open state
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleTooltipOpenChange = useCallback((open: boolean) => {
     setIsTooltipOpen(open)
     
