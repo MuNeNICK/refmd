@@ -1,6 +1,6 @@
 import { visit } from 'unist-util-visit'
 import type { Plugin } from 'unified'
-import type { Root, Text, Link } from 'mdast'
+import type { Root, Text, Link, Paragraph } from 'mdast'
 
 interface WikiLinkNode {
   type: 'wikiLink'
@@ -55,7 +55,7 @@ export const remarkWikiLink: Plugin<[], Root> = () => {
           nodes.push({
             type: 'text',
             value: value.slice(lastIndex, startIndex)
-          })
+          } as Text)
         }
 
         // Create a link node
@@ -84,7 +84,7 @@ export const remarkWikiLink: Plugin<[], Root> = () => {
         nodes.push({
           type: 'text',
           value: value.slice(lastIndex)
-        })
+        } as Text)
       }
 
       // Replace the original text node with our new nodes
@@ -110,7 +110,7 @@ export const remarkEmbedLink: Plugin<[], Root> = () => {
       const matches = Array.from(value.matchAll(embedLinkRegex))
       if (matches.length === 0) return
 
-      const nodes: any[] = []
+      const nodes: (Text | Paragraph)[] = []
       let lastIndex = 0
 
       for (const match of matches) {
@@ -122,11 +122,11 @@ export const remarkEmbedLink: Plugin<[], Root> = () => {
           nodes.push({
             type: 'text',
             value: value.slice(lastIndex, startIndex)
-          })
+          } as Text)
         }
 
         // Create an embed node (rendered as a div with special class)
-        const embedNode: any = {
+        const embedNode: Paragraph = {
           type: 'paragraph',
           data: {
             hName: 'div',
@@ -138,7 +138,7 @@ export const remarkEmbedLink: Plugin<[], Root> = () => {
           children: [{
             type: 'text',
             value: `[Embedded: ${target.trim()}]`
-          }]
+          } as Text]
         }
 
         nodes.push(embedNode)
@@ -150,7 +150,7 @@ export const remarkEmbedLink: Plugin<[], Root> = () => {
         nodes.push({
           type: 'text',
           value: value.slice(lastIndex)
-        })
+        } as Text)
       }
 
       // Replace the original text node with our new nodes
@@ -188,7 +188,7 @@ export const remarkMentionLink: Plugin<[], Root> = () => {
           nodes.push({
             type: 'text',
             value: value.slice(lastIndex, startIndex)
-          })
+          } as Text)
         }
 
         // Create a mention link node
@@ -217,7 +217,7 @@ export const remarkMentionLink: Plugin<[], Root> = () => {
         nodes.push({
           type: 'text',
           value: value.slice(lastIndex)
-        })
+        } as Text)
       }
 
       // Replace the original text node with our new nodes
