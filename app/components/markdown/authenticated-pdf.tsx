@@ -163,61 +163,6 @@ export function AuthenticatedPdf({ src, documentId, token, className }: Authenti
   return (
     <div className={className || "w-full"}>
       <div className="border rounded-lg overflow-hidden bg-background">
-        {/* PDF Controls */}
-        <div className="flex items-center justify-between p-2 border-b bg-muted/50">
-          <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-              disabled={currentPage <= 1}
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <span className="text-sm text-muted-foreground">
-              Page {currentPage} {numPages > 0 && `of ${numPages}`}
-            </span>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => setCurrentPage(Math.min(numPages, currentPage + 1))}
-              disabled={currentPage >= numPages}
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => setScale(Math.max(0.5, scale - 0.1))}
-            >
-              <ZoomOut className="h-4 w-4" />
-            </Button>
-            <span className="text-sm text-muted-foreground w-12 text-center">
-              {Math.round(scale * 100)}%
-            </span>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => setScale(Math.min(2, scale + 0.1))}
-            >
-              <ZoomIn className="h-4 w-4" />
-            </Button>
-            
-            <div className="w-px h-4 bg-border mx-1" />
-            
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={handleDownload}
-            >
-              <Download className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-        
         {/* PDF Viewer */}
         <div ref={containerRef} className="w-full h-[600px] overflow-auto bg-muted/20">
           <iframe
