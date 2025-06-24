@@ -1,6 +1,5 @@
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
-import LandingPage from "./landing-page";
 
 export default async function Home() {
   // Check for auth token in cookies
@@ -14,8 +13,4 @@ export default async function Home() {
     // User is not authenticated, redirect to signin
     redirect("/auth/signin");
   }
-  
-  // This component will never render due to redirects above
-  // But Next.js requires a return statement
-  return <LandingPage />;
 }
