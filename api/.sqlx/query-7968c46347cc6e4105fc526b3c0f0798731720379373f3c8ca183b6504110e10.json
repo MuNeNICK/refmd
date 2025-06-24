@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                UPDATE document_links\n                SET link_text = CASE \n                    WHEN link_text = $2 THEN $3\n                    ELSE link_text\n                END,\n                updated_at = NOW()\n                WHERE source_document_id = $1 AND target_document_id = $4\n                ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "7968c46347cc6e4105fc526b3c0f0798731720379373f3c8ca183b6504110e10"
+}

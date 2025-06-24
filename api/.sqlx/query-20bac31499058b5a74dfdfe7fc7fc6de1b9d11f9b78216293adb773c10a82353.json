@@ -1,0 +1,92 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT id, owner_id, title, type as \"type: _\", parent_id, file_path, \n                   crdt_state, version, created_at as \"created_at!\", \n                   updated_at as \"updated_at!\", last_edited_by, last_edited_at\n            FROM documents\n            WHERE (LOWER(title) LIKE LOWER($1) OR title ILIKE $2) \n                  AND type IN ('document', 'scrap')\n                  AND (owner_id = $3 OR id IN (\n                      SELECT document_id FROM document_permissions \n                      WHERE user_id = $3 AND permission >= 'view'\n                  ))\n            ORDER BY \n                CASE WHEN LOWER(title) = LOWER($4) THEN 0 ELSE 1 END,\n                LENGTH(title),\n                updated_at DESC\n            LIMIT $5\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "owner_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "title",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "type: _",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "parent_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 5,
+        "name": "file_path",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "crdt_state",
+        "type_info": "Bytea"
+      },
+      {
+        "ordinal": 7,
+        "name": "version",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 8,
+        "name": "created_at!",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 9,
+        "name": "updated_at!",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 10,
+        "name": "last_edited_by",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 11,
+        "name": "last_edited_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Uuid",
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "20bac31499058b5a74dfdfe7fc7fc6de1b9d11f9b78216293adb773c10a82353"
+}

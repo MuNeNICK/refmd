@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT COUNT(DISTINCT source_document_id)::BIGINT as count FROM document_links WHERE target_document_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "count",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "9aecb9302d8a88c82bd3109b9d7e1c4df125eec8b65e6ef4800bbac306b835d5"
+}

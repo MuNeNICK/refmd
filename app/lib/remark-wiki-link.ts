@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { visit } from 'unist-util-visit'
 import type { Plugin } from 'unified'
 import type { Root, Text, Link } from 'mdast'

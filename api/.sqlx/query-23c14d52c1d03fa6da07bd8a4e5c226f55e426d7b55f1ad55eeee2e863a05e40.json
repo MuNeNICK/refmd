@@ -1,0 +1,64 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT \n                d.id as document_id,\n                d.title,\n                d.type as document_type,\n                d.file_path,\n                dl.link_type,\n                dl.link_text,\n                dl.position_start,\n                dl.position_end\n            FROM document_links dl\n            JOIN documents d ON d.id = dl.target_document_id\n            WHERE dl.source_document_id = $1\n            ORDER BY dl.position_start\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "document_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "title",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "document_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "file_path",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "link_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "link_text",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "position_start",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 7,
+        "name": "position_end",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "23c14d52c1d03fa6da07bd8a4e5c226f55e426d7b55f1ad55eeee2e863a05e40"
+}
