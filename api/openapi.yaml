@@ -2690,6 +2690,9 @@ components:
           format: uuid
         title:
           type: string
+        document_type:
+          type: string
+          enum: [document, scrap, folder]
         file_path:
           type: string
           nullable: true
@@ -2720,6 +2723,9 @@ components:
           format: uuid
         title:
           type: string
+        document_type:
+          type: string
+          enum: [document, scrap, folder]
         file_path:
           type: string
           nullable: true
@@ -2752,6 +2758,9 @@ components:
           format: uuid
         title:
           type: string
+        document_type:
+          type: string
+          enum: [document, scrap, folder]
         path:
           type: string
         updated_at:

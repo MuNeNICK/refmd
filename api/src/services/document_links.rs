@@ -25,6 +25,7 @@ pub struct StoredDocumentLink {
 pub struct DocumentLinkInfo {
     pub document_id: Uuid,
     pub title: String,
+    pub document_type: String,
     pub file_path: Option<String>,
     pub link_type: String,
     pub link_text: Option<String>,
@@ -35,6 +36,7 @@ pub struct DocumentLinkInfo {
 pub struct OutgoingLinkInfo {
     pub document_id: Uuid,
     pub title: String,
+    pub document_type: String,
     pub file_path: Option<String>,
     pub link_type: String,
     pub link_text: Option<String>,
@@ -112,6 +114,7 @@ impl DocumentLinksService {
             SELECT 
                 d.id as document_id,
                 d.title,
+                d.type as document_type,
                 d.file_path,
                 dl.link_type,
                 dl.link_text,
@@ -119,7 +122,7 @@ impl DocumentLinksService {
             FROM document_links dl
             JOIN documents d ON d.id = dl.source_document_id
             WHERE dl.target_document_id = $1
-            GROUP BY d.id, d.title, d.file_path, dl.link_type, dl.link_text
+            GROUP BY d.id, d.title, d.type, d.file_path, dl.link_type, dl.link_text
             ORDER BY link_count DESC, d.title
             "#,
             document_id
@@ -132,6 +135,7 @@ impl DocumentLinksService {
             .map(|row| DocumentLinkInfo {
                 document_id: row.document_id,
                 title: row.title,
+                document_type: row.document_type.to_string(),
                 file_path: row.file_path,
                 link_type: row.link_type,
                 link_text: row.link_text,
@@ -147,6 +151,7 @@ impl DocumentLinksService {
             SELECT 
                 d.id as document_id,
                 d.title,
+                d.type as document_type,
                 d.file_path,
                 dl.link_type,
                 dl.link_text,
@@ -167,6 +172,7 @@ impl DocumentLinksService {
             .map(|row| OutgoingLinkInfo {
                 document_id: row.document_id,
                 title: row.title,
+                document_type: row.document_type.to_string(),
                 file_path: row.file_path,
                 link_type: row.link_type,
                 link_text: row.link_text,

@@ -78,7 +78,7 @@ impl LinkResolver {
                    updated_at as "updated_at!", last_edited_by, last_edited_at
             FROM documents
             WHERE (LOWER(title) LIKE LOWER($1) OR title ILIKE $2) 
-                  AND type = 'document'
+                  AND type IN ('document', 'scrap')
                   AND (owner_id = $3 OR id IN (
                       SELECT document_id FROM document_permissions 
                       WHERE user_id = $3 AND permission >= 'view'
@@ -122,6 +122,7 @@ impl LinkResolver {
             .map(|doc| DocumentSuggestion {
                 id: doc.id,
                 title: doc.title.clone(),
+                document_type: doc.r#type.to_string(),
                 path: self.build_document_path(&doc),
                 updated_at: doc.updated_at,
             })
@@ -164,6 +165,7 @@ impl LinkResolver {
 pub struct DocumentSuggestion {
     pub id: Uuid,
     pub title: String,
+    pub document_type: String,
     pub path: String,
     pub updated_at: chrono::DateTime<chrono::Utc>,
 }

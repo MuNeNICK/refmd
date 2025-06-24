@@ -22,7 +22,7 @@ import {
   Sun,
   Github,
   Columns,
-  FileCode,
+  NotebookText,
   Eye,
   X,
   Wifi,
@@ -230,7 +230,7 @@ export function Header({
                     )}
                     title="Editor only"
                   >
-                    <FileCode className="h-4 w-4" />
+                    <NotebookText className="h-4 w-4" />
                   </Button>
                   <Button
                     onClick={() => onViewModeChange?.("split")}
@@ -434,7 +434,7 @@ export function Header({
                       variant={viewMode === "editor" ? "secondary" : "ghost"}
                       className="w-full justify-start"
                     >
-                      <FileCode className="h-4 w-4 mr-2" />
+                      <NotebookText className="h-4 w-4 mr-2" />
                       Editor
                     </Button>
                     <Button

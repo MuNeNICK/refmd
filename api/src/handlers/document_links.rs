@@ -27,6 +27,7 @@ fn default_limit() -> i64 {
 pub struct SearchResult {
     pub id: String,
     pub title: String,
+    pub document_type: String,
     pub path: String,
     pub updated_at: String,
 }
@@ -41,6 +42,7 @@ pub struct BacklinksResponse {
 pub struct BacklinkInfo {
     pub document_id: String,
     pub title: String,
+    pub document_type: String,
     pub file_path: Option<String>,
     pub link_type: String,
     pub link_text: Option<String>,
@@ -57,6 +59,7 @@ pub struct OutgoingLinksResponse {
 pub struct OutgoingLink {
     pub document_id: String,
     pub title: String,
+    pub document_type: String,
     pub file_path: Option<String>,
     pub link_type: String,
     pub link_text: Option<String>,
@@ -91,6 +94,7 @@ pub async fn get_backlinks(
             .map(|link| BacklinkInfo {
                 document_id: link.document_id.to_string(),
                 title: link.title,
+                document_type: link.document_type,
                 file_path: link.file_path,
                 link_type: link.link_type,
                 link_text: link.link_text,
@@ -123,6 +127,7 @@ pub async fn get_outgoing_links(
             .map(|link| OutgoingLink {
                 document_id: link.document_id.to_string(),
                 title: link.title,
+                document_type: link.document_type,
                 file_path: link.file_path,
                 link_type: link.link_type,
                 link_text: link.link_text,
@@ -150,6 +155,7 @@ pub async fn search_documents(
         .map(|suggestion| SearchResult {
             id: suggestion.id.to_string(),
             title: suggestion.title,
+            document_type: suggestion.document_type,
             path: suggestion.path,
             updated_at: suggestion.updated_at.to_rfc3339(),
         })

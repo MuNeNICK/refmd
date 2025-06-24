@@ -3,8 +3,10 @@
 import React, { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { getApiClient } from '@/lib/api'
-import type { Document } from '@/lib/api/client/models/Document'
-import { FileText, Folder, FileCode, ArrowLeft, Loader2 } from 'lucide-react'
+import { Document } from '@/lib/api/client/models/Document'
+import { BacklinkInfo } from '@/lib/api/client/models/BacklinkInfo'
+import { OutgoingLink } from '@/lib/api/client/models/OutgoingLink'
+import { FileText, Folder, NotebookText, ArrowLeft, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 // import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -16,7 +18,7 @@ interface BacklinksPanelProps {
 }
 
 interface BacklinkItem {
-  document: Document & { file_path?: string }
+  document: Document & { file_path?: string; document_type?: string }
   linkCount: number
   linkType: 'reference' | 'embed' | 'mention'
 }
@@ -43,41 +45,43 @@ export function BacklinksPanel({ documentId, className }: BacklinksPanelProps) {
         console.log('getDocumentBacklinks method:', api.documents.getDocumentBacklinks);
         const backlinksResponse = await api.documents.getDocumentBacklinks(documentId)
         const backlinkData = backlinksResponse;
-        const backlinkItems: BacklinkItem[] = ((backlinkData as any).backlinks || []).map((link: any) => ({
+        const backlinkItems: BacklinkItem[] = (backlinkData.backlinks || []).map((link) => ({
           document: {
-            id: link.document_id,
-            title: link.title,
-            file_path: link.file_path,
-            type: 'document' as const,
+            id: link.document_id || '',
+            title: link.title || '',
+            file_path: link.file_path || undefined,
+            document_type: link.document_type,
+            type: link.document_type === BacklinkInfo.document_type.SCRAP ? Document.type.SCRAP : Document.type.DOCUMENT,
             owner_id: '',
             created_at: '',
             updated_at: ''
           },
           linkCount: link.link_count || 1,
-          linkType: link.link_type || 'reference'
+          linkType: (link.link_type || 'reference') as 'reference' | 'embed' | 'mention'
         }))
         setBacklinks(backlinkItems)
         
         // Load outgoing links (documents that this document links TO)
         const outgoingResponse = await api.documents.getDocumentLinks(documentId)
         const outgoingData = outgoingResponse;
-        const outgoingItems: BacklinkItem[] = ((outgoingData as any).links || []).map((link: any) => ({
+        const outgoingItems: BacklinkItem[] = (outgoingData.links || []).map((link) => ({
           document: {
-            id: link.document_id,
-            title: link.title,
-            file_path: link.file_path,
-            type: 'document' as const,
+            id: link.document_id || '',
+            title: link.title || '',
+            file_path: link.file_path || undefined,
+            document_type: link.document_type,
+            type: link.document_type === OutgoingLink.document_type.SCRAP ? Document.type.SCRAP : Document.type.DOCUMENT,
             owner_id: '',
             created_at: '',
             updated_at: ''
           },
-          linkCount: link.link_count || 1,
-          linkType: link.link_type || 'reference'
+          linkCount: 1, // Outgoing links don't have a count
+          linkType: (link.link_type || 'reference') as 'reference' | 'embed' | 'mention'
         }))
         setOutgoingLinks(outgoingItems)
       } catch (err) {
         console.error('Failed to load links:', err)
-        const errorMessage = (err as any)?.response?.data?.error || (err as any)?.message || 'Failed to load links'
+        const errorMessage = (err as { response?: { data?: { error?: string } }; message?: string })?.response?.data?.error || (err as { message?: string })?.message || 'Failed to load links'
         setError(errorMessage)
       } finally {
         setIsLoading(false)
@@ -92,7 +96,7 @@ export function BacklinksPanel({ documentId, className }: BacklinksPanelProps) {
       case 'folder':
         return <Folder className="h-4 w-4" />
       case 'scrap':
-        return <FileCode className="h-4 w-4" />
+        return <NotebookText className="h-4 w-4" />
       default:
         return <FileText className="h-4 w-4" />
     }
@@ -135,7 +139,7 @@ export function BacklinksPanel({ documentId, className }: BacklinksPanelProps) {
         {links.map((item, index) => (
           <Link
             key={`${item.document.id}-${index}`}
-            href={`/document/${item.document.id}`}
+            href={item.document.type === Document.type.SCRAP ? `/scrap/${item.document.id}` : `/document/${item.document.id}`}
             className="flex items-center gap-2 p-2 rounded-md hover:bg-accent transition-colors"
           >
             <span className="text-muted-foreground">
@@ -219,7 +223,7 @@ export function BacklinksCount({ documentId }: { documentId: string }) {
         const api = getApiClient();
         const response = await api.documents.getDocumentLinkStats(documentId)
         const data = response;
-        setCount((data as any).backlink_count || 0)
+        setCount((data as { backlink_count?: number }).backlink_count || 0)
       } catch (err) {
         console.error('Failed to load backlink count:', err)
       } finally {

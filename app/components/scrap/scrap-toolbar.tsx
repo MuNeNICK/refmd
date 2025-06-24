@@ -3,19 +3,21 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { 
-  Bold, Italic, Heading1, List, Link, Code, Quote, Paperclip
+  Bold, Italic, Heading1, List, Link, Code, Quote, Paperclip, FileText
 } from 'lucide-react';
 
 interface ScrapToolbarProps {
   onFormatClick: (format: string) => void;
   onFileUpload?: () => void;
+  onDocumentLink?: () => void;
   disabled?: boolean;
   showFileUpload?: boolean;
 }
 
 export function ScrapToolbar({ 
   onFormatClick, 
-  onFileUpload, 
+  onFileUpload,
+  onDocumentLink, 
   disabled = false,
   showFileUpload = true 
 }: ScrapToolbarProps) {
@@ -100,6 +102,19 @@ export function ScrapToolbar({
       >
         <Link className="h-3.5 w-3.5" />
       </Button>
+      {onDocumentLink && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={onDocumentLink}
+          disabled={disabled}
+          className="h-7 w-7 p-0"
+          title="Document Link"
+        >
+          <FileText className="h-3.5 w-3.5" />
+        </Button>
+      )}
       {showFileUpload && onFileUpload && (
         <>
           <div className="w-px h-4 bg-border mx-0.5" />

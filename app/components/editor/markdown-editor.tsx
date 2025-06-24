@@ -79,7 +79,7 @@ export function MarkdownEditor({
   const [vimStatus, setVimStatus] = useState<string>('');
   
   // Store disposables for wiki link providers
-  const wikiLinkProvidersRef = useRef<editor.IDisposable[]>([]);
+  const wikiLinkProvidersRef = useRef<{ dispose: () => void }[]>([]);
   
   // Track when editor is mounted
   const [monacoEditor, setMonacoEditor] = useState<editor.IStandaloneCodeEditor | null>(null);
@@ -610,13 +610,11 @@ export function MarkdownEditor({
         
       case 'link':
         if (selectedText) {
-          newText = `[${selectedText}]()`;
+          newText = `[[${selectedText}]]`;
           replaceSelection = true;
-          // Position cursor inside the parentheses
-          cursorOffset = -1;
         } else {
-          newText = '[]()';
-          cursorOffset = 1;
+          newText = '[[]]';
+          cursorOffset = 2;
         }
         break;
         

@@ -4,6 +4,7 @@ import React, { useMemo } from 'react';
 import { Markdown } from '@/components/markdown/markdown';
 import { AuthenticatedImage } from '@/components/markdown/authenticated-image';
 import { FileAttachment } from '@/components/markdown/file-attachment';
+import { WikiLink } from '@/components/markdown/wiki-link';
 import { getApiUrl } from '@/lib/config';
 import type { Components } from 'react-markdown';
 
@@ -66,11 +67,45 @@ export function ScrapMarkdown({ content, documentId }: ScrapMarkdownProps) {
         />
       );
     },
-    a: ({ href, children, ...props }) => (
-      <FileAttachment href={href || '#'} documentId={documentId} {...props}>
-        {children}
-      </FileAttachment>
-    ),
+    a: ({ href, children, className, ...props }) => {
+      // Check if this is a wiki link or mention link
+      const extendedProps = props as Record<string, unknown>;
+      const isWikiLink = href?.startsWith('#wiki:') || extendedProps['data-wiki-target'];
+      const isMentionLink = href?.startsWith('#mention:') || extendedProps['data-mention-target'];
+      
+      if (isWikiLink || isMentionLink) {
+        // Extract target from URL or data attribute
+        let target = '';
+        if (extendedProps['data-wiki-target']) {
+          target = extendedProps['data-wiki-target'] as string;
+        } else if (extendedProps['data-mention-target']) {
+          target = extendedProps['data-mention-target'] as string;
+        } else if (isWikiLink && href) {
+          target = decodeURIComponent(href.replace('#wiki:', ''));
+        } else if (isMentionLink && href) {
+          target = decodeURIComponent(href.replace('#mention:', ''));
+        }
+        
+        return (
+          <WikiLink 
+            href={href || '#'} 
+            className={className}
+            data-wiki-target={isWikiLink ? target : undefined}
+            data-mention-target={isMentionLink ? target : undefined}
+            {...props}
+          >
+            {children}
+          </WikiLink>
+        );
+      }
+      
+      // For other links, use FileAttachment
+      return (
+        <FileAttachment href={href || '#'} documentId={documentId} {...props}>
+          {children}
+        </FileAttachment>
+      );
+    },
     p: ({ children, ...props }) => {
       // Check if the paragraph contains only an image or file attachment to avoid hydration errors
       const childArray = React.Children.toArray(children);

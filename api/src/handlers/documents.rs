@@ -52,6 +52,7 @@ pub struct DocumentResponse {
     pub title: String,
     pub r#type: String,
     pub parent_id: Option<String>,
+    pub file_path: Option<String>,
     pub created_at: String,
     pub updated_at: String,
 }
@@ -64,6 +65,7 @@ impl From<Document> for DocumentResponse {
             title: doc.title,
             r#type: doc.r#type,
             parent_id: doc.parent_id.map(|id| id.to_string()),
+            file_path: doc.file_path,
             created_at: doc.created_at.to_rfc3339(),
             updated_at: doc.updated_at.to_rfc3339(),
         }

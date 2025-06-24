@@ -1,12 +1,15 @@
 'use client'
 
-import React, { useCallback, useState, useEffect } from 'react'
+import React, { useCallback, useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { getApiClient } from '@/lib/api'
 import type { Document as ApiDocument } from '@/lib/api/client/models/Document'
+import { SearchResult } from '@/lib/api/client/models/SearchResult'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { DocumentLinkCard } from './document-link-card'
+import { Loader2 } from 'lucide-react'
 
 interface WikiLinkProps extends Omit<React.AnchorHTMLAttributes<HTMLAnchorElement>, 'href' | 'onClick'> {
   href: string
@@ -16,6 +19,10 @@ interface WikiLinkProps extends Omit<React.AnchorHTMLAttributes<HTMLAnchorElemen
   'data-wiki-target'?: string
   'data-mention-target'?: string
 }
+
+// Simple in-memory cache for document metadata
+const documentCache = new Map<string, { document: ApiDocument; timestamp: number }>()
+const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
 
 export function WikiLink({ 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -30,8 +37,18 @@ export function WikiLink({
   const router = useRouter()
   const [isResolving, setIsResolving] = useState(false)
   const [resolvedId, setResolvedId] = useState<string | null>(null)
+  const [documentType, setDocumentType] = useState<string>('document')
+  const [documentMetadata, setDocumentMetadata] = useState<ApiDocument | null>(null)
+  const [isLoadingMetadata, setIsLoadingMetadata] = useState(false)
+  const [isTooltipOpen, setIsTooltipOpen] = useState(false)
+  const loadMetadataTimeoutRef = useRef<NodeJS.Timeout>()
   
   const target = wikiTarget || mentionTarget || title || ''
+  
+  // Check display variant from children text
+  const displayVariant = React.Children.toArray(children).some(child => 
+    typeof child === 'string' && child.includes('|inline')
+  ) ? 'inline' : 'embed'
   
   // Check if this is a UUID (ID-based link)
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -47,28 +64,49 @@ export function WikiLink({
       const api = getApiClient();
       
       if (targetId) {
-        // Direct ID lookup
-        setResolvedId(targetId)
-        return targetId
+        // Direct ID lookup - we need to fetch document to get type
+        try {
+          const docResponse = await api.documents.getDocument(targetId)
+          if (docResponse) {
+            setResolvedId(targetId)
+            setDocumentType(docResponse.type || 'document')
+            return targetId
+          }
+        } catch {
+          // If document not found, maybe it's a scrap
+          try {
+            const scrapResponse = await api.scraps.getScrap(targetId)
+            if (scrapResponse) {
+              setResolvedId(targetId)
+              setDocumentType('scrap')
+              return targetId
+            }
+          } catch {
+            // Not found as either type
+            console.error('Document/Scrap not found:', targetId)
+          }
+        }
+        return null
       }
       
       // Search for documents by title
-      const response = await api.documents.searchDocuments({ q: target })
-      const documents = Array.isArray(response) ? response : (response.data || [])
+      const documents = await api.documents.searchDocuments(target)
       
       // Find exact match first
       const exactMatch = documents.find((doc) => 
         doc.title?.toLowerCase() === target.toLowerCase()
       )
       
-      if (exactMatch) {
+      if (exactMatch && exactMatch.id) {
         setResolvedId(exactMatch.id)
+        setDocumentType(exactMatch.document_type === SearchResult.document_type.SCRAP ? 'scrap' : 'document')
         return exactMatch.id
       }
       
       // If no exact match, use the first result
-      if (documents.length > 0) {
+      if (documents.length > 0 && documents[0].id) {
         setResolvedId(documents[0].id)
+        setDocumentType(documents[0].document_type === SearchResult.document_type.SCRAP ? 'scrap' : 'document')
         return documents[0].id
       }
       
@@ -88,19 +126,74 @@ export function WikiLink({
     
     // If we already have a resolved ID, navigate directly
     if (resolvedId) {
-      router.push(`/document/${resolvedId}`)
+      const path = documentType === 'scrap' ? `/scrap/${resolvedId}` : `/document/${resolvedId}`
+      router.push(path)
       return
     }
     
     // Otherwise, try to resolve and navigate
     const id = await resolveDocument()
     if (id) {
-      router.push(`/document/${id}`)
+      const path = documentType === 'scrap' ? `/scrap/${id}` : `/document/${id}`
+      router.push(path)
     } else {
       toast.error(`Document "${target}" not found`)
     }
-  }, [resolvedId, resolveDocument, router, target])
+  }, [resolvedId, resolveDocument, router, target, documentType])
   
+  // Load document metadata for preview
+  const loadDocumentMetadata = useCallback(async () => {
+    if (!resolvedId || documentMetadata) return
+    
+    // Check cache first
+    const cached = documentCache.get(resolvedId)
+    if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+      setDocumentMetadata(cached.document)
+      return
+    }
+    
+    setIsLoadingMetadata(true)
+    try {
+      const api = getApiClient()
+      const doc = await api.documents.getDocument(resolvedId)
+      
+      // Update cache
+      documentCache.set(resolvedId, {
+        document: doc,
+        timestamp: Date.now()
+      })
+      
+      setDocumentMetadata(doc)
+    } catch (error) {
+      console.error('Failed to load document metadata:', error)
+    } finally {
+      setIsLoadingMetadata(false)
+    }
+  }, [resolvedId, documentMetadata])
+
+  // Handle tooltip open state
+  const handleTooltipOpenChange = useCallback((open: boolean) => {
+    setIsTooltipOpen(open)
+    
+    if (open && resolvedId && !documentMetadata && !isLoadingMetadata) {
+      // Delay loading slightly to avoid loading on quick hovers
+      loadMetadataTimeoutRef.current = setTimeout(() => {
+        loadDocumentMetadata()
+      }, 300)
+    } else if (!open && loadMetadataTimeoutRef.current) {
+      clearTimeout(loadMetadataTimeoutRef.current)
+    }
+  }, [resolvedId, documentMetadata, isLoadingMetadata, loadDocumentMetadata])
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (loadMetadataTimeoutRef.current) {
+        clearTimeout(loadMetadataTimeoutRef.current)
+      }
+    }
+  }, [])
+
   // Resolve on mount if we don't have an ID
   useEffect(() => {
     if (!resolvedId && target) {
@@ -108,20 +201,79 @@ export function WikiLink({
     }
   }, [resolvedId, target, resolveDocument])
   
+  // Load metadata immediately when component mounts or resolvedId changes
+  useEffect(() => {
+    if (resolvedId && !documentMetadata && !isLoadingMetadata) {
+      loadDocumentMetadata()
+    }
+  }, [resolvedId, documentMetadata, isLoadingMetadata, loadDocumentMetadata])
+  
+  const href = resolvedId 
+    ? (documentType === 'scrap' ? `/scrap/${resolvedId}` : `/document/${resolvedId}`)
+    : '#'
+  
+  // Show loading state while resolving
+  if (isResolving || (resolvedId && isLoadingMetadata)) {
+    return (
+      <span className={cn(
+        "inline-flex items-center gap-2",
+        displayVariant === 'inline' ? "px-3 py-1.5 text-sm" : "p-4",
+        "border rounded-md bg-card"
+      )}>
+        <Loader2 className={cn(
+          "animate-spin",
+          displayVariant === 'inline' ? "h-3 w-3" : "h-4 w-4"
+        )} />
+        <span className={displayVariant === 'inline' ? "text-sm" : ""}>Loading...</span>
+      </span>
+    )
+  }
+  
+  // Show error if resolution failed
+  if (!resolvedId && !isResolving) {
+    return (
+      <span className={cn(
+        "inline-flex items-center gap-2",
+        displayVariant === 'inline' ? "px-3 py-1.5 text-sm" : "p-4",
+        "border rounded-md bg-muted/50 text-muted-foreground"
+      )}>
+        {children || target}
+      </span>
+    )
+  }
+  
+  // Show document card when we have metadata
+  if (resolvedId && documentMetadata) {
+    return (
+      <Link 
+        href={href}
+        className={cn(
+          "no-underline",
+          displayVariant === 'inline' ? "inline-block align-baseline" : "block"
+        )}
+      >
+        <DocumentLinkCard 
+          document={documentMetadata} 
+          variant={displayVariant}
+          className="cursor-pointer"
+        />
+      </Link>
+    )
+  }
+  
+  // Fallback while metadata is loading
   return (
-    <a
-      href={resolvedId ? `/document/${resolvedId}` : '#'}
+    <Link 
+      href={href}
       onClick={handleClick}
       className={cn(
-        'text-primary hover:underline cursor-pointer',
-        isResolving && 'opacity-50',
-        className
+        "inline-flex items-center gap-2",
+        displayVariant === 'inline' ? "px-3 py-1.5 text-sm" : "p-4",
+        "border rounded-md bg-card hover:bg-accent/50 transition-colors no-underline"
       )}
-      title={target}
-      {...props}
     >
-      {children}
-    </a>
+      <span className="text-foreground">{children || target}</span>
+    </Link>
   )
 }
 
@@ -158,24 +310,23 @@ export function DocumentEmbed({
         if (embedId) {
           // Direct ID lookup
           const docResponse = await api.documents.getDocument(embedId)
-          setDocument(docResponse.data)
+          setDocument(docResponse)
           return
         }
         
         // Search for the document by title
-        const response = await api.documents.searchDocuments({ q: embedTarget })
-        const documents = response.data
+        const documents = await api.documents.searchDocuments(embedTarget)
         
         // Find exact match
-        const exactMatch = documents.find((doc: ApiDocument) => 
+        const exactMatch = documents.find((doc) => 
           doc.title?.toLowerCase() === embedTarget.toLowerCase()
         )
         
-        if (exactMatch) {
+        if (exactMatch && exactMatch.id) {
           // Load the full document content
           const docResponse = await api.documents.getDocument(exactMatch.id)
           setDocument(docResponse)
-        } else if (documents.length > 0) {
+        } else if (documents.length > 0 && documents[0].id) {
           // Use first match if no exact match
           const docResponse = await api.documents.getDocument(documents[0].id)
           setDocument(docResponse)
@@ -211,19 +362,16 @@ export function DocumentEmbed({
   
   if (document) {
     return (
-      <div className={cn('p-4 border rounded-md bg-muted/50', className)}>
-        <div className="mb-2">
-          <Link 
-            href={`/document/${document.id}`}
-            className="text-lg font-semibold hover:underline"
-          >
-            {document.title}
-          </Link>
-        </div>
-        <div className="text-sm text-muted-foreground line-clamp-3">
-          {document.content}
-        </div>
-      </div>
+      <Link 
+        href={document.type === 'scrap' ? `/scrap/${document.id}` : `/document/${document.id}`}
+        className="block no-underline"
+      >
+        <DocumentLinkCard 
+          document={document} 
+          variant="embed"
+          className={cn('hover:shadow-xl transition-shadow cursor-pointer', className)} 
+        />
+      </Link>
     )
   }
   

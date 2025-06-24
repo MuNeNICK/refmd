@@ -44,7 +44,7 @@ export type { RegisterRequest } from './models/RegisterRequest';
 export type { Scrap } from './models/Scrap';
 export type { ScrapPost } from './models/ScrapPost';
 export type { ScrapWithPosts } from './models/ScrapWithPosts';
-export type { SearchResult } from './models/SearchResult';
+export { SearchResult } from './models/SearchResult';
 export { Share } from './models/Share';
 export { SharedDocument } from './models/SharedDocument';
 export { ShareDocumentRequest } from './models/ShareDocumentRequest';

@@ -50,16 +50,17 @@ const MINIMAL_REMARK_PLUGINS = [remarkGfm]
 const DEFAULT_COMPONENTS: import('react-markdown').Components = {
   a({ href, className, children, ...props }) {
     // Check if this is a wiki link or mention link by URL pattern or data attributes
-    const isWikiLink = href?.startsWith('#wiki:') || props['data-wiki-target']
-    const isMentionLink = href?.startsWith('#mention:') || props['data-mention-target']
+    const extendedProps = props as Record<string, unknown>
+    const isWikiLink = href?.startsWith('#wiki:') || extendedProps['data-wiki-target']
+    const isMentionLink = href?.startsWith('#mention:') || extendedProps['data-mention-target']
     
     if (isWikiLink || isMentionLink) {
       // Extract target from URL or data attribute
       let target = ''
-      if (props['data-wiki-target']) {
-        target = props['data-wiki-target'] as string
-      } else if (props['data-mention-target']) {
-        target = props['data-mention-target'] as string
+      if (extendedProps['data-wiki-target']) {
+        target = extendedProps['data-wiki-target'] as string
+      } else if (extendedProps['data-mention-target']) {
+        target = extendedProps['data-mention-target'] as string
       } else if (isWikiLink && href) {
         target = decodeURIComponent(href.replace('#wiki:', ''))
       } else if (isMentionLink && href) {
@@ -89,10 +90,11 @@ const DEFAULT_COMPONENTS: import('react-markdown').Components = {
   div({ className, children, ...props }) {
     // Check if this is a document embed
     if (className?.includes('document-embed')) {
+      const extendedProps = props as Record<string, unknown>
       return (
         <DocumentEmbed 
           className={className}
-          data-embed-target={props['data-embed-target'] as string}
+          data-embed-target={extendedProps['data-embed-target'] as string}
           {...props}
         >
           {children}

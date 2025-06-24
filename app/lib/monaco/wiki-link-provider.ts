@@ -1,63 +1,35 @@
 import type { editor, languages, CancellationToken, Position } from 'monaco-editor';
 import { getApiClient } from '@/lib/api';
-import type { Document } from '@/lib/api/client/models/Document';
+import { SearchResult } from '@/lib/api/client/models/SearchResult';
 
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
 // Helper function to build document path
-async function buildDocumentPath(doc: Document): Promise<string> {
-  if (!doc || !doc.title) {
-    return 'Unknown';
-  }
-  
-  const api = getApiClient();
-  const pathParts = [doc.title];
-  let currentParentId = doc.parent_id;
-  
-  // Build path by traversing parent chain
-  while (currentParentId) {
-    try {
-      const parentResponse = await api.documents.getDocument(currentParentId);
-      const parent = parentResponse?.data || parentResponse;
-      if (parent && parent.title) {
-        pathParts.unshift(parent.title);
-        currentParentId = parent.parent_id;
-      } else {
-        break;
-      }
-    } catch (error) {
-      console.error('Failed to fetch parent document:', error);
-      break;
-    }
-  }
-  
-  return pathParts.join(' / ');
+async function buildDocumentPath(doc: SearchResult): Promise<string> {
+  // SearchResult already includes the path
+  return doc.path || doc.title || 'Unknown';
 }
 
 // Check if there are duplicate titles
-function findDuplicateTitles(documents: Document[]): Map<string, Document[]> {
-  const titleMap = new Map<string, Document[]>();
+function findDuplicateTitles(documents: SearchResult[]): Set<string> {
+  const titleCounts = new Map<string, number>();
   
   // Handle undefined or null documents
   if (!documents || !Array.isArray(documents)) {
-    return new Map();
+    return new Set();
   }
   
   documents.forEach(doc => {
     if (doc && doc.title) {
       const lowerTitle = doc.title.toLowerCase();
-      if (!titleMap.has(lowerTitle)) {
-        titleMap.set(lowerTitle, []);
-      }
-      titleMap.get(lowerTitle)!.push(doc);
+      titleCounts.set(lowerTitle, (titleCounts.get(lowerTitle) || 0) + 1);
     }
   });
   
-  // Filter out non-duplicates
-  const duplicates = new Map<string, Document[]>();
-  titleMap.forEach((docs, title) => {
-    if (docs.length > 1) {
-      duplicates.set(title, docs);
+  const duplicates = new Set<string>();
+  titleCounts.forEach((count, title) => {
+    if (count > 1) {
+      duplicates.add(title);
     }
   });
   
@@ -108,11 +80,10 @@ export class WikiLinkCompletionProvider implements languages.CompletionItemProvi
     try {
       // Search for documents
       const api = getApiClient();
-      const response = await api.documents.searchDocuments(
+      const documents = await api.documents.searchDocuments(
         searchQuery || '',
         20 
       );
-      const documents = Array.isArray(response) ? response : (response?.data || []);
       
       // Remove duplicates by ID
       const uniqueDocuments = documents.filter((doc, index, self) => 
@@ -124,21 +95,24 @@ export class WikiLinkCompletionProvider implements languages.CompletionItemProvi
       
       // Create completion items
       const suggestions: languages.CompletionItem[] = await Promise.all(
-        uniqueDocuments.map(async (doc: Document) => {
-          const isDuplicate = duplicateTitles.has(doc.title.toLowerCase());
-          const path = isDuplicate ? await buildDocumentPath(doc) : doc.title;
+        uniqueDocuments.map(async (doc) => {
+          const isDuplicate = doc.title ? duplicateTitles.has(doc.title.toLowerCase()) : false;
+          const path = isDuplicate ? await buildDocumentPath(doc) : (doc.title || '');
           
           // Always use ID-based link
-          const insertText = hasClosingBrackets ? doc.id : `${doc.id}]]`;
+          const insertText = hasClosingBrackets ? (doc.id || '') : `${doc.id}]]`;
+          
+          const typeDisplay = doc.document_type === SearchResult.document_type.FOLDER ? 'Folder' : 
+                             doc.document_type === SearchResult.document_type.SCRAP ? 'Scrap' : 'Document';
           
           return {
-            label: doc.title,
+            label: doc.title || 'Untitled',
             kind: 17, // File
-            detail: isDuplicate ? path : (doc.type === 'folder' ? 'Folder' : 'Document'),
+            detail: isDuplicate ? path : typeDisplay,
             documentation: {
-              value: `**${doc.title}**\n\n${
+              value: `**${doc.title || 'Untitled'}**\n\n${
                 isDuplicate ? `Path: ${path}\n\n` : ''
-              }Type: ${doc.type}\nID: ${doc.id}\nCreated: ${doc.created_at ? new Date(doc.created_at).toLocaleDateString() : 'Unknown'}`
+              }Type: ${typeDisplay}\nID: ${doc.id}\nUpdated: ${doc.updated_at ? new Date(doc.updated_at).toLocaleDateString() : 'Unknown'}`
             },
             insertText,
             range: {
@@ -259,20 +233,19 @@ export class WikiLinkHoverProvider implements languages.HoverProvider {
       if (linkId) {
         // Direct ID lookup
         const docResponse = await api.documents.getDocument(linkId);
-        fullDoc = docResponse?.data || docResponse;
+        fullDoc = docResponse;
       } else {
         // Search for the document by title
-        const response = await api.documents.searchDocuments(linkTitle!);
-        const documents = Array.isArray(response) ? response : (response?.data || []);
+        const documents = await api.documents.searchDocuments(linkTitle!);
         
         // Find exact match
         const exactMatch = documents.find(doc => 
-          doc.title.toLowerCase() === linkTitle!.toLowerCase()
+          doc.title?.toLowerCase() === linkTitle!.toLowerCase()
         );
         
         const doc = exactMatch || documents[0];
         
-        if (!doc) {
+        if (!doc || !doc.id) {
           return {
             contents: [
               { value: `**Document not found:** ${linkTitle}` }
@@ -282,7 +255,7 @@ export class WikiLinkHoverProvider implements languages.HoverProvider {
         
         // Load document content for preview
         const docResponse = await api.documents.getDocument(doc.id);
-        fullDoc = docResponse?.data || docResponse;
+        fullDoc = docResponse;
       }
       
       // Create preview content
@@ -382,16 +355,15 @@ export class WikiLinkDefinitionProvider implements languages.DefinitionProvider 
         docId = linkId;
       } else {
         // Search for the document by title
-        const response = await api.documents.searchDocuments(linkTitle!);
-        const documents = Array.isArray(response) ? response : (response?.data || []);
+        const documents = await api.documents.searchDocuments(linkTitle!);
         
         // Find exact match
         const exactMatch = documents.find(doc => 
-          doc.title.toLowerCase() === linkTitle!.toLowerCase()
+          doc.title?.toLowerCase() === linkTitle!.toLowerCase()
         );
         
         const doc = exactMatch || documents[0];
-        if (doc) {
+        if (doc && doc.id) {
           docId = doc.id;
         }
       }

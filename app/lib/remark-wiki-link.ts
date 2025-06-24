@@ -1,6 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { visit } from 'unist-util-visit'
 import type { Plugin } from 'unified'
-import type { Root, Text, Link } from 'mdast'
+import type { Root, Text, Link, PhrasingContent } from 'mdast'
 
 interface WikiLinkNode {
   type: 'wikiLink'
@@ -46,6 +47,9 @@ export const remarkWikiLink: Plugin<[], Root> = () => {
         const parts = content.split('|')
         const target = parts[0].trim()
         const alias = parts[1]?.trim()
+        
+        // Check if this should be rendered inline
+        const isInlineDisplay = alias === 'inline'
 
         // Add text before the match
         if (startIndex > lastIndex) {
@@ -62,7 +66,7 @@ export const remarkWikiLink: Plugin<[], Root> = () => {
           title: target,
           children: [{
             type: 'text',
-            value: alias || target
+            value: isInlineDisplay ? `${target}|inline` : (alias || target)
           }],
           data: {
             hProperties: {
@@ -85,7 +89,9 @@ export const remarkWikiLink: Plugin<[], Root> = () => {
       }
 
       // Replace the original text node with our new nodes
-      parent.children.splice(index, 1, ...nodes)
+      if (index !== undefined) {
+        parent.children.splice(index, 1, ...nodes)
+      }
     })
   }
 }
@@ -149,7 +155,9 @@ export const remarkEmbedLink: Plugin<[], Root> = () => {
       }
 
       // Replace the original text node with our new nodes
-      parent.children.splice(index, 1, ...nodes)
+      if (index !== undefined) {
+        parent.children.splice(index, 1, ...nodes)
+      }
     })
   }
 }
@@ -214,7 +222,9 @@ export const remarkMentionLink: Plugin<[], Root> = () => {
       }
 
       // Replace the original text node with our new nodes
-      parent.children.splice(index, 1, ...nodes)
+      if (index !== undefined) {
+        parent.children.splice(index, 1, ...nodes)
+      }
     })
   }
 }
