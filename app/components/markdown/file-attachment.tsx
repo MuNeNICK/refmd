@@ -68,7 +68,7 @@ const getFileIcon = (extension: string) => {
   }
   
   // Documents
-  if (['pdf', 'doc', 'docx', 'txt', 'rtf'].includes(extension)) {
+  if (['pdf', 'doc', 'docx', 'txt', 'rtf', 'xls', 'xlsx', 'ppt', 'pptx'].includes(extension)) {
     return <FileText {...iconProps} className="h-4 w-4 text-red-600" />;
   }
   
@@ -107,15 +107,19 @@ export function FileAttachment({ href, children, className, documentId, token }:
   if (href.startsWith('./attachments/')) {
     // Handle new relative path format: ./attachments/{filename}
     const filename = href.substring(14); // Remove './attachments/'
+    // Only encode if not already encoded (doesn't contain %)
+    const encodedFilename = filename.includes('%') ? filename : encodeURIComponent(filename);
     // Use the documents endpoint with filename
-    processedHref = `${apiBaseUrl}/files/documents/${encodeURIComponent(filename)}`;
+    processedHref = `${apiBaseUrl}/files/documents/${encodedFilename}`;
     if (documentId) {
       processedHref += `?document_id=${documentId}`;
     }
   } else if (href.startsWith('./')) {
     // Handle legacy relative paths
     const filename = href.substring(2);
-    processedHref = `${apiBaseUrl}/files/documents/${encodeURIComponent(filename)}`;
+    // Only encode if not already encoded (doesn't contain %)
+    const encodedFilename = filename.includes('%') ? filename : encodeURIComponent(filename);
+    processedHref = `${apiBaseUrl}/files/documents/${encodedFilename}`;
     if (documentId) {
       processedHref += `?document_id=${documentId}`;
     }
@@ -226,12 +230,35 @@ export function FileAttachment({ href, children, className, documentId, token }:
               });
               
               if (!response.ok) {
-                throw new Error('Failed to download file');
+                throw new Error(`Failed to download file: ${response.status} ${response.statusText}`);
               }
               
               // Get the blob and create download link
               const blob = await response.blob();
-              const url = window.URL.createObjectURL(blob);
+              
+              // For some file types, we need to force the correct MIME type
+              let finalBlob = blob;
+              if (blob.size > 0) {
+                // Check if we need to override the MIME type based on file extension
+                const ext = displayFileName.split('.').pop()?.toLowerCase();
+                let mimeType = blob.type;
+                
+                // Override MIME type for known problematic types
+                if (ext === 'xlsx' && (!mimeType || mimeType === 'application/octet-stream')) {
+                  mimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+                } else if (ext === 'pdf' && (!mimeType || mimeType === 'application/octet-stream')) {
+                  mimeType = 'application/pdf';
+                } else if (ext === 'docx' && (!mimeType || mimeType === 'application/octet-stream')) {
+                  mimeType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+                }
+                
+                // Create a new blob with the correct MIME type if needed
+                if (mimeType !== blob.type) {
+                  finalBlob = new Blob([blob], { type: mimeType });
+                }
+              }
+              
+              const url = window.URL.createObjectURL(finalBlob);
               const a = document.createElement('a');
               a.href = url;
               a.download = displayFileName;
@@ -241,6 +268,8 @@ export function FileAttachment({ href, children, className, documentId, token }:
               document.body.removeChild(a);
             } catch (error) {
               console.error('Download failed:', error);
+              // Show user-friendly error message
+              alert(`Failed to download ${displayFileName}. Please check the console for details.`);
             }
           }}
           title="Download file"

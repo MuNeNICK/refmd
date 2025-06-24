@@ -123,7 +123,9 @@ async fn download_file(
             (header::CONTENT_LENGTH, attachment.size_bytes.to_string()),
             (
                 header::CONTENT_DISPOSITION,
-                format!("attachment; filename=\"{}\"", attachment.original_name),
+                format!("attachment; filename=\"{}\"", 
+                    attachment.original_name.replace("\"", "\\\"")
+                ),
             ),
         ],
         data,
@@ -150,7 +152,9 @@ async fn download_file_by_name(
             (header::CONTENT_LENGTH, attachment.size_bytes.to_string()),
             (
                 header::CONTENT_DISPOSITION,
-                format!("attachment; filename=\"{}\"", attachment.original_name),
+                format!("attachment; filename=\"{}\"", 
+                    attachment.original_name.replace("\"", "\\\"")
+                ),
             ),
         ],
         data,
@@ -209,6 +213,15 @@ fn detect_content_type(filename: &str, data: &[u8]) -> String {
             Some("mp3") => "audio/mpeg".to_string(),
             Some("wav") => "audio/wav".to_string(),
             Some("ogg") => "audio/ogg".to_string(),
+            // Document formats
+            Some("pdf") => "application/pdf".to_string(),
+            // Microsoft Office formats
+            Some("xlsx") => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet".to_string(),
+            Some("xls") => "application/vnd.ms-excel".to_string(),
+            Some("docx") => "application/vnd.openxmlformats-officedocument.wordprocessingml.document".to_string(),
+            Some("doc") => "application/msword".to_string(),
+            Some("pptx") => "application/vnd.openxmlformats-officedocument.presentationml.presentation".to_string(),
+            Some("ppt") => "application/vnd.ms-powerpoint".to_string(),
             _ => detected.to_string(),
         }
     } else {
