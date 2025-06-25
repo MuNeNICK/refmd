@@ -73,6 +73,12 @@ pub struct DocumentResponse {
     pub content: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub permission: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub visibility: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub published_at: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub owner_username: Option<String>,
 }
 
 impl From<Document> for DocumentResponse {
@@ -88,6 +94,9 @@ impl From<Document> for DocumentResponse {
             updated_at: doc.updated_at.to_rfc3339(),
             content: None,
             permission: None,
+            visibility: Some(doc.visibility),
+            published_at: doc.published_at.map(|dt| dt.to_rfc3339()),
+            owner_username: None, // This will be populated by the handler when needed
         }
     }
 }
@@ -187,9 +196,20 @@ async fn get_document(
     // Get content from CRDT
     let content = state.crdt_service.get_document_content(id).await?;
     
+    // Store owner_id before moving document
+    let owner_id = document.owner_id;
+    let is_public = document.visibility == "public";
+    
     // Convert to response and add content
     let mut response: DocumentResponse = document.into();
     response.content = Some(content);
+    
+    // Get owner username for published documents
+    if is_public {
+        if let Ok(owner) = state.user_repository.get_by_id(owner_id).await {
+            response.owner_username = Some(owner.username);
+        }
+    }
     
     Ok(Json(response))
 }
@@ -235,6 +255,10 @@ async fn get_document_with_share(
     // Get content from CRDT
     let content = state.crdt_service.get_document_content(id).await?;
     
+    // Store owner_id before moving document
+    let owner_id = document.owner_id;
+    let is_public = document.visibility == "public";
+    
     // Convert to response and add content
     let mut response: DocumentResponse = document.into();
     response.content = Some(content);
@@ -242,6 +266,13 @@ async fn get_document_with_share(
     // Add permission level if this is a share link
     if check.is_share_link {
         response.permission = Some(check.permission_level.to_string().to_lowercase());
+    }
+    
+    // Get owner username for published documents
+    if is_public {
+        if let Ok(owner) = state.user_repository.get_by_id(owner_id).await {
+            response.owner_username = Some(owner.username);
+        }
     }
     
     Ok(Json(response))

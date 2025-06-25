@@ -30,11 +30,11 @@ impl PublicDocumentService {
             return Err(Error::Forbidden);
         }
 
-        // Update document to be public
+        // Update document to be public and set published_at
         sqlx::query!(
             r#"
             UPDATE documents 
-            SET visibility = 'public', updated_at = NOW()
+            SET visibility = 'public', published_at = NOW(), updated_at = NOW()
             WHERE id = $1
             "#,
             document_id
@@ -60,9 +60,9 @@ impl PublicDocumentService {
             return Err(Error::Forbidden);
         }
 
-        // Update document to be private (trigger will handle slug clearing)
+        // Update document to be private and clear published_at
         sqlx::query!(
-            "UPDATE documents SET visibility = 'private', updated_at = NOW() WHERE id = $1",
+            "UPDATE documents SET visibility = 'private', published_at = NULL, updated_at = NOW() WHERE id = $1",
             document_id
         )
         .execute(self.pool.as_ref())

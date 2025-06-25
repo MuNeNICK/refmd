@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import DocumentEditor from "./document-editor";
 import { ViewMode } from "@/components/layout/header";
 import MainLayout from "@/components/layout/main-layout";
@@ -26,6 +26,13 @@ export default function DocumentClient({ documentId, initialDocument, token }: D
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [isViewOnly] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | undefined>(undefined);
+
+  // Determine if document is published and generate public URL
+  const isDocumentPublished = initialDocument?.visibility === 'public' && !!initialDocument?.published_at;
+  const generatePublicUrl = useCallback(() => {
+    if (!isDocumentPublished || !initialDocument?.owner_username) return '';
+    return `/u/${initialDocument.owner_username}/${documentId}`;
+  }, [isDocumentPublished, initialDocument?.owner_username, documentId]);
 
   // Handle mobile view mode
   useEffect(() => {
@@ -162,6 +169,11 @@ export default function DocumentClient({ documentId, initialDocument, token }: D
         onOpenChange={setShareDialogOpen}
         resourceId={documentId}
         resourceType="document"
+        isPublished={isDocumentPublished}
+        publicUrl={generatePublicUrl()}
+        onPublishChange={(published, url) => {
+          // Handle publish state change if needed
+        }}
       />
     </MainLayout>
   );
