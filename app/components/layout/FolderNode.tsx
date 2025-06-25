@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { DeleteConfirmationDialog } from '@/components/ui/delete-confirmation-dialog';
+import { useIsMobile } from '@/lib/hooks/use-is-mobile';
 
 interface DocumentNode {
   id: string;
@@ -76,6 +77,7 @@ export const FolderNode = memo(function FolderNode({
   const [isEditing, setIsEditing] = useState(false);
   const [editingTitle, setEditingTitle] = useState(node.title);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const isMobile = useIsMobile();
 
   const handleToggle = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
@@ -204,7 +206,10 @@ export const FolderNode = memo(function FolderNode({
               <span className="font-medium flex-1 text-ellipsis overflow-hidden whitespace-nowrap" title={node.title}>{node.title}</span>
             </SidebarMenuButton>
             
-            <div className="flex items-center gap-1 opacity-0 group-hover/folder:opacity-100 transition-opacity">
+            <div className={cn(
+              "flex items-center gap-1 transition-opacity",
+              isMobile ? "opacity-100" : "opacity-0 group-hover/folder:opacity-100"
+            )}>
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>

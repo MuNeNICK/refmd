@@ -22,13 +22,13 @@ import {
   Sun,
   Github,
   Columns,
-  NotebookText,
   Eye,
   X,
   Wifi,
   WifiOff,
   Users,
-  Link2
+  Link2,
+  FileCode
 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -230,7 +230,7 @@ export function Header({
                     )}
                     title="Editor only"
                   >
-                    <NotebookText className="h-4 w-4" />
+                    <FileCode className="h-4 w-4" />
                   </Button>
                   <Button
                     onClick={() => onViewModeChange?.("split")}
@@ -434,7 +434,7 @@ export function Header({
                       variant={viewMode === "editor" ? "secondary" : "ghost"}
                       className="w-full justify-start"
                     >
-                      <NotebookText className="h-4 w-4 mr-2" />
+                      <FileCode className="h-4 w-4 mr-2" />
                       Editor
                     </Button>
                     <Button

@@ -19,6 +19,7 @@ import { cn } from '@/lib/utils';
 import { DeleteConfirmationDialog } from '@/components/ui/delete-confirmation-dialog';
 import { FileHistoryDialog } from '@/components/git/file-history-dialog';
 import { getApiUrl } from '@/lib/config';
+import { useIsMobile } from '@/lib/hooks/use-is-mobile';
 
 interface DocumentNode {
   id: string;
@@ -71,6 +72,7 @@ export const FileNode = memo(function FileNode({
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showHistoryDialog, setShowHistoryDialog] = useState(false);
   const [documentFilePath, setDocumentFilePath] = useState<string | null>(null);
+  const isMobile = useIsMobile();
 
   const handleStartRename = useCallback(() => {
     setIsEditing(true);
@@ -185,7 +187,9 @@ export const FileNode = memo(function FileNode({
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <SidebarMenuAction className="opacity-0 group-hover/file:opacity-100 data-[state=open]:opacity-100">
+                <SidebarMenuAction className={cn(
+                  isMobile ? "opacity-100" : "opacity-0 group-hover/file:opacity-100 data-[state=open]:opacity-100"
+                )}>
                   <MoreHorizontal className="h-3 w-3" />
                 </SidebarMenuAction>
               </DropdownMenuTrigger>
