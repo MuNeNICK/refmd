@@ -18,6 +18,7 @@ interface WikiLinkProps extends Omit<React.AnchorHTMLAttributes<HTMLAnchorElemen
   className?: string
   'data-wiki-target'?: string
   'data-mention-target'?: string
+  isPublic?: boolean
 }
 
 // Simple in-memory cache for document metadata and search results
@@ -39,6 +40,7 @@ export function WikiLink({
   className,
   'data-wiki-target': wikiTarget,
   'data-mention-target': mentionTarget,
+  isPublic = false,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   ...props 
 }: WikiLinkProps) {
@@ -186,6 +188,14 @@ export function WikiLink({
   
   // Handle click
   const handleClick = useCallback(async (e: React.MouseEvent<HTMLAnchorElement>) => {
+    // In public mode, disable navigation
+    if (isPublic) {
+      e.preventDefault()
+      e.stopPropagation()
+      toast.info('Document links are not available in public view')
+      return
+    }
+    
     e.preventDefault()
     e.stopPropagation()
     
@@ -214,7 +224,7 @@ export function WikiLink({
     } else {
       toast.error(`Document "${target}" not found`)
     }
-  }, [resolvedId, resolveDocument, router, target, documentType])
+  }, [isPublic, resolvedId, resolveDocument, router, target, documentType])
   
   // Load document metadata for preview
   const loadDocumentMetadata = useCallback(async () => {
@@ -272,21 +282,29 @@ export function WikiLink({
 
   // Resolve on mount if we don't have an ID
   useEffect(() => {
+    // Don't resolve in public mode (requires authentication)
+    if (isPublic) return
+    
     if (!resolvedId && target) {
       resolveDocument()
     }
-  }, [resolvedId, target, resolveDocument])
+  }, [isPublic, resolvedId, target, resolveDocument])
   
   // Load metadata immediately when component mounts or resolvedId changes
   useEffect(() => {
+    // Don't load metadata in public mode (requires authentication)
+    if (isPublic) return
+    
     if (resolvedId && !documentMetadata && !isLoadingMetadata) {
       loadDocumentMetadata()
     }
-  }, [resolvedId, documentMetadata, isLoadingMetadata, loadDocumentMetadata])
+  }, [isPublic, resolvedId, documentMetadata, isLoadingMetadata, loadDocumentMetadata])
   
-  const href = resolvedId 
-    ? (documentType === 'scrap' ? `/scrap/${resolvedId}` : `/document/${resolvedId}`)
-    : '#'
+  const href = isPublic 
+    ? '#' // Disable links in public mode
+    : resolvedId 
+      ? (documentType === 'scrap' ? `/scrap/${resolvedId}` : `/document/${resolvedId}`)
+      : '#'
   
   // Show loading state while resolving
   if (isResolving || (resolvedId && isLoadingMetadata)) {
@@ -357,12 +375,14 @@ interface DocumentEmbedProps {
   className?: string
   'data-embed-target'?: string
   children: React.ReactNode
+  isPublic?: boolean
 }
 
 export function DocumentEmbed({ 
   className,
   'data-embed-target': embedTarget,
-  children 
+  children,
+  isPublic = false
 }: DocumentEmbedProps) {
   const [document, setDocument] = useState<ApiDocument | null>(null)
   const [isLoading, setIsLoading] = useState(false)
@@ -370,6 +390,12 @@ export function DocumentEmbed({
   
   useEffect(() => {
     if (!embedTarget) return
+    
+    // Don't load document in public mode (requires authentication)
+    if (isPublic) {
+      setError('Document embeds are not available in public view')
+      return
+    }
     
     const loadDocument = async () => {
       setIsLoading(true)
@@ -418,7 +444,7 @@ export function DocumentEmbed({
     }
     
     loadDocument()
-  }, [embedTarget])
+  }, [embedTarget, isPublic])
   
   if (isLoading) {
     return (

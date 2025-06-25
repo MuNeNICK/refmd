@@ -2,14 +2,15 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { Calendar, Globe, ExternalLink, Moon, Sun, Menu, X } from 'lucide-react';
+import { Calendar, Globe, ExternalLink, Moon, Sun } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
-import { Markdown } from '@/components/markdown/markdown';
-import { TableOfContents } from '@/components/markdown/table-of-contents';
 import type { PublicDocumentResponse } from '@/lib/api/client';
+import { Markdown } from '@/components/markdown/markdown';
+import { CollapsibleToc } from '@/components/editor/table-of-contents-collapsible';
+import { Menu, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface PublicDocumentPageProps {
@@ -22,6 +23,7 @@ export function PublicDocumentPage({ document }: PublicDocumentPageProps) {
   const [mounted, setMounted] = useState(false);
   const tocButtonRef = useRef<HTMLButtonElement>(null);
   const floatingTocRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   
   // Format dates consistently for SSR/client
   const publishedDate = document.published_at ? 
@@ -40,6 +42,22 @@ export function PublicDocumentPage({ document }: PublicDocumentPageProps) {
   // Track mounted state to prevent hydration mismatch
   useEffect(() => {
     setMounted(true);
+  }, []);
+  
+  // Initialize theme from localStorage or system preference
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedTheme = localStorage.getItem('theme');
+      const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const shouldBeDark = savedTheme === 'dark' || (!savedTheme && systemDark);
+      
+      setIsDarkMode(shouldBeDark);
+      if (shouldBeDark) {
+        window.document.documentElement.classList.add('dark');
+      } else {
+        window.document.documentElement.classList.remove('dark');
+      }
+    }
   }, []);
   
   // Handle click outside for floating TOC
@@ -62,22 +80,6 @@ export function PublicDocumentPage({ document }: PublicDocumentPageProps) {
     };
   }, [showToc]);
   
-  // Initialize theme from localStorage or system preference
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const savedTheme = localStorage.getItem('theme');
-      const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      const shouldBeDark = savedTheme === 'dark' || (!savedTheme && systemDark);
-      
-      setIsDarkMode(shouldBeDark);
-      if (shouldBeDark) {
-        window.document.documentElement.classList.add('dark');
-      } else {
-        window.document.documentElement.classList.remove('dark');
-      }
-    }
-  }, []);
-  
   const toggleTheme = () => {
     if (typeof window !== 'undefined') {
       const newDarkMode = !isDarkMode;
@@ -94,9 +96,9 @@ export function PublicDocumentPage({ document }: PublicDocumentPageProps) {
   };
   
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="sticky top-0 z-50 border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
+    <>
+      {/* Custom header for public documents - positioned outside MainLayout */}
+      <div className="sticky top-0 z-50 border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             {/* Left side */}
@@ -173,7 +175,7 @@ export function PublicDocumentPage({ document }: PublicDocumentPageProps) {
             </div>
           </div>
         </div>
-      </header>
+      </div>
 
       {/* Mobile Document Info */}
       <div className="md:hidden border-b bg-card">
@@ -209,47 +211,51 @@ export function PublicDocumentPage({ document }: PublicDocumentPageProps) {
       </div>
 
       {/* Main Content with TOC - Match Preview Layout */}
-      <div className="flex-1 overflow-auto">
-        <div className="w-full mx-auto flex gap-8 p-4 sm:p-6 md:p-8 max-w-6xl">
-          {/* Content area */}
-          <div className="flex-1 min-w-0 overflow-hidden">
-            <div className="prose prose-neutral dark:prose-invert max-w-3xl mx-auto">
-              {/* Document Content */}
-              <Markdown content={document.content || ''} />
-              
-              {/* Footer */}
-              <footer className="mt-12 pt-8 border-t">
-                <div className="flex items-center justify-between text-sm text-muted-foreground">
-                  <div className="flex items-center gap-2">
-                    <span>Created with</span>
-                    <Link 
-                      href="/" 
-                      className="font-medium text-primary hover:opacity-80"
-                    >
-                      RefMD
-                    </Link>
+      <div className="h-full bg-background relative overflow-hidden flex flex-col">
+        <div className="flex-1 overflow-auto" ref={containerRef}>
+          <div className="w-full mx-auto flex gap-8 p-4 sm:p-6 md:p-8 max-w-6xl">
+            {/* Content area */}
+            <div className="flex-1 min-w-0 overflow-hidden">
+              <div className="prose prose-neutral dark:prose-invert max-w-3xl mx-auto markdown-preview">
+                {/* Document Content */}
+                <Markdown content={document.content || ''} isPublic={true} />
+                
+                {/* Footer */}
+                <footer className="mt-12 pt-8 border-t">
+                  <div className="flex items-center justify-between text-sm text-muted-foreground">
+                    <div className="flex items-center gap-2">
+                      <span>Created with</span>
+                      <Link 
+                        href="https://github.com/MuNeNICK/refmd" 
+                        className="font-medium text-primary hover:opacity-80"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        RefMD
+                      </Link>
+                    </div>
+                    
+                    <div className="flex items-center gap-4">
+                      <Link 
+                        href={`/u/${document.author?.username}`}
+                        className="hover:text-foreground"
+                      >
+                        More from {document.author?.name || document.author?.username}
+                      </Link>
+                    </div>
                   </div>
-                  
-                  <div className="flex items-center gap-4">
-                    <Link 
-                      href={`/u/${document.author?.username}`}
-                      className="hover:text-foreground"
-                    >
-                      More from {document.author?.name || document.author?.username}
-                    </Link>
-                  </div>
-                </div>
-              </footer>
+                </footer>
+              </div>
             </div>
+            
+            {/* Table of Contents - Desktop Sidebar */}
+            <aside className="w-64 shrink-0 hidden lg:block">
+              <CollapsibleToc 
+                contentSelector=".markdown-preview" 
+                containerRef={containerRef}
+              />
+            </aside>
           </div>
-          
-          {/* Table of Contents - Desktop Sidebar */}
-          <aside className="w-64 shrink-0 hidden lg:block">
-            <div className="sticky top-20 p-4">
-              <h3 className="text-sm font-semibold mb-3 text-muted-foreground">Table of Contents</h3>
-              <TableOfContents content={document.content || ''} />
-            </div>
-          </aside>
         </div>
       </div>
       
@@ -284,14 +290,16 @@ export function PublicDocumentPage({ document }: PublicDocumentPageProps) {
               </Button>
             </div>
             <div className="max-h-[60vh]">
-              <TableOfContents 
-                content={document.content || ''} 
-                className="p-2" 
+              <CollapsibleToc 
+                contentSelector=".markdown-preview" 
+                containerRef={containerRef}
+                onItemClick={() => setShowToc(false)}
+                small={true}
               />
             </div>
           </div>
         )}
       </div>
-    </div>
+    </>
   );
 }

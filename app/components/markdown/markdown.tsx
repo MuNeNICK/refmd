@@ -17,11 +17,13 @@ import { remarkBlockquoteTags } from '@/lib/remark-blockquote-tags'
 import { remarkWikiLink, remarkEmbedLink, remarkMentionLink } from '@/lib/remark-wiki-link'
 import { CodeBlock } from '@/components/markdown/code-block'
 import { WikiLink, DocumentEmbed } from '@/components/markdown/wiki-link'
+import { generateHeadingId } from '@/lib/utils/heading-id'
 
 interface MarkdownProps {
   content: string
   components?: import('react-markdown').Components
   onCheckboxChange?: (lineIndex: number, checked: boolean) => void
+  isPublic?: boolean
 }
 
 // Memoize plugin arrays to prevent recreation on every render
@@ -46,8 +48,28 @@ const FULL_REHYPE_PLUGINS = [rehypeRaw, rehypeKatex]
 const SAFE_REHYPE_PLUGINS = [rehypeKatex]
 const MINIMAL_REMARK_PLUGINS = [remarkGfm]
 
-// Default components with code highlighting
-const DEFAULT_COMPONENTS: import('react-markdown').Components = {
+// Create heading components with automatic IDs for tocbot
+const createHeadingComponent = (level: number) => {
+  const HeadingComponent = ({ children, ...props }: React.HTMLAttributes<HTMLHeadingElement> & { children?: React.ReactNode }) => {
+    const extractText = (node: React.ReactNode): string => {
+      if (typeof node === 'string') return node;
+      if (Array.isArray(node)) return node.map(extractText).join('');
+      if (React.isValidElement(node) && (node.props as Record<string, unknown>)?.children) return extractText((node.props as Record<string, unknown>).children as React.ReactNode);
+      return '';
+    };
+    
+    const text = extractText(children).trim();
+    const id = generateHeadingId(text);
+    const Tag = `h${level}` as const;
+    
+    return React.createElement(Tag, { id, ...props }, children);
+  };
+  HeadingComponent.displayName = `Heading${level}`;
+  return HeadingComponent;
+};
+
+// Create components factory function
+const createDefaultComponents = (isPublic?: boolean): import('react-markdown').Components => ({
   a({ href, className, children, ...props }) {
     // Check if this is a wiki link or mention link by URL pattern or data attributes
     const extendedProps = props as Record<string, unknown>
@@ -73,6 +95,7 @@ const DEFAULT_COMPONENTS: import('react-markdown').Components = {
           className={className}
           data-wiki-target={isWikiLink ? target : undefined}
           data-mention-target={isMentionLink ? target : undefined}
+          isPublic={isPublic}
           {...props}
         >
           {children}
@@ -95,6 +118,7 @@ const DEFAULT_COMPONENTS: import('react-markdown').Components = {
         <DocumentEmbed 
           className={className}
           data-embed-target={extendedProps['data-embed-target'] as string}
+          isPublic={isPublic}
           {...props}
         >
           {children}
@@ -109,6 +133,13 @@ const DEFAULT_COMPONENTS: import('react-markdown').Components = {
       </div>
     )
   },
+  // Add heading components with IDs
+  h1: createHeadingComponent(1),
+  h2: createHeadingComponent(2),
+  h3: createHeadingComponent(3),
+  h4: createHeadingComponent(4),
+  h5: createHeadingComponent(5),
+  h6: createHeadingComponent(6),
   code({ node, className, children, ...props }) {
     const match = /language-(\w+)/.exec(className || '')
     
@@ -159,9 +190,9 @@ const DEFAULT_COMPONENTS: import('react-markdown').Components = {
       </pre>
     )
   }
-}
+})
 
-function MarkdownComponent({ content, components, onCheckboxChange }: MarkdownProps) {
+function MarkdownComponent({ content, components, onCheckboxChange, isPublic }: MarkdownProps) {
   const [renderingMode, setRenderingMode] = useState<'full' | 'safe' | 'minimal'>('full')
   const [hasError, setHasError] = useState(false)
   
@@ -208,8 +239,9 @@ function MarkdownComponent({ content, components, onCheckboxChange }: MarkdownPr
   
   // Create enhanced components
   const enhancedComponents = useMemo(() => {
+    const defaultComponents = createDefaultComponents(isPublic)
     return {
-      ...DEFAULT_COMPONENTS,
+      ...defaultComponents,
       ...components,
       // Override input component for interactive checkboxes
       input(props: React.ComponentPropsWithoutRef<'input'> & { node?: unknown }) {
@@ -251,7 +283,7 @@ function MarkdownComponent({ content, components, onCheckboxChange }: MarkdownPr
       // Filter out unrecognized tags
       'anonymous': () => null,
     }
-  }, [components, onCheckboxChange])
+  }, [components, onCheckboxChange, isPublic])
   
   // Full rendering with all plugins
   if (renderingMode === 'full' && !hasError) {
