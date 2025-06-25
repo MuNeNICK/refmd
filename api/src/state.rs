@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use sqlx::PgPool;
 use crate::config::Config;
 use crate::crdt::{DocumentManager, AwarenessManager, DocumentPersistence};
-use crate::services::{crdt::CrdtService, document::DocumentService, file::FileService, share::ShareService, git_sync::GitSyncService, git_batch_sync::GitBatchSyncService, document_links::DocumentLinksService};
+use crate::services::{crdt::CrdtService, document::DocumentService, file::FileService, share::ShareService, git_sync::GitSyncService, git_batch_sync::GitBatchSyncService, document_links::DocumentLinksService, PublicDocumentService};
 use crate::repository::{DocumentRepository, ShareRepository, UserRepository, GitConfigRepository};
 
 #[derive(Clone)]
@@ -20,6 +20,7 @@ pub struct AppState {
     pub git_sync_service: Arc<GitSyncService>,
     pub git_batch_sync_service: Option<Arc<GitBatchSyncService>>,
     pub document_links_service: Arc<DocumentLinksService>,
+    pub public_document_service: Arc<PublicDocumentService>,
     pub document_repository: Arc<DocumentRepository>,
     pub share_repository: Arc<ShareRepository>,
     pub user_repository: Arc<UserRepository>,
@@ -68,6 +69,9 @@ impl AppState {
         // Create document links service first
         let document_links_service = Arc::new(DocumentLinksService::new(db_pool.clone()));
         
+        // Create public document service
+        let public_document_service = Arc::new(PublicDocumentService::new(db_pool.clone()));
+        
         // Create document service with batch sync if enabled
         let document_service = Arc::new(DocumentService::new(
             document_repository.clone(),
@@ -108,6 +112,7 @@ impl AppState {
             git_sync_service,
             git_batch_sync_service,
             document_links_service,
+            public_document_service,
             document_repository,
             share_repository,
             user_repository,

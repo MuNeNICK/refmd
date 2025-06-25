@@ -25,8 +25,8 @@ impl LinkResolver {
                     Document,
                     r#"
                     SELECT id, owner_id, title, type as "type: _", parent_id, file_path, 
-                           crdt_state, version, created_at as "created_at!", 
-                           updated_at as "updated_at!", last_edited_by, last_edited_at
+                           crdt_state, version, COALESCE(visibility, 'private') as "visibility!", published_at,
+                           created_at as "created_at!", updated_at as "updated_at!", last_edited_by, last_edited_at
                     FROM documents
                     WHERE id = $1 AND (owner_id = $2 OR id IN (
                         SELECT document_id FROM document_permissions 
@@ -47,8 +47,8 @@ impl LinkResolver {
                     Document,
                     r#"
                     SELECT id, owner_id, title, type as "type: _", parent_id, file_path, 
-                           crdt_state, version, created_at as "created_at!", 
-                           updated_at as "updated_at!", last_edited_by, last_edited_at
+                           crdt_state, version, COALESCE(visibility, 'private') as "visibility!", published_at,
+                           created_at as "created_at!", updated_at as "updated_at!", last_edited_by, last_edited_at
                     FROM documents
                     WHERE LOWER(title) = LOWER($1) AND (owner_id = $2 OR id IN (
                         SELECT document_id FROM document_permissions 
@@ -100,8 +100,8 @@ impl LinkResolver {
                 Document,
                 r#"
                 SELECT id, owner_id, title, type as "type: _", parent_id, file_path, 
-                       crdt_state, version, created_at as "created_at!", 
-                       updated_at as "updated_at!", last_edited_by, last_edited_at
+                       crdt_state, version, COALESCE(visibility, 'private') as "visibility!", published_at,
+                       created_at as "created_at!", updated_at as "updated_at!", last_edited_by, last_edited_at
                 FROM documents
                 WHERE id = ANY($1) AND (owner_id = $2 OR id IN (
                     SELECT document_id FROM document_permissions 
@@ -128,8 +128,8 @@ impl LinkResolver {
                 r#"
                 SELECT DISTINCT ON (LOWER(title)) 
                        id, owner_id, title, type as "type: _", parent_id, file_path, 
-                       crdt_state, version, created_at as "created_at!", 
-                       updated_at as "updated_at!", last_edited_by, last_edited_at
+                       crdt_state, version, COALESCE(visibility, 'private') as "visibility!", published_at,
+                       created_at as "created_at!", updated_at as "updated_at!", last_edited_by, last_edited_at
                 FROM documents
                 WHERE LOWER(title) = ANY($1) AND (owner_id = $2 OR id IN (
                     SELECT document_id FROM document_permissions 
@@ -159,8 +159,8 @@ impl LinkResolver {
             Document,
             r#"
             SELECT id, owner_id, title, type as "type: _", parent_id, file_path, 
-                   crdt_state, version, created_at as "created_at!", 
-                   updated_at as "updated_at!", last_edited_by, last_edited_at
+                   crdt_state, version, COALESCE(visibility, 'private') as "visibility!", published_at,
+                   created_at as "created_at!", updated_at as "updated_at!", last_edited_by, last_edited_at
             FROM documents
             WHERE (LOWER(title) LIKE LOWER($1) OR title ILIKE $2) 
                   AND type IN ('document', 'scrap')

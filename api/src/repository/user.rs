@@ -21,7 +21,7 @@ impl UserRepository {
             r#"
             INSERT INTO users (email, name, password_hash)
             VALUES ($1, $2, $3)
-            RETURNING id, email, name, password_hash, created_at as "created_at!", updated_at as "updated_at!"
+            RETURNING id, email, name, username, password_hash, created_at as "created_at!", updated_at as "updated_at!"
             "#,
             email,
             name,
@@ -37,7 +37,7 @@ impl UserRepository {
         let user = sqlx::query_as!(
             User,
             r#"
-            SELECT id, email, name, password_hash, created_at as "created_at!", updated_at as "updated_at!"
+            SELECT id, email, name, username, password_hash, created_at as "created_at!", updated_at as "updated_at!"
             FROM users
             WHERE id = $1
             "#,
@@ -57,7 +57,7 @@ impl UserRepository {
         let user = sqlx::query_as!(
             User,
             r#"
-            SELECT id, email, name, password_hash, created_at as "created_at!", updated_at as "updated_at!"
+            SELECT id, email, name, username, password_hash, created_at as "created_at!", updated_at as "updated_at!"
             FROM users
             WHERE email = $1
             "#,

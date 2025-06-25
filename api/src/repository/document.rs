@@ -21,7 +21,8 @@ impl DocumentRepository {
             r#"
             INSERT INTO documents (owner_id, title, type, parent_id)
             VALUES ($1, $2, $3, $4)
-            RETURNING id, owner_id, title, type as "type: _", parent_id, file_path, crdt_state, version, 
+            RETURNING id, owner_id, title, type as "type: _", parent_id, file_path, crdt_state, version,
+                COALESCE(visibility, 'private') as "visibility!", published_at,
                 created_at as "created_at!", updated_at as "updated_at!", last_edited_by, last_edited_at
             "#,
             owner_id,
@@ -39,7 +40,8 @@ impl DocumentRepository {
         let document = sqlx::query_as!(
             Document,
             r#"
-            SELECT id, owner_id, title, type as "type: _", parent_id, file_path, crdt_state, version, 
+            SELECT id, owner_id, title, type as "type: _", parent_id, file_path, crdt_state, version,
+                COALESCE(visibility, 'private') as "visibility!", published_at,
                 created_at as "created_at!", updated_at as "updated_at!", last_edited_by, last_edited_at
             FROM documents
             WHERE id = $1
@@ -56,7 +58,8 @@ impl DocumentRepository {
         let document = sqlx::query_as!(
             Document,
             r#"
-            SELECT id, owner_id, title, type as "type: _", parent_id, file_path, crdt_state, version, 
+            SELECT id, owner_id, title, type as "type: _", parent_id, file_path, crdt_state, version,
+                COALESCE(visibility, 'private') as "visibility!", published_at,
                 created_at as "created_at!", updated_at as "updated_at!", last_edited_by, last_edited_at
             FROM documents
             WHERE id = $1 AND owner_id = $2
@@ -78,7 +81,8 @@ impl DocumentRepository {
         let document = sqlx::query_as!(
             Document,
             r#"
-            SELECT id, owner_id, title, type as "type: _", parent_id, file_path, crdt_state, version, 
+            SELECT id, owner_id, title, type as "type: _", parent_id, file_path, crdt_state, version,
+                COALESCE(visibility, 'private') as "visibility!", published_at,
                 created_at as "created_at!", updated_at as "updated_at!", last_edited_by, last_edited_at
             FROM documents
             WHERE id = $1 AND owner_id = $2
@@ -96,7 +100,8 @@ impl DocumentRepository {
         let documents = sqlx::query_as!(
             Document,
             r#"
-            SELECT id, owner_id, title, type as "type: _", parent_id, file_path, crdt_state, version, 
+            SELECT id, owner_id, title, type as "type: _", parent_id, file_path, crdt_state, version,
+                COALESCE(visibility, 'private') as "visibility!", published_at,
                 created_at as "created_at!", updated_at as "updated_at!", last_edited_by, last_edited_at
             FROM documents
             WHERE owner_id = $1
@@ -122,7 +127,8 @@ impl DocumentRepository {
                 last_edited_by = $2,
                 last_edited_at = NOW()
             WHERE id = $1 AND owner_id = $2
-            RETURNING id, owner_id, title, type as "type: _", parent_id, file_path, crdt_state, version, 
+            RETURNING id, owner_id, title, type as "type: _", parent_id, file_path, crdt_state, version,
+                COALESCE(visibility, 'private') as "visibility!", published_at,
                 created_at as "created_at!", updated_at as "updated_at!", last_edited_by, last_edited_at
             "#,
             id,
@@ -170,7 +176,8 @@ impl DocumentRepository {
                 last_edited_by = $2,
                 last_edited_at = NOW()
             WHERE id = $1 AND owner_id = $2
-            RETURNING id, owner_id, title, type as "type: _", parent_id, file_path, crdt_state, version, 
+            RETURNING id, owner_id, title, type as "type: _", parent_id, file_path, crdt_state, version,
+                COALESCE(visibility, 'private') as "visibility!", published_at,
                 created_at as "created_at!", updated_at as "updated_at!", last_edited_by, last_edited_at
             "#,
             id,

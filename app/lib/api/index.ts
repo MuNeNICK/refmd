@@ -218,4 +218,12 @@ function setupClientInterceptors(client: RefMDClient) {
   };
 }
 
+// Create a public API client without authentication
+export function getPublicApiClient(): RefMDClient {
+  return new RefMDClient({
+    BASE: getApiUrl(),
+    TOKEN: undefined, // Explicitly set to undefined to ensure no auth
+  });
+}
+
 export * from './client';

@@ -7,6 +7,5 @@ import type { ScrapPost } from './ScrapPost';
 export type ScrapWithPosts = {
     scrap: Scrap;
     posts: Array<ScrapPost>;
-    permission?: string;
 };
 

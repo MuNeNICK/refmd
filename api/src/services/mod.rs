@@ -12,6 +12,8 @@ pub mod git_conflict;
 pub mod link_parser;
 pub mod link_resolver;
 pub mod document_links;
+pub mod public_document;
 
 pub use git_sync::{GitCommit, DiffStats};
+pub use public_document::PublicDocumentService;
 
