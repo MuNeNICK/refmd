@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Calendar, FileText, Globe, ExternalLink, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import type { PublicDocumentSummary } from '@/lib/api/client';
@@ -90,7 +90,7 @@ export function PublicDocumentListPage({
             <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
             <h2 className="text-xl font-semibold mb-2">No public documents</h2>
             <p className="text-muted-foreground">
-              {username} hasn't published any documents yet.
+              {username} hasn&apos;t published any documents yet.
             </p>
           </div>
         ) : (

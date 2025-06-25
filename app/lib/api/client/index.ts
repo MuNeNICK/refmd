@@ -48,7 +48,7 @@ export type { PublishDocumentRequest } from './models/PublishDocumentRequest';
 export type { PublishDocumentResponse } from './models/PublishDocumentResponse';
 export type { RefreshTokenRequest } from './models/RefreshTokenRequest';
 export type { RegisterRequest } from './models/RegisterRequest';
-export type { Scrap } from './models/Scrap';
+export { Scrap } from './models/Scrap';
 export type { ScrapPost } from './models/ScrapPost';
 export type { ScrapWithPosts } from './models/ScrapWithPosts';
 export { SearchResult } from './models/SearchResult';

@@ -37,6 +37,9 @@ pub fn routes(state: Arc<AppState>) -> Router {
         .route("/:id/share", post(create_scrap_share))
         .route("/:id/shares", get(list_scrap_shares))
         .route("/shares/:token", delete(delete_scrap_share))
+        // Public scrap endpoints (authenticated only)
+        .route("/:id/publish", post(publish_scrap))
+        .route("/:id/unpublish", post(unpublish_scrap))
         // All above routes require authentication
         .layer(axum::middleware::from_fn_with_state(
             state.clone(),
@@ -443,3 +446,40 @@ pub async fn delete_scrap_post_with_share(
     Ok(StatusCode::NO_CONTENT)
 }
 
+
+
+// POST /api/scraps/:id/publish
+pub async fn publish_scrap(
+    State(state): State<Arc<AppState>>,
+    Extension(auth_user): Extension<AuthUser>,
+    Path(id): Path<Uuid>,
+) -> Result<impl IntoResponse, Error> {
+    state.public_document_service.publish_document(id, auth_user.user_id).await?;
+    
+    // Return the published URL
+    if let Ok(owner) = state.user_repository.get_by_id(auth_user.user_id).await {
+        let public_url = format!("/u/{}/{}", owner.username, id);
+        Ok(Json(serde_json::json!({
+            "success": true,
+            "public_url": public_url
+        })))
+    } else {
+        Ok(Json(serde_json::json!({
+            "success": true,
+            "public_url": format!("/u/[username]/{}", id)
+        })))
+    }
+}
+
+// POST /api/scraps/:id/unpublish
+pub async fn unpublish_scrap(
+    State(state): State<Arc<AppState>>,
+    Extension(auth_user): Extension<AuthUser>,
+    Path(id): Path<Uuid>,
+) -> Result<impl IntoResponse, Error> {
+    state.public_document_service.unpublish_document(id, auth_user.user_id).await?;
+    
+    Ok(Json(serde_json::json!({
+        "success": true
+    })))
+}

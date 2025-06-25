@@ -11,7 +11,6 @@ import type { PublicDocumentResponse } from '@/lib/api/client';
 import { Markdown } from '@/components/markdown/markdown';
 import { CollapsibleToc } from '@/components/editor/table-of-contents-collapsible';
 import { Menu, X } from 'lucide-react';
-import { cn } from '@/lib/utils';
 
 interface PublicDocumentPageProps {
   document: PublicDocumentResponse;
@@ -20,7 +19,6 @@ interface PublicDocumentPageProps {
 export function PublicDocumentPage({ document }: PublicDocumentPageProps) {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [showToc, setShowToc] = useState(false);
-  const [mounted, setMounted] = useState(false);
   const tocButtonRef = useRef<HTMLButtonElement>(null);
   const floatingTocRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -38,11 +36,6 @@ export function PublicDocumentPage({ document }: PublicDocumentPageProps) {
       month: 'numeric',
       day: 'numeric'  
     }) : '';
-  
-  // Track mounted state to prevent hydration mismatch
-  useEffect(() => {
-    setMounted(true);
-  }, []);
   
   // Initialize theme from localStorage or system preference
   useEffect(() => {
@@ -252,7 +245,7 @@ export function PublicDocumentPage({ document }: PublicDocumentPageProps) {
             <aside className="w-64 shrink-0 hidden lg:block">
               <CollapsibleToc 
                 contentSelector=".markdown-preview" 
-                containerRef={containerRef}
+                containerRef={containerRef as React.RefObject<HTMLElement>}
               />
             </aside>
           </div>
@@ -292,7 +285,7 @@ export function PublicDocumentPage({ document }: PublicDocumentPageProps) {
             <div className="max-h-[60vh]">
               <CollapsibleToc 
                 contentSelector=".markdown-preview" 
-                containerRef={containerRef}
+                containerRef={containerRef as React.RefObject<HTMLElement>}
                 onItemClick={() => setShowToc(false)}
                 small={true}
               />

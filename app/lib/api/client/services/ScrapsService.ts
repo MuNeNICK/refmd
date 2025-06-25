@@ -4,6 +4,7 @@
 /* eslint-disable */
 import type { CreateScrapPostRequest } from '../models/CreateScrapPostRequest';
 import type { CreateScrapRequest } from '../models/CreateScrapRequest';
+import type { PublishDocumentResponse } from '../models/PublishDocumentResponse';
 import type { Scrap } from '../models/Scrap';
 import type { ScrapPost } from '../models/ScrapPost';
 import type { ScrapWithPosts } from '../models/ScrapWithPosts';
@@ -145,6 +146,52 @@ export class ScrapsService {
             },
             body: requestBody,
             mediaType: 'application/json',
+            errors: {
+                401: `Unauthorized`,
+                403: `Forbidden`,
+                404: `Not found`,
+            },
+        });
+    }
+    /**
+     * Publish a scrap publicly
+     * @param id Scrap ID
+     * @returns PublishDocumentResponse Scrap published successfully
+     * @throws ApiError
+     */
+    public publishScrap(
+        id: string,
+    ): CancelablePromise<PublishDocumentResponse> {
+        return this.httpRequest.request({
+            method: 'POST',
+            url: '/scraps/{id}/publish',
+            path: {
+                'id': id,
+            },
+            errors: {
+                401: `Unauthorized`,
+                403: `Forbidden`,
+                404: `Not found`,
+            },
+        });
+    }
+    /**
+     * Unpublish a scrap
+     * @param id Scrap ID
+     * @returns any Scrap unpublished successfully
+     * @throws ApiError
+     */
+    public unpublishScrap(
+        id: string,
+    ): CancelablePromise<{
+        success?: boolean;
+    }> {
+        return this.httpRequest.request({
+            method: 'POST',
+            url: '/scraps/{id}/unpublish',
+            path: {
+                'id': id,
+            },
             errors: {
                 401: `Unauthorized`,
                 403: `Forbidden`,

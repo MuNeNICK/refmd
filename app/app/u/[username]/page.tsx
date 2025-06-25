@@ -30,7 +30,7 @@ export default async function UserPublicDocuments({
     // Simple fallback UI for now
     return (
       <div style={{ padding: '20px' }}>
-        <h1>{username}'s Public Documents</h1>
+        <h1>{username}&apos;s Public Documents</h1>
         <p>No public documents found or an error occurred.</p>
       </div>
     );

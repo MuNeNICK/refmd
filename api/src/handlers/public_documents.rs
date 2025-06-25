@@ -159,8 +159,38 @@ async fn get_public_document(
     // Get document info
     let doc_info = state.public_document_service.get_public_document(&username, &document_id.to_string()).await?;
     
-    // Get document content from CRDT service
-    let content = state.crdt_service.get_document_content(doc_info.id).await?;
+    let content = if doc_info.document_type == "scrap" {
+        // For scraps, fetch posts and serialize them
+        let posts = sqlx::query!(
+            r#"
+            SELECT id, content, created_at, updated_at, author_id
+            FROM scrap_posts
+            WHERE document_id = $1
+            ORDER BY created_at ASC
+            "#,
+            doc_info.id
+        )
+        .fetch_all(state.db_pool.as_ref())
+        .await?;
+        
+        // Convert posts to JSON format
+        let posts_json: Vec<serde_json::Value> = posts.into_iter().map(|post| {
+            serde_json::json!({
+                "id": post.id,
+                "content": post.content,
+                "created_at": post.created_at.unwrap_or(chrono::Utc::now()).to_rfc3339(),
+                "updated_at": post.updated_at.unwrap_or(chrono::Utc::now()).to_rfc3339(),
+                "created_by": post.author_id,
+            })
+        }).collect();
+        
+        serde_json::json!({
+            "posts": posts_json
+        }).to_string()
+    } else {
+        // For documents, get content from CRDT service
+        state.crdt_service.get_document_content(doc_info.id).await?
+    };
     
     let response = PublicDocumentResponse {
         id: doc_info.id.to_string(),

@@ -24,7 +24,7 @@ const DocumentEditor = dynamic(
 
 interface PageClientProps {
   documentId: string;
-  initialDocument: Document | null;
+  initialDocument: (Document & { permission?: string }) | null;
   token?: string;
 }
 
@@ -246,7 +246,7 @@ export default function PageClient({ documentId, initialDocument, token }: PageC
         resourceType="document"
         isPublished={isDocumentPublished}
         publicUrl={generatePublicUrl()}
-        onPublishChange={async (published, url) => {
+        onPublishChange={async () => {
           // Refresh document data to reflect the new publish state
           await refreshDocument();
         }}

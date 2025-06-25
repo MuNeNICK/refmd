@@ -1756,6 +1756,69 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /scraps/{id}/publish:
+    post:
+      tags:
+        - Scraps
+      summary: Publish a scrap publicly
+      operationId: publishScrap
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Scrap ID
+      responses:
+        '200':
+          description: Scrap published successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublishDocumentResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /scraps/{id}/unpublish:
+    post:
+      tags:
+        - Scraps
+      summary: Unpublish a scrap
+      operationId: unpublishScrap
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Scrap ID
+      responses:
+        '200':
+          description: Scrap unpublished successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   /scraps/{id}/shares:
     get:
       tags:
@@ -2761,6 +2824,19 @@ components:
           type: string
           format: date-time
           nullable: true
+        visibility:
+          type: string
+          enum: [private, unlisted, public]
+          description: Scrap visibility (private, unlisted, public)
+        published_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Published date (only set when scrap is published)
+        owner_username:
+          type: string
+          nullable: true
+          description: Owner username (only included for published scraps)
 
     ScrapPost:
       type: object

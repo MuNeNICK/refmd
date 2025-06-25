@@ -203,13 +203,16 @@ export function ShareDialog({
     }
   };
 
-  // Public document functions (only for documents)
+  // Public document/scrap functions
   const handlePublish = async () => {
-    if (resourceType !== 'document') return;
-    
     setPublishState(prev => ({ ...prev, loading: true }));
     try {
-      const response = await api.publicDocuments.publishDocument(resourceId, {});
+      let response;
+      if (resourceType === 'document') {
+        response = await api.publicDocuments.publishDocument(resourceId, {});
+      } else {
+        response = await api.scraps.publishScrap(resourceId);
+      }
 
       const newState = {
         isPublished: true,
@@ -219,19 +222,21 @@ export function ShareDialog({
       
       setPublishState(newState);
       onPublishChange?.(true, response.public_url);
-      toast.success('Document published successfully');
-    } catch (error) {
+      toast.success(`${resourceType === 'document' ? 'Document' : 'Scrap'} published successfully`);
+    } catch {
       setPublishState(prev => ({ ...prev, loading: false }));
-      toast.error('Failed to publish document');
+      toast.error(`Failed to publish ${resourceType}`);
     }
   };
 
   const handleUnpublish = async () => {
-    if (resourceType !== 'document') return;
-    
     setPublishState(prev => ({ ...prev, loading: true }));
     try {
-      await api.publicDocuments.unpublishDocument(resourceId);
+      if (resourceType === 'document') {
+        await api.publicDocuments.unpublishDocument(resourceId);
+      } else {
+        await api.scraps.unpublishScrap(resourceId);
+      }
 
       const newState = {
         isPublished: false,
@@ -241,10 +246,10 @@ export function ShareDialog({
       
       setPublishState(newState);
       onPublishChange?.(false);
-      toast.success('Document unpublished successfully');
-    } catch (error) {
+      toast.success(`${resourceType === 'document' ? 'Document' : 'Scrap'} unpublished successfully`);
+    } catch {
       setPublishState(prev => ({ ...prev, loading: false }));
-      toast.error('Failed to unpublish document');
+      toast.error(`Failed to unpublish ${resourceType}`);
     }
   };
 
@@ -296,8 +301,8 @@ export function ShareDialog({
         </DialogHeader>
 
         <div className="flex-1 overflow-auto p-4 space-y-6">
-          {/* Public Document Section (only for documents) */}
-          {resourceType === 'document' && (
+          {/* Public Document/Scrap Section */}
+          {(
             <>
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
@@ -306,19 +311,19 @@ export function ShareDialog({
                       {publishState.isPublished ? (
                         <>
                           <Globe className="w-4 h-4 text-green-600" />
-                          Public Document
+                          Public {resourceType === 'document' ? 'Document' : 'Scrap'}
                         </>
                       ) : (
                         <>
                           <Lock className="w-4 h-4 text-gray-600" />
-                          Private Document
+                          Private {resourceType === 'document' ? 'Document' : 'Scrap'}
                         </>
                       )}
                     </Label>
                     <p className="text-xs text-muted-foreground">
                       {publishState.isPublished 
-                        ? "This document is publicly accessible at a permanent URL"
-                        : "Make this document publicly accessible without requiring a share link"
+                        ? `This ${resourceType} is publicly accessible at a permanent URL`
+                        : `Make this ${resourceType} publicly accessible without requiring a share link`
                       }
                     </p>
                   </div>

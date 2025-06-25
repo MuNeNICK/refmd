@@ -35,7 +35,13 @@ export function useSocketConnection({ token, authToken }: UseSocketConnectionOpt
 
     // Create socket connection
     // Only include auth token if we're not using a share token
-    const socketOptions: any = {
+    const socketOptions: {
+      transports: string[];
+      reconnection: boolean;
+      reconnectionAttempts: number;
+      reconnectionDelay: number;
+      auth?: { token: string } | { shareToken: string };
+    } = {
       transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionAttempts: 5,

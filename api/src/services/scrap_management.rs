@@ -74,8 +74,20 @@ impl ScrapService {
         
         tracing::debug!("Successfully fetched scrap with {} posts", posts.len());
 
+        let mut scrap = self.document_to_scrap(document.clone());
+        
+        // Get owner username for published scraps
+        if scrap.visibility == "public" {
+            if let Ok(owner) = sqlx::query!("SELECT username FROM users WHERE id = $1", document.owner_id)
+                .fetch_one(&*self.pool)
+                .await 
+            {
+                scrap.owner_username = Some(owner.username);
+            }
+        }
+
         Ok(ScrapWithPosts {
-            scrap: self.document_to_scrap(document),
+            scrap,
             posts,
             permission: None,
         })
@@ -283,8 +295,20 @@ impl ScrapService {
         let document = ScrapRepository::get_scrap_by_id(&*self.pool, id).await?;
         let posts = ScrapRepository::get_scrap_posts(&*self.pool, id).await?;
         
+        let mut scrap = self.document_to_scrap(document.clone());
+        
+        // Get owner username for published scraps
+        if scrap.visibility == "public" {
+            if let Ok(owner) = sqlx::query!("SELECT username FROM users WHERE id = $1", document.owner_id)
+                .fetch_one(&*self.pool)
+                .await 
+            {
+                scrap.owner_username = Some(owner.username);
+            }
+        }
+        
         Ok(ScrapWithPosts {
-            scrap: self.document_to_scrap(document),
+            scrap,
             posts,
             permission: None,
         })
@@ -531,16 +555,6 @@ impl ScrapService {
     }
 
     fn document_to_scrap(&self, document: crate::db::models::Document) -> Scrap {
-        Scrap {
-            id: document.id,
-            owner_id: document.owner_id,
-            title: document.title,
-            file_path: document.file_path,
-            parent_id: document.parent_id,
-            created_at: document.created_at,
-            updated_at: document.updated_at,
-            last_edited_by: document.last_edited_by,
-            last_edited_at: document.last_edited_at,
-        }
+        document.into()
     }
 }

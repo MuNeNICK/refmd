@@ -171,7 +171,7 @@ export default function DocumentClient({ documentId, initialDocument, token }: D
         resourceType="document"
         isPublished={isDocumentPublished}
         publicUrl={generatePublicUrl()}
-        onPublishChange={(published, url) => {
+        onPublishChange={() => {
           // Handle publish state change if needed
         }}
       />

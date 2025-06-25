@@ -3,9 +3,6 @@ import { NextRequest, NextResponse } from 'next/server'
 export function middleware(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl
   
-  console.log('Middleware: pathname=', pathname)
-  console.log('Middleware: searchParams=', searchParams.toString())
-  
   // Public routes that don't require authentication
   const publicRoutes = ['/auth/signin', '/auth/signup', '/']
   const isPublicRoute = publicRoutes.includes(pathname)
@@ -16,15 +13,9 @@ export function middleware(request: NextRequest) {
   // Check if this is a public document route
   const isPublicDocument = pathname.startsWith('/u/')
   
-  console.log('Middleware: isSharedResource=', isSharedResource)
-  console.log('Middleware: has token param=', searchParams.has('token'))
-  console.log('Middleware: isPublicDocument=', isPublicDocument)
-  
   // Get authentication token from cookies
   const token = request.cookies.get('auth-token')?.value
-  
-  console.log('Middleware: auth cookie present=', !!token)
-  
+
   // If user is not authenticated and trying to access protected route
   // BUT allow access if it's a shared resource with token or public document
   if (!token && !isPublicRoute && !isSharedResource && !isPublicDocument) {

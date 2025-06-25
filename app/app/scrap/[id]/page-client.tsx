@@ -4,6 +4,7 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import type { ScrapWithPosts, ScrapPost } from '@/lib/api/client';
+import { Scrap } from '@/lib/api/client';
 import MainLayout from '@/components/layout/main-layout';
 import { ScrapPostForm } from '@/components/scrap/scrap-post-form';
 import { ScrapPostComponent } from '@/components/scrap/scrap-post';
@@ -16,13 +17,13 @@ import { ShareDialog } from '@/components/collaboration/share-dialog';
 import { useScrapConnection } from '@/lib/hooks/useScrapConnection';
 
 interface ScrapPageClientProps {
-  initialData: ScrapWithPosts;
+  initialData: ScrapWithPosts & { permission?: string };
   scrapId: string;
   shareToken?: string;
 }
 
 export function ScrapPageClient({ initialData, scrapId, shareToken }: ScrapPageClientProps) {
-  const searchParams = useSearchParams();
+  useSearchParams();
   const { accessToken, user } = useAuth();
   const [scrapData, setScrapData] = useState<ScrapWithPosts>(initialData);
   // Remove isAddingPost state as form will always be visible
@@ -346,6 +347,21 @@ export function ScrapPageClient({ initialData, scrapId, shareToken }: ScrapPageC
         resourceType="scrap"
         open={shareDialogOpen}
         onOpenChange={setShareDialogOpen}
+        isPublished={scrapData.scrap.visibility === 'public'}
+        publicUrl={scrapData.scrap.visibility === 'public' && scrapData.scrap.owner_username 
+          ? `/u/${scrapData.scrap.owner_username}/${scrapId}` 
+          : ''}
+        onPublishChange={(published) => {
+          // Update local state
+          setScrapData(prev => ({
+            ...prev,
+            scrap: {
+              ...prev.scrap,
+              visibility: published ? Scrap.visibility.PUBLIC : Scrap.visibility.PRIVATE,
+              published_at: published ? new Date().toISOString() : null,
+            }
+          }));
+        }}
       />
     </MainLayout>
   );

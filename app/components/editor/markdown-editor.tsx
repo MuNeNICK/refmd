@@ -69,7 +69,6 @@ export function MarkdownEditor({
   onEditorReady,
   userName,
   userId,
-  documentPath,
   readOnly = false,
 }: MarkdownEditorProps) {
   const { theme } = useTheme();
