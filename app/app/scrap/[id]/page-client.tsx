@@ -18,9 +18,10 @@ import { useScrapConnection } from '@/lib/hooks/useScrapConnection';
 interface ScrapPageClientProps {
   initialData: ScrapWithPosts;
   scrapId: string;
+  shareToken?: string;
 }
 
-export function ScrapPageClient({ initialData, scrapId }: ScrapPageClientProps) {
+export function ScrapPageClient({ initialData, scrapId, shareToken }: ScrapPageClientProps) {
   const searchParams = useSearchParams();
   const { accessToken, user } = useAuth();
   const [scrapData, setScrapData] = useState<ScrapWithPosts>(initialData);
@@ -35,11 +36,8 @@ export function ScrapPageClient({ initialData, scrapId }: ScrapPageClientProps) 
   // Use the singleton API client with automatic token management
   const client = getApiClient();
   
-  // Check if accessing via share token
-  const shareToken = searchParams.get('token');
-  // For now, allow editing if there's a share token (backend will validate permissions)
-  // In a production app, you might want to fetch the actual permission level
-  const isViewOnly = false;
+  // Check permission level from initial data
+  const isViewOnly = initialData.permission === 'view';
   
 
   // Refresh data from server
@@ -142,7 +140,8 @@ export function ScrapPageClient({ initialData, scrapId }: ScrapPageClientProps) 
       
       // Emit real-time event to other connected clients
       emitPostAdded(newPost);
-    } catch {
+    } catch (error) {
+      console.error('Failed to add post:', error);
       toast.error('Failed to add post');
     } finally {
       setIsLoading(false);
@@ -279,8 +278,8 @@ export function ScrapPageClient({ initialData, scrapId }: ScrapPageClientProps) 
         <div className="max-w-4xl mx-auto w-full p-3 sm:p-6">
           <div className="space-y-4 pb-6">
 
-            {/* Add post form - only visible if authenticated */}
-            {!isViewOnly && user && (
+            {/* Add post form - only visible if not view-only */}
+            {!isViewOnly && (
               <ScrapPostForm
                 onSubmit={handleAddPost}
                 isLoading={isLoading}
@@ -333,6 +332,7 @@ export function ScrapPageClient({ initialData, scrapId }: ScrapPageClientProps) 
                   isUpdating={editingPostId === post.id}
                   isDeleting={deletingPostId === post.id}
                   scrapId={scrapId}
+                  isViewOnly={isViewOnly}
                 />
               ))
             )}

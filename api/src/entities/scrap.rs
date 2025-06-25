@@ -29,6 +29,8 @@ pub struct ScrapPost {
 pub struct ScrapWithPosts {
     pub scrap: Scrap,
     pub posts: Vec<ScrapPost>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub permission: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

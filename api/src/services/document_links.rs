@@ -56,7 +56,16 @@ impl DocumentLinksService {
     }
 
     /// Update links for a document based on its content
-    pub async fn update_document_links(&self, document_id: Uuid, content: &str, owner_id: Uuid) -> Result<()> {
+    pub async fn update_document_links(&self, document_id: Uuid, content: &str) -> Result<()> {
+        // Get the document owner from the database
+        let owner_id = sqlx::query!(
+            "SELECT owner_id FROM documents WHERE id = $1",
+            document_id
+        )
+        .fetch_one(self.pool.as_ref())
+        .await?
+        .owner_id;
+        
         // Parse links from content
         let links = LinkParser::parse_links(content);
         
@@ -71,10 +80,13 @@ impl DocumentLinksService {
         .execute(&mut *tx)
         .await?;
         
-        // Resolve and insert new links
-        for link in links {
-            // Resolve the target document
-            if let Some(target_doc) = self.link_resolver.resolve_target(&link.target, owner_id).await? {
+        // Batch resolve targets to avoid N+1 queries
+        let targets: Vec<&crate::services::link_parser::LinkTarget> = links.iter().map(|l| &l.target).collect();
+        let resolved_docs = self.link_resolver.resolve_targets_batch(&targets, owner_id).await?;
+
+        // Insert resolved links
+        for (link, resolved_doc) in links.iter().zip(resolved_docs.iter()) {
+            if let Some(target_doc) = resolved_doc {
                 // Insert the link
                 sqlx::query!(
                     r#"
@@ -108,27 +120,37 @@ impl DocumentLinksService {
     }
 
     /// Get all documents that link to a specific document (backlinks)
-    pub async fn get_backlinks(&self, document_id: Uuid) -> Result<Vec<DocumentLinkInfo>> {
-        let backlinks = sqlx::query!(
-            r#"
-            SELECT 
-                d.id as document_id,
-                d.title,
-                d.type as document_type,
-                d.file_path,
-                dl.link_type,
-                dl.link_text,
-                COUNT(*)::BIGINT as link_count
-            FROM document_links dl
-            JOIN documents d ON d.id = dl.source_document_id
-            WHERE dl.target_document_id = $1
-            GROUP BY d.id, d.title, d.type, d.file_path, dl.link_type, dl.link_text
-            ORDER BY link_count DESC, d.title
-            "#,
-            document_id
-        )
-        .fetch_all(self.pool.as_ref())
-        .await?;
+    pub async fn get_backlinks(&self, document_id: Uuid, user_id: Option<Uuid>) -> Result<Vec<DocumentLinkInfo>> {
+        let backlinks = if let Some(user_id) = user_id {
+            // Authenticated user - show only documents they own or have access to
+            sqlx::query!(
+                r#"
+                SELECT 
+                    d.id as document_id,
+                    d.title,
+                    d.type as document_type,
+                    d.file_path,
+                    dl.link_type,
+                    dl.link_text,
+                    COUNT(*)::BIGINT as link_count
+                FROM document_links dl
+                JOIN documents d ON d.id = dl.source_document_id
+                WHERE dl.target_document_id = $1 
+                AND d.owner_id = $2
+                GROUP BY d.id, d.title, d.type, d.file_path, dl.link_type, dl.link_text
+                ORDER BY link_count DESC, d.title
+                "#,
+                document_id,
+                user_id
+            )
+            .fetch_all(self.pool.as_ref())
+            .await?
+        } else {
+            // Unauthenticated - only show documents accessible via share tokens
+            // This would require additional context about current share token
+            // For now, return empty list for unauthenticated users
+            Vec::new()
+        };
         
         Ok(backlinks
             .into_iter()
@@ -145,27 +167,35 @@ impl DocumentLinksService {
     }
 
     /// Get all documents linked from a specific document (outgoing links)
-    pub async fn get_outgoing_links(&self, document_id: Uuid) -> Result<Vec<OutgoingLinkInfo>> {
-        let links = sqlx::query!(
-            r#"
-            SELECT 
-                d.id as document_id,
-                d.title,
-                d.type as document_type,
-                d.file_path,
-                dl.link_type,
-                dl.link_text,
-                dl.position_start,
-                dl.position_end
-            FROM document_links dl
-            JOIN documents d ON d.id = dl.target_document_id
-            WHERE dl.source_document_id = $1
-            ORDER BY dl.position_start
-            "#,
-            document_id
-        )
-        .fetch_all(self.pool.as_ref())
-        .await?;
+    pub async fn get_outgoing_links(&self, document_id: Uuid, user_id: Option<Uuid>) -> Result<Vec<OutgoingLinkInfo>> {
+        let links = if let Some(user_id) = user_id {
+            // Authenticated user - show only target documents they have access to
+            sqlx::query!(
+                r#"
+                SELECT 
+                    d.id as document_id,
+                    d.title,
+                    d.type as document_type,
+                    d.file_path,
+                    dl.link_type,
+                    dl.link_text,
+                    dl.position_start,
+                    dl.position_end
+                FROM document_links dl
+                JOIN documents d ON d.id = dl.target_document_id
+                WHERE dl.source_document_id = $1
+                AND d.owner_id = $2
+                ORDER BY dl.position_start
+                "#,
+                document_id,
+                user_id
+            )
+            .fetch_all(self.pool.as_ref())
+            .await?
+        } else {
+            // Unauthenticated - return empty list for now
+            Vec::new()
+        };
         
         Ok(links
             .into_iter()

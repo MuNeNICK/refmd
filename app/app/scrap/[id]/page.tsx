@@ -49,7 +49,7 @@ export default async function ScrapPage({ params, searchParams }: PageProps) {
       scrapData = await client.scraps.getScrap(id);
     }
     
-    return <ScrapPageClient initialData={scrapData} scrapId={id} />;
+    return <ScrapPageClient initialData={scrapData} scrapId={id} shareToken={token} />;
   } catch (error: unknown) {
     console.error('Failed to fetch scrap:', error);
     

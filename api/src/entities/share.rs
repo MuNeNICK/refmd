@@ -2,6 +2,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use sqlx::FromRow;
+use std::fmt;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type)]
 #[sqlx(type_name = "text")]
@@ -32,6 +33,18 @@ impl Permission {
 
     pub fn has_permission(&self, required: Permission) -> bool {
         self.level() >= required.level()
+    }
+}
+
+impl fmt::Display for Permission {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Permission::View => write!(f, "view"),
+            Permission::Comment => write!(f, "comment"),
+            Permission::Edit => write!(f, "edit"),
+            Permission::Admin => write!(f, "admin"),
+            Permission::Owner => write!(f, "owner"),
+        }
     }
 }
 

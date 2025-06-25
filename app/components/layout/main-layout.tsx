@@ -73,10 +73,15 @@ export default function MainLayout({
   }, [sidebarOpen, isMobile]);
 
   const handleDocumentSelect = useCallback((documentId: string, documentType?: 'file' | 'folder' | 'scrap') => {
+    // Preserve query parameters (like token) when navigating
+    const currentParams = new URLSearchParams(window.location.search);
+    const queryString = currentParams.toString();
+    const query = queryString ? `?${queryString}` : '';
+    
     if (documentType === 'scrap') {
-      router.push(`/scrap/${documentId}`);
+      router.push(`/scrap/${documentId}${query}`);
     } else if (documentType !== 'folder') {
-      router.push(`/document/${documentId}`);
+      router.push(`/document/${documentId}${query}`);
     }
   }, [router]);
 

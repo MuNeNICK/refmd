@@ -23,25 +23,33 @@ export function useSocketConnection({ token, authToken }: UseSocketConnectionOpt
       return;
     }
 
-    // Get auth token
-    const finalAuthToken = authToken || getAuthToken();
+    // Get auth token - but don't use it if we have a share token
+    const finalAuthToken = token ? undefined : (authToken || getAuthToken());
     
     // For shared links, we don't need an auth token - the share token will be used for authorization
     if (!finalAuthToken && !token) {
       // No authentication token or share token available
+      console.log('[useSocketConnection] No auth token or share token available, skipping connection');
       return;
     }
 
     // Create socket connection
-    const socket = io(getSocketUrl(), {
-      auth: {
-        token: finalAuthToken || '',
-      },
+    // Only include auth token if we're not using a share token
+    const socketOptions: any = {
       transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,
-    });
+    };
+    
+    // Only add auth if we have a valid token and not using a share token
+    if (finalAuthToken && !token) {
+      socketOptions.auth = {
+        token: finalAuthToken,
+      };
+    }
+    
+    const socket = io(getSocketUrl(), socketOptions);
 
     socketRef.current = socket;
 

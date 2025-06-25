@@ -30,11 +30,11 @@ interface PageClientProps {
 
 export default function PageClient({ documentId, initialDocument, token }: PageClientProps) {
   const api = getApiClient();
-  const [viewMode, setViewMode] = useState<ViewMode>("split");
+  const [isViewOnly] = useState(initialDocument?.permission === 'view');
+  const [viewMode, setViewMode] = useState<ViewMode>(isViewOnly ? "preview" : "split");
   const [documentTitle] = useState<string>(initialDocument?.title || `Document ${documentId.slice(0, 8)}`);
   const [isShareLink] = useState(!!token);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
-  const [isViewOnly] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | undefined>(undefined);
   const [synced, setSynced] = useState(false);
   const [connected, setConnected] = useState(false);
@@ -157,6 +157,23 @@ export default function PageClient({ documentId, initialDocument, token }: PageC
     setCurrentContent(content);
   }, []);
 
+  // Show error if document couldn't be loaded
+  if (!initialDocument && token) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center space-y-4">
+          <h1 className="text-2xl font-semibold">Share Link Error</h1>
+          <p className="text-muted-foreground">
+            This share link is invalid or has expired.
+          </p>
+          <a href="/auth/signin" className="text-primary hover:underline">
+            Sign in to access your documents
+          </a>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
       <MainLayout 
@@ -183,6 +200,7 @@ export default function PageClient({ documentId, initialDocument, token }: PageC
           token={token}
           viewMode={viewMode}
           showBacklinks={showBacklinks}
+          isViewOnly={isViewOnly}
           onContentChange={handleContentChange}
           onSyncStatusChange={handleSyncStatusChange}
           onConnectionStatusChange={handleConnectionStatusChange}

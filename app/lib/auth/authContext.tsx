@@ -48,6 +48,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     loadUser();
   }, [loadUser]);
 
+  // Listen for auth errors from API client
+  useEffect(() => {
+    const handleAuthError = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      console.error('Auth error event received:', customEvent.detail);
+      
+      // Don't redirect if we're on a shared link
+      const urlParams = new URLSearchParams(window.location.search);
+      const hasShareToken = urlParams.has('token');
+      
+      if (!hasShareToken) {
+        clearTokens();
+        setUser(null);
+        router.push('/auth/signin');
+      }
+    };
+
+    window.addEventListener('auth:error', handleAuthError);
+    
+    return () => {
+      window.removeEventListener('auth:error', handleAuthError);
+    };
+  }, [router]);
+
 
 
   const login = async (email: string, password: string) => {

@@ -227,6 +227,27 @@ impl ScrapRepository {
         Ok(document)
     }
 
+    pub async fn get_scrap_post(
+        pool: &PgPool,
+        post_id: Uuid,
+    ) -> Result<DbScrapPost> {
+        let post = sqlx::query_as::<_, DbScrapPost>(
+            r#"
+            SELECT * FROM scrap_posts
+            WHERE id = $1
+            "#,
+        )
+        .bind(post_id)
+        .fetch_one(pool)
+        .await
+        .map_err(|e| match e {
+            sqlx::Error::RowNotFound => Error::NotFound("Scrap post not found".to_string()),
+            _ => Error::Database(e),
+        })?;
+
+        Ok(post)
+    }
+
     pub async fn get_scrap_posts(
         pool: &PgPool,
         document_id: Uuid,

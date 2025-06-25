@@ -23,6 +23,7 @@ interface ScrapPostComponentProps {
   isUpdating?: boolean;
   isDeleting?: boolean;
   scrapId: string; // The scrap/document ID
+  isViewOnly?: boolean;
 }
 
 export function ScrapPostComponent({
@@ -34,12 +35,13 @@ export function ScrapPostComponent({
   isUpdating,
   isDeleting,
   scrapId,
+  isViewOnly = false,
 }: ScrapPostComponentProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [showComments, setShowComments] = useState(true);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const isOwner = currentUserId === post.author_id;
-  const canEdit = !!currentUserId; // Can edit if authenticated
+  const canEdit = !isViewOnly; // Can edit if not view only
 
   // First parse metadata from the original content
   const { content: contentWithoutMetadata, metadata } = useMemo(

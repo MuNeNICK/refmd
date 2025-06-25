@@ -299,7 +299,7 @@ updated_at: {}
         
         // Update document links
         if let Some(ref links_service) = self.document_links_service {
-            if let Err(e) = links_service.update_document_links(document.id, &content, document.owner_id).await {
+            if let Err(e) = links_service.update_document_links(document.id, &content).await {
                 tracing::warn!("Failed to update document links for {}: {}", document.id, e);
                 // Don't fail the whole operation if link parsing fails
             }
@@ -409,7 +409,7 @@ updated_at: {}
         
         // Update document links
         if let Some(ref links_service) = self.document_links_service {
-            if let Err(e) = links_service.update_document_links(document.id, &content, document.owner_id).await {
+            if let Err(e) = links_service.update_document_links(document.id, &content).await {
                 tracing::warn!("Failed to update document links for {}: {}", document.id, e);
                 // Don't fail the whole operation if link parsing fails
             }

@@ -32,6 +32,7 @@ export interface MarkdownEditorProps {
   userName?: string;
   userId?: string;
   documentPath?: string;
+  readOnly?: boolean;
 }
 
 function generateUserColor(userId?: string, light = false): string {
@@ -68,6 +69,8 @@ export function MarkdownEditor({
   onEditorReady,
   userName,
   userId,
+  documentPath,
+  readOnly = false,
 }: MarkdownEditorProps) {
   const { theme } = useTheme();
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
@@ -409,6 +412,7 @@ export function MarkdownEditor({
       formatOnPaste: false,
       formatOnType: false,
       suggestOnTriggerCharacters: true,
+      readOnly: readOnly,
     });
 
     // Dispose old wiki link providers if any

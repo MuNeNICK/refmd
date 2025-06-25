@@ -6,7 +6,6 @@ use axum::{
     Extension, Json, Router,
 };
 use std::sync::Arc;
-use std::collections::HashMap;
 use uuid::Uuid;
 use serde::Deserialize;
 
@@ -15,7 +14,7 @@ use crate::{
         CreateScrapPostRequest, CreateScrapRequest, UpdateScrapPostRequest,
         UpdateScrapRequest,
     },
-    entities::share::ShareDocumentRequest,
+    entities::share::{ShareDocumentRequest, Permission},
     error::Error,
     middleware::auth::{auth_middleware, AuthUser},
     middleware::optional_auth::{optional_auth_middleware, OptionalAuthUser},
@@ -96,15 +95,28 @@ pub async fn get_scrap_with_optional_auth(
     );
 
     // Check if accessed via share token
-    if let Some(token) = query.token {
-        // Verify share token for this scrap
-        let has_access = state.share_service.verify_share_token(&token, id).await?;
-        if !has_access {
+    if let Some(token) = query.token.clone() {
+        // Check permissions with share token
+        let check = check_scrap_permission(
+            &state,
+            id,
+            auth_user.user_id,
+            Some(token),
+            Permission::View,
+        ).await?;
+        
+        if !check.has_access {
             return Err(Error::Forbidden);
         }
         
         // Get scrap without user check (public access via token)
-        let scrap_with_posts = scrap_service.get_scrap_public(id).await?;
+        let mut scrap_with_posts = scrap_service.get_scrap_public(id).await?;
+        
+        // Add permission level if this is a share link
+        if check.is_share_link {
+            scrap_with_posts.permission = Some(check.permission_level.to_string());
+        }
+        
         Ok(Json(scrap_with_posts))
     } else if let Some(user_id) = auth_user.user_id {
         // Authenticated access
@@ -288,10 +300,13 @@ pub async fn create_scrap_post_with_share(
     State(state): State<Arc<AppState>>,
     Extension(opt_user): Extension<OptionalAuthUser>,
     Path(id): Path<Uuid>,
-    Query(params): Query<HashMap<String, String>>,
+    Query(query): Query<ShareTokenQuery>,
     Json(request): Json<CreateScrapPostRequest>,
 ) -> Result<impl IntoResponse, Error> {
-    let share_token = params.get("token").cloned();
+    tracing::info!("Creating scrap post: scrap_id={}, token={:?}, user={:?}", 
+        id, query.token.is_some(), opt_user.user_id);
+    
+    let share_token = query.token.clone();
     
     // Check permission with share token support
     let permission_result = check_scrap_permission(
@@ -306,29 +321,10 @@ pub async fn create_scrap_post_with_share(
         return Err(Error::Forbidden);
     }
     
-    // For share links without authentication, use a placeholder user_id
-    // This is a temporary solution - in production, you might want to track anonymous users differently
+    // For share links without authentication, use the anonymous user
     let user_id = opt_user.user_id.unwrap_or_else(|| {
-        // Use a deterministic UUID based on the share token for anonymous users
-        // This ensures consistency for the same share token
-        if let Some(token) = &share_token {
-            use std::hash::{Hash, Hasher};
-            let mut hasher = std::collections::hash_map::DefaultHasher::new();
-            token.hash(&mut hasher);
-            let hash = hasher.finish();
-            // Create a deterministic UUID v4 from the hash
-            let bytes = hash.to_be_bytes();
-            let mut uuid_bytes = [0u8; 16];
-            uuid_bytes[..8].copy_from_slice(&bytes);
-            uuid_bytes[8..].copy_from_slice(&bytes); // Duplicate for full 16 bytes
-            // Set version (4) and variant bits
-            uuid_bytes[6] = (uuid_bytes[6] & 0x0f) | 0x40;
-            uuid_bytes[8] = (uuid_bytes[8] & 0x3f) | 0x80;
-            Uuid::from_bytes(uuid_bytes)
-        } else {
-            // This shouldn't happen as we checked permission with share token
-            Uuid::new_v4()
-        }
+        // Use the special anonymous user ID
+        Uuid::nil() // 00000000-0000-0000-0000-000000000000
     });
     
     let scrap_service = ScrapService::new(
@@ -337,7 +333,16 @@ pub async fn create_scrap_post_with_share(
         state.crdt_service.clone(),
     );
 
-    let post = scrap_service.add_post(id, user_id, request).await?;
+    // Use permission bypass method since we already checked permissions with share token
+    let post = if share_token.is_some() {
+        scrap_service.add_post_with_permission_bypass(id, user_id, request).await
+            .map_err(|e| {
+                tracing::error!("Failed to add post with bypass: {:?}", e);
+                e
+            })?
+    } else {
+        scrap_service.add_post(id, user_id, request).await?
+    };
     
     // The CRDT service will automatically handle synchronization 
     // and the SocketIO sync manager will broadcast updates to connected clients
@@ -349,10 +354,10 @@ pub async fn update_scrap_post_with_share(
     State(state): State<Arc<AppState>>,
     Extension(opt_user): Extension<OptionalAuthUser>,
     Path((scrap_id, post_id)): Path<(Uuid, Uuid)>,
-    Query(params): Query<HashMap<String, String>>,
+    Query(query): Query<ShareTokenQuery>,
     Json(request): Json<UpdateScrapPostRequest>,
 ) -> Result<impl IntoResponse, Error> {
-    let share_token = params.get("token").cloned();
+    let share_token = query.token.clone();
     
     // Check permission with share token support
     let permission_result = check_scrap_permission(
@@ -367,29 +372,10 @@ pub async fn update_scrap_post_with_share(
         return Err(Error::Forbidden);
     }
     
-    // For share links without authentication, use a placeholder user_id
-    // This is a temporary solution - in production, you might want to track anonymous users differently
+    // For share links without authentication, use the anonymous user
     let user_id = opt_user.user_id.unwrap_or_else(|| {
-        // Use a deterministic UUID based on the share token for anonymous users
-        // This ensures consistency for the same share token
-        if let Some(token) = &share_token {
-            use std::hash::{Hash, Hasher};
-            let mut hasher = std::collections::hash_map::DefaultHasher::new();
-            token.hash(&mut hasher);
-            let hash = hasher.finish();
-            // Create a deterministic UUID v4 from the hash
-            let bytes = hash.to_be_bytes();
-            let mut uuid_bytes = [0u8; 16];
-            uuid_bytes[..8].copy_from_slice(&bytes);
-            uuid_bytes[8..].copy_from_slice(&bytes); // Duplicate for full 16 bytes
-            // Set version (4) and variant bits
-            uuid_bytes[6] = (uuid_bytes[6] & 0x0f) | 0x40;
-            uuid_bytes[8] = (uuid_bytes[8] & 0x3f) | 0x80;
-            Uuid::from_bytes(uuid_bytes)
-        } else {
-            // This shouldn't happen as we checked permission with share token
-            Uuid::new_v4()
-        }
+        // Use the special anonymous user ID
+        Uuid::nil() // 00000000-0000-0000-0000-000000000000
     });
     
     let scrap_service = ScrapService::new(
@@ -398,9 +384,16 @@ pub async fn update_scrap_post_with_share(
         state.crdt_service.clone(),
     );
 
-    let post = scrap_service
-        .update_post(scrap_id, post_id, user_id, request)
-        .await?;
+    // Use permission bypass method since we already checked permissions with share token
+    let post = if share_token.is_some() {
+        scrap_service
+            .update_post_with_permission_bypass(scrap_id, post_id, user_id, request)
+            .await?
+    } else {
+        scrap_service
+            .update_post(scrap_id, post_id, user_id, request)
+            .await?
+    };
     Ok(Json(post))
 }
 
@@ -408,9 +401,9 @@ pub async fn delete_scrap_post_with_share(
     State(state): State<Arc<AppState>>,
     Extension(opt_user): Extension<OptionalAuthUser>,
     Path((scrap_id, post_id)): Path<(Uuid, Uuid)>,
-    Query(params): Query<HashMap<String, String>>,
+    Query(query): Query<ShareTokenQuery>,
 ) -> Result<impl IntoResponse, Error> {
-    let share_token = params.get("token").cloned();
+    let share_token = query.token.clone();
     
     // Check permission with share token support
     let permission_result = check_scrap_permission(
@@ -425,29 +418,10 @@ pub async fn delete_scrap_post_with_share(
         return Err(Error::Forbidden);
     }
     
-    // For share links without authentication, use a placeholder user_id
-    // This is a temporary solution - in production, you might want to track anonymous users differently
+    // For share links without authentication, use the anonymous user
     let user_id = opt_user.user_id.unwrap_or_else(|| {
-        // Use a deterministic UUID based on the share token for anonymous users
-        // This ensures consistency for the same share token
-        if let Some(token) = &share_token {
-            use std::hash::{Hash, Hasher};
-            let mut hasher = std::collections::hash_map::DefaultHasher::new();
-            token.hash(&mut hasher);
-            let hash = hasher.finish();
-            // Create a deterministic UUID v4 from the hash
-            let bytes = hash.to_be_bytes();
-            let mut uuid_bytes = [0u8; 16];
-            uuid_bytes[..8].copy_from_slice(&bytes);
-            uuid_bytes[8..].copy_from_slice(&bytes); // Duplicate for full 16 bytes
-            // Set version (4) and variant bits
-            uuid_bytes[6] = (uuid_bytes[6] & 0x0f) | 0x40;
-            uuid_bytes[8] = (uuid_bytes[8] & 0x3f) | 0x80;
-            Uuid::from_bytes(uuid_bytes)
-        } else {
-            // This shouldn't happen as we checked permission with share token
-            Uuid::new_v4()
-        }
+        // Use the special anonymous user ID
+        Uuid::nil() // 00000000-0000-0000-0000-000000000000
     });
     
     let scrap_service = ScrapService::new(
@@ -456,9 +430,16 @@ pub async fn delete_scrap_post_with_share(
         state.crdt_service.clone(),
     );
 
-    scrap_service
-        .delete_post(scrap_id, post_id, user_id)
-        .await?;
+    // Use permission bypass method since we already checked permissions with share token
+    if share_token.is_some() {
+        scrap_service
+            .delete_post_with_permission_bypass(scrap_id, post_id, user_id)
+            .await?;
+    } else {
+        scrap_service
+            .delete_post(scrap_id, post_id, user_id)
+            .await?;
+    }
     Ok(StatusCode::NO_CONTENT)
 }
 
