@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT \n                d.id,\n                d.title,\n                d.type as document_type,\n                d.published_at,\n                d.updated_at,\n                u.username as owner_username,\n                u.name as owner_name\n            FROM documents d\n            JOIN users u ON u.id = d.owner_id\n            WHERE d.visibility = 'public' \n            AND d.id = $1 \n            AND u.username = $2\n            ",
+  "query": "\n            SELECT \n                d.id,\n                d.title,\n                d.type as document_type,\n                d.published_at,\n                d.updated_at,\n                u.name as owner_name\n            FROM documents d\n            JOIN users u ON u.id = d.owner_id\n            WHERE d.visibility = 'public' \n            AND d.id = $1 \n            AND u.name = $2\n            ",
   "describe": {
     "columns": [
       {
@@ -30,11 +30,6 @@
       },
       {
         "ordinal": 5,
-        "name": "owner_username",
-        "type_info": "Varchar"
-      },
-      {
-        "ordinal": 6,
         "name": "owner_name",
         "type_info": "Text"
       }
@@ -51,9 +46,8 @@
       false,
       true,
       true,
-      false,
       false
     ]
   },
-  "hash": "7b8b2a0259ccbf481d96261d56c139d8c10228efb33f7ce0eff3d2700dacd8d7"
+  "hash": "ccb4b9a32288273d3b6e407aec67d7245f0af35bf4651bfbdb4db43a819e7c3a"
 }

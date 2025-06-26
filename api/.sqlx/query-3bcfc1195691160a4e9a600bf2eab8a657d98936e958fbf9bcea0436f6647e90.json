@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            INSERT INTO users (email, name, password_hash)\n            VALUES ($1, $2, $3)\n            RETURNING id, email, name, username, password_hash, created_at as \"created_at!\", updated_at as \"updated_at!\"\n            ",
+  "query": "\n            INSERT INTO users (email, name, username, password_hash)\n            VALUES ($1, $2, $3, $4)\n            RETURNING id, email, name, username, password_hash, created_at as \"created_at!\", updated_at as \"updated_at!\"\n            ",
   "describe": {
     "columns": [
       {
@@ -43,6 +43,7 @@
       "Left": [
         "Text",
         "Text",
+        "Varchar",
         "Text"
       ]
     },
@@ -56,5 +57,5 @@
       true
     ]
   },
-  "hash": "b57ea2734dd1956cc8d47bd4b2128aa0871abe12eecba4333cab610887ccf98d"
+  "hash": "3bcfc1195691160a4e9a600bf2eab8a657d98936e958fbf9bcea0436f6647e90"
 }

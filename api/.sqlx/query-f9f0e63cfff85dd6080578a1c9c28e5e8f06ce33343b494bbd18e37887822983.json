@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT \n                d.id,\n                d.title,\n                d.type as document_type,\n                d.published_at,\n                d.updated_at,\n                u.username as owner_username,\n                u.name as owner_name\n            FROM documents d\n            JOIN users u ON u.id = d.owner_id\n            WHERE d.visibility = 'public' \n            AND d.owner_id = $1\n            ORDER BY d.published_at DESC\n            ",
+  "query": "\n            SELECT \n                d.id,\n                d.title,\n                d.type as document_type,\n                d.published_at,\n                d.updated_at,\n                u.name as owner_name\n            FROM documents d\n            JOIN users u ON u.id = d.owner_id\n            WHERE d.visibility = 'public' \n            AND u.name = $1\n            ORDER BY d.published_at DESC\n            LIMIT $2 OFFSET $3\n            ",
   "describe": {
     "columns": [
       {
@@ -30,18 +30,15 @@
       },
       {
         "ordinal": 5,
-        "name": "owner_username",
-        "type_info": "Varchar"
-      },
-      {
-        "ordinal": 6,
         "name": "owner_name",
         "type_info": "Text"
       }
     ],
     "parameters": {
       "Left": [
-        "Uuid"
+        "Text",
+        "Int8",
+        "Int8"
       ]
     },
     "nullable": [
@@ -50,9 +47,8 @@
       false,
       true,
       true,
-      false,
       false
     ]
   },
-  "hash": "afa6afc4d475f0e54d10a72885085b50cde0c534d4d611fea5d4c7358d5db72a"
+  "hash": "f9f0e63cfff85dd6080578a1c9c28e5e8f06ce33343b494bbd18e37887822983"
 }
