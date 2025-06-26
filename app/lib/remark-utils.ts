@@ -31,8 +31,7 @@ export function createRemarkPatternPlugin(config: PatternConfig): Plugin<[], Roo
           const data = config.extractData(match)
           children.push({
             type: config.nodeType,
-            data,
-            children: [{ type: 'text', value: match[0] }]
+            ...data
           } as PhrasingContent)
 
           lastIndex = pattern.lastIndex
