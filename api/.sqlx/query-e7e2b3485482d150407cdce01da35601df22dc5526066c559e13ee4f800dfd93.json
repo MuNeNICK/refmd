@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT id, owner_id, title, type as \"type: _\", parent_id, file_path, crdt_state, version, \n                created_at as \"created_at!\", updated_at as \"updated_at!\", last_edited_by, last_edited_at\n            FROM documents\n            WHERE owner_id = $1\n            ORDER BY updated_at DESC\n            ",
+  "query": "\n                    SELECT id, owner_id, title, type as \"type: _\", parent_id, file_path, \n                           crdt_state, version, COALESCE(visibility, 'private') as \"visibility!\", published_at,\n                           created_at as \"created_at!\", updated_at as \"updated_at!\", last_edited_by, last_edited_at\n                    FROM documents\n                    WHERE LOWER(title) = LOWER($1) AND (owner_id = $2 OR id IN (\n                        SELECT document_id FROM document_permissions \n                        WHERE user_id = $2 AND permission >= 'view'\n                    ))\n                    ORDER BY updated_at DESC\n                    LIMIT 1\n                    ",
   "describe": {
     "columns": [
       {
@@ -45,27 +45,38 @@
       },
       {
         "ordinal": 8,
-        "name": "created_at!",
-        "type_info": "Timestamptz"
+        "name": "visibility!",
+        "type_info": "Text"
       },
       {
         "ordinal": 9,
-        "name": "updated_at!",
+        "name": "published_at",
         "type_info": "Timestamptz"
       },
       {
         "ordinal": 10,
+        "name": "created_at!",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 11,
+        "name": "updated_at!",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 12,
         "name": "last_edited_by",
         "type_info": "Uuid"
       },
       {
-        "ordinal": 11,
+        "ordinal": 13,
         "name": "last_edited_at",
         "type_info": "Timestamptz"
       }
     ],
     "parameters": {
       "Left": [
+        "Text",
         "Uuid"
       ]
     },
@@ -78,11 +89,13 @@
       true,
       true,
       true,
+      null,
+      true,
       true,
       true,
       true,
       true
     ]
   },
-  "hash": "88aebdbcc66b40920b0da226c74eefb762f71aa6ddacdb0d9df1353a6a8e72c2"
+  "hash": "e7e2b3485482d150407cdce01da35601df22dc5526066c559e13ee4f800dfd93"
 }

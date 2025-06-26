@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n                    SELECT id, owner_id, title, type as \"type: _\", parent_id, file_path, \n                           crdt_state, version, created_at as \"created_at!\", \n                           updated_at as \"updated_at!\", last_edited_by, last_edited_at\n                    FROM documents\n                    WHERE id = $1 AND (owner_id = $2 OR id IN (\n                        SELECT document_id FROM document_permissions \n                        WHERE user_id = $2 AND permission >= 'view'\n                    ))\n                    ",
+  "query": "\n            SELECT id, owner_id, title, type as \"type: _\", parent_id, file_path, crdt_state, version,\n                COALESCE(visibility, 'private') as \"visibility!\", published_at,\n                created_at as \"created_at!\", updated_at as \"updated_at!\", last_edited_by, last_edited_at\n            FROM documents\n            WHERE id = $1\n            ",
   "describe": {
     "columns": [
       {
@@ -45,28 +45,37 @@
       },
       {
         "ordinal": 8,
-        "name": "created_at!",
-        "type_info": "Timestamptz"
+        "name": "visibility!",
+        "type_info": "Text"
       },
       {
         "ordinal": 9,
-        "name": "updated_at!",
+        "name": "published_at",
         "type_info": "Timestamptz"
       },
       {
         "ordinal": 10,
+        "name": "created_at!",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 11,
+        "name": "updated_at!",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 12,
         "name": "last_edited_by",
         "type_info": "Uuid"
       },
       {
-        "ordinal": 11,
+        "ordinal": 13,
         "name": "last_edited_at",
         "type_info": "Timestamptz"
       }
     ],
     "parameters": {
       "Left": [
-        "Uuid",
         "Uuid"
       ]
     },
@@ -79,11 +88,13 @@
       true,
       true,
       true,
+      null,
+      true,
       true,
       true,
       true,
       true
     ]
   },
-  "hash": "35fdea4f4fca37e2a94c615aaa85d4e7f162ee7f81015b031e75059f466dc899"
+  "hash": "afcf1c219f650a3d987eb884e81d8b73e0d113791eb85aebd9ec49f17da1279b"
 }

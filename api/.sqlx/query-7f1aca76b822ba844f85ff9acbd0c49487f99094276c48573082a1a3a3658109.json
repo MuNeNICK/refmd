@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE documents \n            SET visibility = 'public', published_at = NOW(), updated_at = NOW()\n            WHERE id = $1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "7f1aca76b822ba844f85ff9acbd0c49487f99094276c48573082a1a3a3658109"
+}
