@@ -23,7 +23,7 @@ import {
 } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { DeleteConfirmationDialog } from '@/components/ui/delete-confirmation-dialog';
-import { useIsMobile } from '@/lib/hooks/use-is-mobile';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface DocumentNode {
   id: string;

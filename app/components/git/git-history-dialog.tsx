@@ -33,6 +33,7 @@ import { GitDiffDialog } from './git-diff-dialog';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { getDiffStats } from '@/lib/git/diff-utils';
+import { toggleFileExpansion } from '@/lib/git/utils';
 import { FileExpander } from './file-expander';
 import { DiffViewer } from './diff-viewer';
 
@@ -108,15 +109,7 @@ export function GitHistoryDialog({
   }, [selectedCommit, showDiff, fetchCommitDiffs]);
 
   const toggleFile = (filePath: string) => {
-    setExpandedFiles(prev => {
-      const next = new Set(prev);
-      if (next.has(filePath)) {
-        next.delete(filePath);
-      } else {
-        next.add(filePath);
-      }
-      return next;
-    });
+    toggleFileExpansion(filePath, expandedFiles, setExpandedFiles);
   };
 
 
