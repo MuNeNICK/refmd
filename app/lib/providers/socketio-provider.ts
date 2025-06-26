@@ -18,12 +18,6 @@ function generateColor(str: string): string {
   return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
 }
 
-export type ProviderOptions = {
-  awareness?: Awareness;
-  resyncInterval?: number;
-  shareToken?: string;
-  authToken?: string;
-};
 
 export class SocketIOProvider extends Observable<string> {
   doc: Y.Doc;
@@ -49,7 +43,12 @@ export class SocketIOProvider extends Observable<string> {
     socket: Socket,
     documentId: string,
     doc: Y.Doc,
-    options: ProviderOptions = {}
+    options: {
+      awareness?: Awareness;
+      resyncInterval?: number;
+      shareToken?: string;
+      authToken?: string;
+    } = {}
   ) {
     super();
     this.socket = socket;

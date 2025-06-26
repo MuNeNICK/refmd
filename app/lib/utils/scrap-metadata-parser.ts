@@ -1,4 +1,4 @@
-export interface ScrapPostMetadata {
+interface ScrapPostMetadata {
   isPinned?: boolean;
   pinnedAt?: string;
   pinnedBy?: string; // User ID

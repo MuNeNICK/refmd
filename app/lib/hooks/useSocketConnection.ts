@@ -3,17 +3,13 @@ import { io, Socket } from 'socket.io-client';
 import { getAuthToken } from '@/lib/auth/authContext';
 import { getSocketUrl } from '@/lib/config';
 
-export type UseSocketConnectionOptions = {
+export function useSocketConnection({ token, authToken }: {
   token?: string; // Share token
   authToken?: string; // Auth token
-};
-
-export type UseSocketConnectionReturn = {
+} = {}): {
   socket: Socket | null;
   isConnected: boolean;
-};
-
-export function useSocketConnection({ token, authToken }: UseSocketConnectionOptions = {}): UseSocketConnectionReturn {
+} {
   const [isConnected, setIsConnected] = useState(false);
   const socketRef = useRef<Socket | null>(null);
 

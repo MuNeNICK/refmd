@@ -1,12 +1,10 @@
-export interface FormatResult {
-  formattedText: string;
-  cursorOffset: number;
-}
-
 export function applyMarkdownFormat(
   format: string,
   selectedText: string
-): FormatResult | null {
+): {
+  formattedText: string;
+  cursorOffset: number;
+} | null {
   let formattedText = '';
   let cursorOffset = 0;
   

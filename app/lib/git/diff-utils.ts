@@ -1,17 +1,17 @@
 import type { DiffResult } from '@/lib/api/client';
 
-export interface DiffStats {
+interface DiffStats {
   additions: number;
   deletions: number;
 }
 
-export interface SplitViewLine {
+interface SplitViewLine {
   lineNumber?: number;
   content: string;
   type: 'context' | 'added' | 'deleted' | 'empty';
 }
 
-export interface SplitViewData {
+interface SplitViewData {
   leftLines: SplitViewLine[];
   rightLines: SplitViewLine[];
 }
@@ -43,7 +43,8 @@ export function calculateTotalStats(diffs: DiffResult[]): DiffStats {
   );
 }
 
-export function getLineTypeClass(lineType: string | undefined): string {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function getLineTypeClass(lineType: string | undefined): string {
   switch (lineType) {
     case 'added':
       return 'bg-green-50 dark:bg-green-950/30 text-green-900 dark:text-green-100';
@@ -54,7 +55,8 @@ export function getLineTypeClass(lineType: string | undefined): string {
   }
 }
 
-export function getLinePrefix(lineType: string | undefined): string {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function getLinePrefix(lineType: string | undefined): string {
   switch (lineType) {
     case 'added':
       return '+';
@@ -65,7 +67,8 @@ export function getLinePrefix(lineType: string | undefined): string {
   }
 }
 
-export function createSplitView(diff: DiffResult): SplitViewData {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function createSplitView(diff: DiffResult): SplitViewData {
   if (!diff.diff_lines) return { leftLines: [], rightLines: [] };
   
   const leftLines: SplitViewLine[] = [];
@@ -155,7 +158,8 @@ export function createSplitView(diff: DiffResult): SplitViewData {
 }
 
 // Diff line color constants
-export const DIFF_COLORS = {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const DIFF_COLORS = {
   added: {
     bg: 'bg-green-50 dark:bg-green-950/30',
     text: 'text-green-900 dark:text-green-100'

@@ -32,7 +32,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import type { SaveStatus } from "@/lib/hooks/useAutoSave";
+import type { SaveStatus } from "@/lib/types/save-status";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 
 export type ViewMode = "editor" | "split" | "preview";

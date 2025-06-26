@@ -224,7 +224,8 @@ export function BacklinksPanel({ documentId, className, onClose }: BacklinksPane
 }
 
 // Compact version for sidebar
-export function BacklinksCount({ documentId }: { documentId: string }) {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function BacklinksCount({ documentId }: { documentId: string }) {
   const [count, setCount] = useState<number>(0)
   const [isLoading, setIsLoading] = useState(true)
 

@@ -5,30 +5,26 @@ import { SocketIOProvider } from '@/lib/providers/socketio-provider';
 import { Awareness } from 'y-protocols/awareness';
 import { getAuthToken } from '@/lib/auth/authContext';
 
-export type UseCollaborativeDocumentOptions = {
-  documentId: string;
-  socket: Socket | null;
-  shareToken?: string;
-  onSync?: (synced: boolean) => void;
-  onConnectionError?: (error: unknown) => void;
-};
-
-export type UseCollaborativeDocumentReturn = {
-  doc: Y.Doc | null;
-  provider: SocketIOProvider | null;
-  awareness: Awareness | null;
-  synced: boolean;
-  connected: boolean;
-  getText: () => Y.Text | null;
-};
-
 export function useCollaborativeDocument({
   documentId,
   socket,
   shareToken,
   onSync,
   onConnectionError,
-}: UseCollaborativeDocumentOptions): UseCollaborativeDocumentReturn {
+}: {
+  documentId: string;
+  socket: Socket | null;
+  shareToken?: string;
+  onSync?: (synced: boolean) => void;
+  onConnectionError?: (error: unknown) => void;
+}): {
+  doc: Y.Doc | null;
+  provider: SocketIOProvider | null;
+  awareness: Awareness | null;
+  synced: boolean;
+  connected: boolean;
+  getText: () => Y.Text | null;
+} {
   const [synced, setSynced] = useState(false);
   const [connected, setConnected] = useState(false);
   const [doc, setDoc] = useState<Y.Doc | null>(null);
