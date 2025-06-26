@@ -28,7 +28,8 @@ import {
   WifiOff,
   Users,
   Link2,
-  FileCode
+  FileCode,
+  Menu
 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -387,8 +388,18 @@ export function Header({
               </Button>
             </div>
           )}
-          
-          {/* Mobile menu button removed - functionality moved to logo */}
+
+          {/* Mobile menu button for anonymous users */}
+          {!user && (
+            <Button 
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              variant="ghost" 
+              className="relative h-8 w-8 rounded-full md:hidden"
+              title="Menu"
+            >
+              <AuthorAvatar name="Anonymous" className="h-8 w-8" />
+            </Button>
+          )}
         </div>
       </header>
       
