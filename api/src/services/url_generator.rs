@@ -19,7 +19,7 @@ impl UrlGeneratorService {
     }
     
     /// Generate a public URL for a published document
-    pub fn generate_public_url(&self, username: &str, document_id: Uuid) -> String {
-        format!("{}/u/{}/{}", self.frontend_url, username, document_id)
+    pub fn generate_public_url(&self, name: &str, document_id: Uuid) -> String {
+        format!("{}/u/{}/{}", self.frontend_url, name, document_id)
     }
 }

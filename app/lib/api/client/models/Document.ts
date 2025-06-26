@@ -27,7 +27,7 @@ export type Document = {
      */
     published_at?: string | null;
     /**
-     * Owner username (only included for published documents)
+     * Owner name (only included for published documents)
      */
     owner_username?: string | null;
 };

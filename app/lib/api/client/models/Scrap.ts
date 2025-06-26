@@ -21,7 +21,7 @@ export type Scrap = {
      */
     published_at?: string | null;
     /**
-     * Owner username (only included for published scraps)
+     * Owner name (only included for published scraps)
      */
     owner_username?: string | null;
 };

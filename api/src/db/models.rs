@@ -51,7 +51,6 @@ pub struct PublicDocumentInfo {
     pub document_type: String,
     pub published_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
-    pub owner_username: String,
     pub owner_name: String,
 }
 

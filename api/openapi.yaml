@@ -1906,7 +1906,7 @@ paths:
       tags:
         - Public Documents
       summary: Publish a document
-      description: Make a document publicly accessible at /u/username/document-id
+      description: Make a document publicly accessible at /u/name/document-id
       operationId: publishDocument
       security:
         - bearerAuth: []
@@ -1985,15 +1985,15 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
 
-  /u/{username}/{document_id}:
+  /u/{name}/{document_id}:
     get:
       tags:
         - Public Documents
       summary: Get public document
-      description: Get a publicly published document by username and document ID
+      description: Get a publicly published document by name and document ID
       operationId: getPublicDocument
       parameters:
-        - name: username
+        - name: name
           in: path
           required: true
           schema:
@@ -2014,7 +2014,7 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
-  /u/{username}:
+  /u/{name}:
     get:
       tags:
         - Public Documents
@@ -2022,7 +2022,7 @@ paths:
       description: Get list of public documents by a specific user
       operationId: listUserPublicDocuments
       parameters:
-        - name: username
+        - name: name
           in: path
           required: true
           schema:
@@ -2314,7 +2314,7 @@ components:
         owner_username:
           type: string
           nullable: true
-          description: Owner username (only included for published documents)
+          description: Owner name (only included for published documents)
 
     CreateDocumentRequest:
       type: object
@@ -2836,7 +2836,7 @@ components:
         owner_username:
           type: string
           nullable: true
-          description: Owner username (only included for published scraps)
+          description: Owner name (only included for published scraps)
 
     ScrapPost:
       type: object
@@ -3019,7 +3019,7 @@ components:
         public_url:
           type: string
           description: Public URL for the document
-          example: "/u/username/ca41e13d-bc50-45c7-bb7b-fca0f30be4ab"
+          example: "/u/johndoe/ca41e13d-bc50-45c7-bb7b-fca0f30be4ab"
 
     PublicDocument:
       type: object
@@ -3045,8 +3045,6 @@ components:
     AuthorInfo:
       type: object
       properties:
-        username:
-          type: string
         name:
           type: string
 

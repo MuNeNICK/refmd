@@ -78,7 +78,7 @@ pub struct DocumentResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub published_at: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub owner_username: Option<String>,
+    pub owner_username: Option<String>, // Actually owner name
 }
 
 impl From<Document> for DocumentResponse {
@@ -204,10 +204,10 @@ async fn get_document(
     let mut response: DocumentResponse = document.into();
     response.content = Some(content);
     
-    // Get owner username for published documents
+    // Get owner name for published documents
     if is_public {
         if let Ok(owner) = state.user_repository.get_by_id(owner_id).await {
-            response.owner_username = Some(owner.username);
+            response.owner_username = Some(owner.name);
         }
     }
     
@@ -268,10 +268,10 @@ async fn get_document_with_share(
         response.permission = Some(check.permission_level.to_string().to_lowercase());
     }
     
-    // Get owner username for published documents
+    // Get owner name for published documents
     if is_public {
         if let Ok(owner) = state.user_repository.get_by_id(owner_id).await {
-            response.owner_username = Some(owner.username);
+            response.owner_username = Some(owner.name);
         }
     }
     

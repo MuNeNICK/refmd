@@ -46,6 +46,7 @@ pub struct UserResponse {
     pub id: String,
     pub email: String,
     pub name: String,
+    pub username: String,
 }
 
 impl From<User> for UserResponse {
@@ -54,6 +55,7 @@ impl From<User> for UserResponse {
             id: user.id.to_string(),
             email: user.email,
             name: user.name,
+            username: user.username,
         }
     }
 }
@@ -74,6 +76,11 @@ async fn register(
     // Validate input
     if req.email.trim().is_empty() || req.name.trim().is_empty() || req.password.len() < 8 {
         return Err(Error::BadRequest("Invalid input".to_string()));
+    }
+    
+    // Validate name format (used as account name in URLs)
+    if !req.name.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_') {
+        return Err(Error::BadRequest("Name can only contain letters, numbers, hyphens, and underscores".to_string()));
     }
     
     // Create services

@@ -72,10 +72,12 @@ export default function SignUpPage() {
                 id="name"
                 name="name"
                 type="text"
-                placeholder="Enter your name"
+                placeholder="Choose your account name"
                 value={formData.name}
                 onChange={handleChange}
                 required
+                pattern="[a-zA-Z0-9_-]+"
+                title="Name can only contain letters, numbers, hyphens, and underscores"
               />
             </div>
             <div className="space-y-2">

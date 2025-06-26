@@ -355,7 +355,7 @@ export function Header({
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                      <AuthorAvatar name={user?.name} username={user?.email} className="h-8 w-8" />
+                      <AuthorAvatar name={user?.name} className="h-8 w-8" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent className="w-56" align="end" forceMount>
@@ -383,7 +383,7 @@ export function Header({
                 variant="ghost" 
                 className="relative h-8 w-8 rounded-full md:hidden"
               >
-                <AuthorAvatar name={user?.name} username={user?.email} className="h-8 w-8" />
+                <AuthorAvatar name={user?.name} className="h-8 w-8" />
               </Button>
             </div>
           )}

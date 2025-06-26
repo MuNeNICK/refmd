@@ -12,7 +12,7 @@ export class PublicDocumentsService {
     constructor(public readonly httpRequest: BaseHttpRequest) {}
     /**
      * Publish a document
-     * Make a document publicly accessible at /u/username/document-id
+     * Make a document publicly accessible at /u/name/document-id
      * @param id
      * @param requestBody
      * @returns PublishDocumentResponse Document published successfully
@@ -78,21 +78,21 @@ export class PublicDocumentsService {
     }
     /**
      * Get public document
-     * Get a publicly published document by username and document ID
-     * @param username
+     * Get a publicly published document by name and document ID
+     * @param name
      * @param documentId
      * @returns PublicDocumentResponse Public document retrieved successfully
      * @throws ApiError
      */
     public getPublicDocument(
-        username: string,
+        name: string,
         documentId: string,
     ): CancelablePromise<PublicDocumentResponse> {
         return this.httpRequest.request({
             method: 'GET',
-            url: '/u/{username}/{document_id}',
+            url: '/u/{name}/{document_id}',
             path: {
-                'username': username,
+                'name': name,
                 'document_id': documentId,
             },
             errors: {
@@ -103,22 +103,22 @@ export class PublicDocumentsService {
     /**
      * List user's public documents
      * Get list of public documents by a specific user
-     * @param username
+     * @param name
      * @param limit Maximum number of results
      * @param offset Number of items to skip
      * @returns PublicDocumentListResponse Public documents retrieved successfully
      * @throws ApiError
      */
     public listUserPublicDocuments(
-        username: string,
+        name: string,
         limit: number = 20,
         offset?: number,
     ): CancelablePromise<PublicDocumentListResponse> {
         return this.httpRequest.request({
             method: 'GET',
-            url: '/u/{username}',
+            url: '/u/{name}',
             path: {
-                'username': username,
+                'name': name,
             },
             query: {
                 'limit': limit,

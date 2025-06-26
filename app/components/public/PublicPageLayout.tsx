@@ -15,7 +15,6 @@ interface PublicPageLayoutProps {
   subtitle?: string
   author?: {
     name?: string | null
-    username?: string | null
   }
   publishedDate?: string
   updatedDate?: string
@@ -70,14 +69,13 @@ export function PublicPageLayout({
                     <div className="flex items-center gap-1 shrink-0">
                       <AuthorAvatar 
                         name={author.name} 
-                        username={author.username} 
                         className="w-4 h-4" 
                       />
                       <Link 
-                        href={`/u/${author.username}`}
+                        href={`/u/${author.name}`}
                         className="font-medium hover:text-foreground"
                       >
-                        {author.name || author.username}
+                        {author.name}
                       </Link>
                     </div>
                   </>

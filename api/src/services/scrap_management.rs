@@ -76,13 +76,13 @@ impl ScrapService {
 
         let mut scrap = self.document_to_scrap(document.clone());
         
-        // Get owner username for published scraps
+        // Get owner name for published scraps
         if scrap.visibility == "public" {
-            if let Ok(owner) = sqlx::query!("SELECT username FROM users WHERE id = $1", document.owner_id)
+            if let Ok(owner) = sqlx::query!("SELECT name FROM users WHERE id = $1", document.owner_id)
                 .fetch_one(&*self.pool)
                 .await 
             {
-                scrap.owner_username = Some(owner.username);
+                scrap.owner_username = Some(owner.name);
             }
         }
 
@@ -297,13 +297,13 @@ impl ScrapService {
         
         let mut scrap = self.document_to_scrap(document.clone());
         
-        // Get owner username for published scraps
+        // Get owner name for published scraps
         if scrap.visibility == "public" {
-            if let Ok(owner) = sqlx::query!("SELECT username FROM users WHERE id = $1", document.owner_id)
+            if let Ok(owner) = sqlx::query!("SELECT name FROM users WHERE id = $1", document.owner_id)
                 .fetch_one(&*self.pool)
                 .await 
             {
-                scrap.owner_username = Some(owner.username);
+                scrap.owner_username = Some(owner.name);
             }
         }
         

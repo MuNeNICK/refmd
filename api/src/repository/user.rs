@@ -15,16 +15,35 @@ impl UserRepository {
         Self { pool }
     }
     
-    pub async fn create(&self, email: &str, name: &str, password_hash: &str) -> Result<User> {
+    /// Generate a username from email address
+    /// Takes the part before @ and removes non-alphanumeric characters
+    fn generate_username_from_email(email: &str) -> String {
+        let username_part = email.split('@').next().unwrap_or("user");
+        let cleaned = username_part
+            .chars()
+            .filter(|c| c.is_alphanumeric() || *c == '-' || *c == '_')
+            .collect::<String>()
+            .to_lowercase();
+        
+        // Ensure username is not empty and follows the format requirements
+        if cleaned.is_empty() {
+            "user".to_string()
+        } else {
+            cleaned
+        }
+    }
+    
+    pub async fn create(&self, email: &str, name: &str, password_hash: &str, username: &str) -> Result<User> {
         let user = sqlx::query_as!(
             User,
             r#"
-            INSERT INTO users (email, name, password_hash)
-            VALUES ($1, $2, $3)
+            INSERT INTO users (email, name, username, password_hash)
+            VALUES ($1, $2, $3, $4)
             RETURNING id, email, name, username, password_hash, created_at as "created_at!", updated_at as "updated_at!"
             "#,
             email,
             name,
+            username,
             password_hash
         )
         .fetch_one(self.pool.as_ref())
@@ -79,6 +98,36 @@ impl UserRepository {
             SELECT EXISTS(SELECT 1 FROM users WHERE email = $1) as exists
             "#,
             email
+        )
+        .fetch_one(self.pool.as_ref())
+        .await?
+        .exists
+        .unwrap_or(false);
+        
+        Ok(exists)
+    }
+    
+    pub async fn name_exists(&self, name: &str) -> Result<bool> {
+        let exists = sqlx::query!(
+            r#"
+            SELECT EXISTS(SELECT 1 FROM users WHERE name = $1) as exists
+            "#,
+            name
+        )
+        .fetch_one(self.pool.as_ref())
+        .await?
+        .exists
+        .unwrap_or(false);
+        
+        Ok(exists)
+    }
+    
+    pub async fn username_exists(&self, username: &str) -> Result<bool> {
+        let exists = sqlx::query!(
+            r#"
+            SELECT EXISTS(SELECT 1 FROM users WHERE username = $1) as exists
+            "#,
+            username
         )
         .fetch_one(self.pool.as_ref())
         .await?

@@ -11,7 +11,7 @@ import { PublicPageLayout } from './PublicPageLayout';
 import { formatPublicDate } from '@/lib/utils/date';
 
 interface PublicDocumentListPageProps {
-  username: string;
+  username: string;  // This is actually the name now
   documents: PublicDocumentSummary[];
   total: number;
   limit: number;

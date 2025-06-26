@@ -35,7 +35,6 @@ pub struct PublicDocumentResponse {
 
 #[derive(Debug, Serialize)]
 pub struct AuthorInfo {
-    pub username: String,
     pub name: String,
 }
 
@@ -64,8 +63,8 @@ pub struct PublicListQuery {
 pub fn routes(state: Arc<AppState>) -> Router {
     // Public routes (no auth required)
     Router::new()
-        .route("/u/:username/:document_id", get(get_public_document))
-        .route("/u/:username", get(list_user_public_documents))
+        .route("/u/:name/:document_id", get(get_public_document))
+        .route("/u/:name", get(list_user_public_documents))
         .with_state(state)
 }
 
@@ -99,13 +98,13 @@ async fn publish_document(
     
     // Get user info for URL generation
     let user = sqlx::query!(
-        "SELECT username FROM users WHERE id = $1",
+        "SELECT name FROM users WHERE id = $1",
         user_id
     )
     .fetch_one(state.db_pool.as_ref())
     .await?;
     
-    let public_url = state.url_generator.generate_public_url(&user.username, document_id);
+    let public_url = state.url_generator.generate_public_url(&user.name, document_id);
     
     Ok(Json(PublishDocumentResponse {
         public_url,
@@ -151,13 +150,13 @@ async fn list_my_public_documents(
     Ok(Json(response))
 }
 
-/// Get a public document by username and document ID
+/// Get a public document by name and document ID
 async fn get_public_document(
     State(state): State<Arc<AppState>>,
-    Path((username, document_id)): Path<(String, Uuid)>,
+    Path((name, document_id)): Path<(String, Uuid)>,
 ) -> Result<Json<PublicDocumentResponse>> {
     // Get document info
-    let doc_info = state.public_document_service.get_public_document(&username, &document_id.to_string()).await?;
+    let doc_info = state.public_document_service.get_public_document(&name, &document_id.to_string()).await?;
     
     let content = if doc_info.document_type == "scrap" {
         // For scraps, fetch posts and serialize them
@@ -200,7 +199,6 @@ async fn get_public_document(
         published_at: doc_info.published_at.to_rfc3339(),
         updated_at: doc_info.updated_at.to_rfc3339(),
         author: AuthorInfo {
-            username: doc_info.owner_username,
             name: doc_info.owner_name,
         },
     };
@@ -211,13 +209,13 @@ async fn get_public_document(
 /// List all public documents by a user
 async fn list_user_public_documents(
     State(state): State<Arc<AppState>>,
-    Path(username): Path<String>,
+    Path(name): Path<String>,
     Query(query): Query<PublicListQuery>,
 ) -> Result<Json<PublicDocumentListResponse>> {
     let limit = query.limit.unwrap_or(20).min(100); // Max 100 per page
     let offset = query.offset.unwrap_or(0);
     
-    let documents = state.public_document_service.list_user_public_documents(&username, limit, offset).await?;
+    let documents = state.public_document_service.list_user_public_documents(&name, limit, offset).await?;
     
     let response = PublicDocumentListResponse {
         total: documents.len(), // Note: This is the count for this page, not total count

@@ -76,7 +76,7 @@ export function ScrapCommentComponent({
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <MessageSquare className="h-3 w-3" />
-            <AuthorAvatar name={comment.authorName} username={null} className="h-5 w-5" />
+            <AuthorAvatar name={comment.authorName} className="h-5 w-5" />
             <span className="font-medium">{comment.authorName || 'Unknown'}</span>
             <span>•</span>
             <time dateTime={comment.createdAt} suppressHydrationWarning>

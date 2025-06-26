@@ -458,7 +458,7 @@ pub async fn publish_scrap(
     
     // Return the published URL
     if let Ok(owner) = state.user_repository.get_by_id(auth_user.user_id).await {
-        let public_url = format!("/u/{}/{}", owner.username, id);
+        let public_url = format!("/u/{}/{}", owner.name, id);
         Ok(Json(serde_json::json!({
             "success": true,
             "public_url": public_url
@@ -466,7 +466,7 @@ pub async fn publish_scrap(
     } else {
         Ok(Json(serde_json::json!({
             "success": true,
-            "public_url": format!("/u/[username]/{}", id)
+            "public_url": format!("/u/[name]/{}", id)
         })))
     }
 }

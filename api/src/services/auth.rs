@@ -32,11 +32,24 @@ impl AuthService {
             return Err(Error::Conflict("Email already registered".to_string()));
         }
         
+        // Check if name already exists
+        if self.user_repo.name_exists(name).await? {
+            return Err(Error::Conflict("Name already taken".to_string()));
+        }
+        
         // Hash password
         let password_hash = hash_password(password)?;
         
+        // Generate username from email for backward compatibility
+        let email_prefix = email.split('@').next().unwrap_or("user");
+        let username = email_prefix
+            .chars()
+            .filter(|c| c.is_alphanumeric() || *c == '-' || *c == '_')
+            .collect::<String>()
+            .to_lowercase();
+        
         // Create user
-        let mut user = self.user_repo.create(email, name, &password_hash).await?;
+        let mut user = self.user_repo.create(email, name, &password_hash, &username).await?;
         
         // Generate tokens
         let tokens = self.jwt_service.generate_token_pair(user.id, user.email.clone())?;

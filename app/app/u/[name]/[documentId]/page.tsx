@@ -5,17 +5,17 @@ import { PublicScrapPage } from '@/components/public/public-scrap-page';
 
 interface PublicDocumentPageProps {
   params: Promise<{
-    username: string;
+    name: string;
     documentId: string;
   }>;
 }
 
 export default async function PublicDocument({ params }: PublicDocumentPageProps) {
-  const { username, documentId } = await params;
+  const { name, documentId } = await params;
   
   try {
     const api = getPublicApiClient();
-    const response = await api.publicDocuments.getPublicDocument(username, documentId);
+    const response = await api.publicDocuments.getPublicDocument(name, documentId);
     
     // Check if it's a scrap or document based on document_type
     if (response.document_type === 'scrap') {
@@ -30,19 +30,19 @@ export default async function PublicDocument({ params }: PublicDocumentPageProps
 }
 
 export async function generateMetadata({ params }: PublicDocumentPageProps) {
-  const { username, documentId } = await params;
+  const { name, documentId } = await params;
   
   try {
     const api = getPublicApiClient();
-    const response = await api.publicDocuments.getPublicDocument(username, documentId);
+    const response = await api.publicDocuments.getPublicDocument(name, documentId);
     
     return {
-      title: response.title || `${response.document_type === 'scrap' ? 'Scrap' : 'Document'} by ${username}`,
+      title: response.title || `${response.document_type === 'scrap' ? 'Scrap' : 'Document'} by ${name}`,
       description: response.document_type === 'scrap' ? 'Public scrap page' : 'Public document page',
     };
   } catch {
     return {
-      title: `Document ${documentId} by ${username}`,
+      title: `Document ${documentId} by ${name}`,
       description: `Public document page`,
     };
   }

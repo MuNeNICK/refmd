@@ -65,8 +65,8 @@ impl PublicDocumentService {
     }
 
 
-    /// Get public document by username and document ID
-    pub async fn get_public_document(&self, username: &str, document_id: &str) -> Result<PublicDocumentInfo> {
+    /// Get public document by owner name and document ID
+    pub async fn get_public_document(&self, owner_name: &str, document_id: &str) -> Result<PublicDocumentInfo> {
         let doc_uuid = uuid::Uuid::parse_str(document_id)
             .map_err(|_| Error::BadRequest("Invalid document ID format".to_string()))?;
             
@@ -78,16 +78,15 @@ impl PublicDocumentService {
                 d.type as document_type,
                 d.published_at,
                 d.updated_at,
-                u.username as owner_username,
                 u.name as owner_name
             FROM documents d
             JOIN users u ON u.id = d.owner_id
             WHERE d.visibility = 'public' 
             AND d.id = $1 
-            AND u.username = $2
+            AND u.name = $2
             "#,
             doc_uuid,
-            username
+            owner_name
         )
         .fetch_optional(self.pool.as_ref())
         .await?
@@ -100,13 +99,12 @@ impl PublicDocumentService {
             document_type: result.document_type,
             published_at: result.published_at.unwrap_or(result.updated_at.unwrap_or(chrono::Utc::now())),
             updated_at: result.updated_at.unwrap_or(chrono::Utc::now()),
-            owner_username: result.owner_username,
             owner_name: result.owner_name,
         })
     }
 
     /// List all public documents by a user
-    pub async fn list_user_public_documents(&self, username: &str, limit: i64, offset: i64) -> Result<Vec<PublicDocumentInfo>> {
+    pub async fn list_user_public_documents(&self, owner_name: &str, limit: i64, offset: i64) -> Result<Vec<PublicDocumentInfo>> {
         let results = sqlx::query!(
             r#"
             SELECT 
@@ -115,16 +113,15 @@ impl PublicDocumentService {
                 d.type as document_type,
                 d.published_at,
                 d.updated_at,
-                u.username as owner_username,
                 u.name as owner_name
             FROM documents d
             JOIN users u ON u.id = d.owner_id
             WHERE d.visibility = 'public' 
-            AND u.username = $1
+            AND u.name = $1
             ORDER BY d.published_at DESC
             LIMIT $2 OFFSET $3
             "#,
-            username,
+            owner_name,
             limit,
             offset
         )
@@ -140,7 +137,6 @@ impl PublicDocumentService {
                 document_type: row.document_type,
                 published_at: row.published_at.unwrap_or(row.updated_at.unwrap_or(chrono::Utc::now())),
                 updated_at: row.updated_at.unwrap_or(chrono::Utc::now()),
-                owner_username: row.owner_username,
                 owner_name: row.owner_name,
             })
             .collect())
@@ -156,7 +152,6 @@ impl PublicDocumentService {
                 d.type as document_type,
                 d.published_at,
                 d.updated_at,
-                u.username as owner_username,
                 u.name as owner_name
             FROM documents d
             JOIN users u ON u.id = d.owner_id
@@ -178,7 +173,6 @@ impl PublicDocumentService {
                 document_type: row.document_type,
                 published_at: row.published_at.unwrap_or(row.updated_at.unwrap_or(chrono::Utc::now())),
                 updated_at: row.updated_at.unwrap_or(chrono::Utc::now()),
-                owner_username: row.owner_username,
                 owner_name: row.owner_name,
             })
             .collect())

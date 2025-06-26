@@ -16,7 +16,7 @@ pub struct Scrap {
     pub last_edited_at: Option<DateTime<Utc>>,
     pub visibility: String,
     pub published_at: Option<DateTime<Utc>>,
-    pub owner_username: Option<String>,
+    pub owner_username: Option<String>, // Actually owner name
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -3,22 +3,22 @@ import { PublicDocumentListPage } from '@/components/public/public-document-list
 
 interface UserPublicDocumentsPageProps {
   params: Promise<{
-    username: string;
+    name: string;
   }>;
 }
 
 export default async function UserPublicDocuments({ 
   params
 }: UserPublicDocumentsPageProps) {
-  const { username } = await params;
+  const { name } = await params;
   
   try {
     const api = getPublicApiClient();
-    const response = await api.publicDocuments.listUserPublicDocuments(username);
+    const response = await api.publicDocuments.listUserPublicDocuments(name);
     
     return (
       <PublicDocumentListPage 
-        username={username}
+        username={name}
         documents={response.documents || []}
         total={response.total || 0}
         limit={20}
@@ -30,7 +30,7 @@ export default async function UserPublicDocuments({
     // Simple fallback UI for now
     return (
       <div style={{ padding: '20px' }}>
-        <h1>{username}&apos;s Public Documents</h1>
+        <h1>{name}&apos;s Public Documents</h1>
         <p>No public documents found or an error occurred.</p>
       </div>
     );
@@ -38,10 +38,10 @@ export default async function UserPublicDocuments({
 }
 
 export async function generateMetadata({ params }: UserPublicDocumentsPageProps) {
-  const { username } = await params;
+  const { name } = await params;
   
   return {
-    title: `${username}'s Public Documents`,
-    description: `Browse public documents shared by ${username}`,
+    title: `${name}'s Public Documents`,
+    description: `Browse public documents shared by ${name}`,
   };
 }
