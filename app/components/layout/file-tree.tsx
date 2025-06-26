@@ -114,6 +114,7 @@ function FileTreeComponent({ onDocumentSelect, selectedDocumentId }: FileTreePro
       });
     };
 
+    // Always update the file tree to remove the deleted document
     const updatedDocs = removeDocument(documents);
     updateDocuments(updatedDocs);
 
