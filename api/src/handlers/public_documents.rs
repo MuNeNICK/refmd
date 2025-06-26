@@ -105,7 +105,7 @@ async fn publish_document(
     .fetch_one(state.db_pool.as_ref())
     .await?;
     
-    let public_url = format!("/u/{}/{}", user.username, document_id);
+    let public_url = state.url_generator.generate_public_url(&user.username, document_id);
     
     Ok(Json(PublishDocumentResponse {
         public_url,

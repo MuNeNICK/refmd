@@ -2,13 +2,13 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Calendar, FileText, Globe, ExternalLink, ChevronLeft, ChevronRight } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
+import { Calendar, FileText, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle } from '@/components/ui/card';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import type { PublicDocumentSummary } from '@/lib/api/client';
+import { PublicPageLayout } from './PublicPageLayout';
+import { formatPublicDate } from '@/lib/utils/date';
 
 interface PublicDocumentListPageProps {
   username: string;
@@ -36,157 +36,90 @@ export function PublicDocumentListPage({
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b bg-card">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Link 
-                href="/" 
-                className="text-xl font-bold text-primary hover:opacity-80"
-              >
-                RefMD
-              </Link>
-              <Badge variant="outline" className="gap-1">
-                <Globe className="w-3 h-3" />
-                Public Documents
-              </Badge>
-            </div>
-            
-            <Button variant="outline" asChild>
-              <Link href="/">
-                <ExternalLink className="w-4 h-4 mr-2" />
-                Open RefMD
-              </Link>
-            </Button>
-          </div>
-        </div>
-      </header>
+    <PublicPageLayout 
+      pageType="list"
+      title={`@${username}`}
+      subtitle={`${total} public ${total === 1 ? 'document' : 'documents'}`}
+    >
 
-      {/* Main Content */}
-      <main className="container mx-auto px-4 py-8 max-w-4xl">
-        {/* User Header */}
-        <div className="space-y-4 mb-8">
-          <div className="flex items-center gap-4">
-            <Avatar className="w-12 h-12">
-              <AvatarFallback className="text-lg">
-                {username.charAt(0).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            <div>
-              <h1 className="text-2xl font-bold">{username}</h1>
-              <p className="text-muted-foreground">
-                {total} public document{total !== 1 ? 's' : ''}
-              </p>
-            </div>
-          </div>
-          <Separator />
+      {/* Document List */}
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 md:px-8 py-8">
+        <div className="grid gap-4">
+          {documents.map((doc) => (
+            <Card key={doc.id} className="hover:shadow-lg transition-shadow">
+              <CardHeader>
+                <Link href={`/u/${username}/${doc.id}`}>
+                  <CardTitle className="flex items-start justify-between gap-4 hover:text-blue-600 dark:hover:text-blue-400">
+                    <span className="flex items-center gap-2">
+                      <FileText className="w-5 h-5 shrink-0" />
+                      {doc.title}
+                    </span>
+                  </CardTitle>
+                </Link>
+                <div className="flex items-center gap-4 text-sm text-muted-foreground mt-2">
+                  <div className="flex items-center gap-1">
+                    <Calendar className="w-4 h-4" />
+                    <span>Published {formatPublicDate(doc.published_at)}</span>
+                  </div>
+                  {doc.published_at !== doc.updated_at && (
+                    <>
+                      <Separator orientation="vertical" className="h-4" />
+                      <span>Updated {formatPublicDate(doc.updated_at)}</span>
+                    </>
+                  )}
+                </div>
+              </CardHeader>
+            </Card>
+          ))}
         </div>
-
-        {/* Documents List */}
-        {documents.length === 0 ? (
-          <div className="text-center py-12">
-            <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-            <h2 className="text-xl font-semibold mb-2">No public documents</h2>
-            <p className="text-muted-foreground">
-              {username} hasn&apos;t published any documents yet.
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {documents.map((doc) => {
-              const publishedDate = new Date(doc.published_at || '').toLocaleDateString();
-              const updatedDate = new Date(doc.updated_at || '').toLocaleDateString();
-              
-              return (
-                <Card key={doc.id} className="hover:shadow-md transition-shadow">
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div className="space-y-2 flex-1">
-                        <CardTitle className="text-xl">
-                          <Link 
-                            href={`/u/${username}/${doc.id}`}
-                            className="hover:text-primary transition-colors"
-                          >
-                            {doc.title}
-                          </Link>
-                        </CardTitle>
-                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                          <div className="flex items-center gap-1">
-                            <Calendar className="w-3 h-3" />
-                            <span>Published {publishedDate}</span>
-                          </div>
-                          
-                          {publishedDate !== updatedDate && (
-                            <>
-                              <Separator orientation="vertical" className="h-3" />
-                              <span>Updated {updatedDate}</span>
-                            </>
-                          )}
-                          
-                          <Separator orientation="vertical" className="h-3" />
-                          <Badge variant="secondary" className="text-xs">
-                            {doc.document_type}
-                          </Badge>
-                        </div>
-                      </div>
-                    </div>
-                  </CardHeader>
-                </Card>
-              );
-            })}
-          </div>
-        )}
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="mt-8 flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">
-              Showing {offset + 1} to {Math.min(offset + limit, total)} of {total} documents
-            </p>
+          <div className="flex justify-center items-center gap-2 mt-8">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={currentPage === 1}
+              asChild={currentPage > 1}
+            >
+              {currentPage > 1 ? (
+                <Link href={generatePageUrl((currentPage - 2) * limit)}>
+                  <ChevronLeft className="w-4 h-4 mr-1" />
+                  Previous
+                </Link>
+              ) : (
+                <>
+                  <ChevronLeft className="w-4 h-4 mr-1" />
+                  Previous
+                </>
+              )}
+            </Button>
             
-            <div className="flex items-center gap-2">
-              {currentPage > 1 && (
-                <Button variant="outline" size="sm" asChild>
-                  <Link href={generatePageUrl(Math.max(0, offset - limit))}>
-                    <ChevronLeft className="w-4 h-4 mr-1" />
-                    Previous
-                  </Link>
-                </Button>
+            <span className="text-sm text-gray-600 dark:text-gray-400 px-3">
+              Page {currentPage} of {totalPages}
+            </span>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={currentPage === totalPages}
+              asChild={currentPage < totalPages}
+            >
+              {currentPage < totalPages ? (
+                <Link href={generatePageUrl(currentPage * limit)}>
+                  Next
+                  <ChevronRight className="w-4 h-4 ml-1" />
+                </Link>
+              ) : (
+                <>
+                  Next
+                  <ChevronRight className="w-4 h-4 ml-1" />
+                </>
               )}
-              
-              <span className="text-sm text-muted-foreground px-3">
-                Page {currentPage} of {totalPages}
-              </span>
-              
-              {currentPage < totalPages && (
-                <Button variant="outline" size="sm" asChild>
-                  <Link href={generatePageUrl(offset + limit)}>
-                    Next
-                    <ChevronRight className="w-4 h-4 ml-1" />
-                  </Link>
-                </Button>
-              )}
-            </div>
+            </Button>
           </div>
         )}
-
-        {/* Footer */}
-        <footer className="mt-12 pt-8 border-t">
-          <div className="text-center text-sm text-muted-foreground">
-            <div className="flex items-center justify-center gap-2">
-              <span>Powered by</span>
-              <Link 
-                href="/" 
-                className="font-medium text-primary hover:opacity-80"
-              >
-                RefMD
-              </Link>
-            </div>
-          </div>
-        </footer>
-      </main>
-    </div>
+      </div>
+    </PublicPageLayout>
   );
 }

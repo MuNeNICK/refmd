@@ -488,7 +488,7 @@ export function MarkdownEditor({
         cancelAnimationFrame(statsRafId);
       }
     };
-  }, [onMount, onScroll, onSelectionChange, onContentStatsChange]);
+  }, [onMount, onScroll, onSelectionChange, onContentStatsChange, readOnly]);
 
   // Handle scroll to line
   useEffect(() => {

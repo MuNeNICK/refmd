@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use sqlx::PgPool;
 use crate::config::Config;
 use crate::crdt::{DocumentManager, AwarenessManager, DocumentPersistence};
-use crate::services::{crdt::CrdtService, document::DocumentService, file::FileService, share::ShareService, git_sync::GitSyncService, git_batch_sync::GitBatchSyncService, document_links::DocumentLinksService, PublicDocumentService};
+use crate::services::{crdt::CrdtService, document::DocumentService, file::FileService, share::ShareService, git_sync::GitSyncService, git_batch_sync::GitBatchSyncService, document_links::DocumentLinksService, PublicDocumentService, UrlGeneratorService};
 use crate::repository::{DocumentRepository, ShareRepository, UserRepository, GitConfigRepository};
 
 #[derive(Clone)]
@@ -21,6 +21,7 @@ pub struct AppState {
     pub git_batch_sync_service: Option<Arc<GitBatchSyncService>>,
     pub document_links_service: Arc<DocumentLinksService>,
     pub public_document_service: Arc<PublicDocumentService>,
+    pub url_generator: Arc<UrlGeneratorService>,
     pub document_repository: Arc<DocumentRepository>,
     pub share_repository: Arc<ShareRepository>,
     pub user_repository: Arc<UserRepository>,
@@ -83,6 +84,9 @@ impl AppState {
         
         let frontend_url = config.frontend_url.clone().unwrap_or_else(|| "http://localhost:3000".to_string());
         
+        // Create URL generator service
+        let url_generator = Arc::new(UrlGeneratorService::new(frontend_url.clone()));
+        
         let file_service = Arc::new(FileService::new(
             db_pool.clone(),
             storage_path,
@@ -113,6 +117,7 @@ impl AppState {
             git_batch_sync_service,
             document_links_service,
             public_document_service,
+            url_generator,
             document_repository,
             share_repository,
             user_repository,

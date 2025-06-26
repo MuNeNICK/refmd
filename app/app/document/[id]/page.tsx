@@ -18,10 +18,6 @@ async function getDocument(documentId: string, token?: string) {
       ? `${apiUrl}/documents/${documentId}?token=${token}`
       : `${apiUrl}/documents/${documentId}`;
     
-    console.log(`Fetching document from: ${endpoint}`);
-    console.log(`Using token: ${token ? 'yes' : 'no'}`);
-    console.log(`Auth cookie present: ${authCookie?.value ? 'yes' : 'no'}`);
-    
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
     };

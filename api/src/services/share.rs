@@ -6,11 +6,12 @@ use crate::entities::share::{ShareLink, ShareDocumentRequest, ShareResponse, Sha
 use crate::error::{Error, Result};
 use crate::repository::share::ShareRepository;
 use crate::repository::document::DocumentRepository;
+use crate::services::url_generator::UrlGeneratorService;
 
 pub struct ShareService {
     share_repository: ShareRepository,
     document_repository: DocumentRepository,
-    frontend_url: String,
+    url_generator: UrlGeneratorService,
 }
 
 impl ShareService {
@@ -18,7 +19,7 @@ impl ShareService {
         Self {
             share_repository: ShareRepository::new(pool.clone()),
             document_repository: DocumentRepository::new(pool.clone()),
-            frontend_url,
+            url_generator: UrlGeneratorService::new(frontend_url),
         }
     }
 
@@ -59,11 +60,7 @@ impl ShareService {
         let doc = self.document_repository.get_by_id(document_id).await?
             .ok_or_else(|| Error::NotFound("Document not found".to_string()))?;
         
-        let url = if doc.r#type == "scrap" {
-            format!("{}/scrap/{}?token={}", self.frontend_url, document_id, token)
-        } else {
-            format!("{}/document/{}?token={}", self.frontend_url, document_id, token)
-        };
+        let url = self.url_generator.generate_share_url(document_id, &token, &doc.r#type);
 
         Ok(ShareResponse {
             token,
@@ -153,11 +150,7 @@ impl ShareService {
         // Add URLs to shares
         let shares_with_urls = shares.into_iter()
             .map(|share| {
-                let url = if doc.r#type == "scrap" {
-                    format!("{}/scrap/{}?token={}", self.frontend_url, document_id, share.token)
-                } else {
-                    format!("{}/document/{}?token={}", self.frontend_url, document_id, share.token)
-                };
+                let url = self.url_generator.generate_share_url(document_id, &share.token, &doc.r#type);
                 (share, url)
             })
             .collect();

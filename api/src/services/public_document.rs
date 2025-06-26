@@ -4,28 +4,26 @@ use uuid::Uuid;
 use crate::{
     error::{Error, Result},
     db::models::PublicDocumentInfo,
+    repository::document::DocumentRepository,
 };
 
 pub struct PublicDocumentService {
     pool: Arc<PgPool>,
+    document_repository: DocumentRepository,
 }
 
 impl PublicDocumentService {
     pub fn new(pool: Arc<PgPool>) -> Self {
-        Self { pool }
+        let document_repository = DocumentRepository::new(pool.clone());
+        Self { pool, document_repository }
     }
 
     /// Make a document public
     pub async fn publish_document(&self, document_id: Uuid, user_id: Uuid) -> Result<()> {
         // Verify ownership
-        let document = sqlx::query!(
-            "SELECT id, owner_id, title FROM documents WHERE id = $1",
-            document_id
-        )
-        .fetch_optional(self.pool.as_ref())
-        .await?
-        .ok_or_else(|| Error::NotFound("Document not found".to_string()))?;
-
+        let document = self.document_repository.get_by_id(document_id).await?
+            .ok_or_else(|| Error::NotFound("Document not found".to_string()))?;
+        
         if document.owner_id != user_id {
             return Err(Error::Forbidden);
         }
@@ -48,14 +46,9 @@ impl PublicDocumentService {
     /// Make a document private
     pub async fn unpublish_document(&self, document_id: Uuid, user_id: Uuid) -> Result<()> {
         // Verify ownership
-        let document = sqlx::query!(
-            "SELECT id, owner_id FROM documents WHERE id = $1",
-            document_id
-        )
-        .fetch_optional(self.pool.as_ref())
-        .await?
-        .ok_or_else(|| Error::NotFound("Document not found".to_string()))?;
-
+        let document = self.document_repository.get_by_id(document_id).await?
+            .ok_or_else(|| Error::NotFound("Document not found".to_string()))?;
+        
         if document.owner_id != user_id {
             return Err(Error::Forbidden);
         }
