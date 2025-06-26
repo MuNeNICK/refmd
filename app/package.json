@@ -33,6 +33,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
+    "jose": "^6.0.11",
     "katex": "^0.16.22",
     "lib0": "^0.2.108",
     "lucide-react": "^0.513.0",

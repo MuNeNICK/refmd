@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { decodeJwt } from 'jose'
 
 export function middleware(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl
@@ -16,16 +17,31 @@ export function middleware(request: NextRequest) {
   // Get authentication token from cookies
   const token = request.cookies.get('auth-token')?.value
 
-  // If user is not authenticated and trying to access protected route
+  // Check if token exists and is valid
+  let isTokenValid = false
+  if (token) {
+    try {
+      const payload = decodeJwt(token)
+      const currentTime = Math.floor(Date.now() / 1000)
+      isTokenValid = payload.exp ? payload.exp > currentTime : false
+    } catch (error) {
+      console.log('Middleware: Invalid token format')
+      isTokenValid = false
+    }
+  }
+
+  // If user is not authenticated or token is expired and trying to access protected route
   // BUT allow access if it's a shared resource with token or public document
-  if (!token && !isPublicRoute && !isSharedResource && !isPublicDocument) {
+  if ((!token || !isTokenValid) && !isPublicRoute && !isSharedResource && !isPublicDocument) {
     console.log('Middleware: Redirecting to signin')
-    const signInUrl = new URL('/auth/signin', request.url)
-    return NextResponse.redirect(signInUrl)
+    // Clear the invalid token cookie
+    const response = NextResponse.redirect(new URL('/auth/signin', request.url))
+    response.cookies.delete('auth-token')
+    return response
   }
   
-  // If user is authenticated and trying to access auth pages, redirect to dashboard
-  if (token && (pathname === '/auth/signin' || pathname === '/auth/signup')) {
+  // If user is authenticated with valid token and trying to access auth pages, redirect to dashboard
+  if (token && isTokenValid && (pathname === '/auth/signin' || pathname === '/auth/signup')) {
     const dashboardUrl = new URL('/dashboard', request.url)
     return NextResponse.redirect(dashboardUrl)
   }
