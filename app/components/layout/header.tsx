@@ -28,8 +28,7 @@ import {
   WifiOff,
   Users,
   Link2,
-  FileCode,
-  Menu
+  FileCode
 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
