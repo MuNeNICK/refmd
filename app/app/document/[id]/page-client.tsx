@@ -24,23 +24,31 @@ const DocumentEditor = dynamic(
 
 interface PageClientProps {
   documentId: string;
-  initialDocument: Document | null;
+  initialDocument: (Document & { permission?: string }) | null;
   token?: string;
 }
 
 export default function PageClient({ documentId, initialDocument, token }: PageClientProps) {
   const api = getApiClient();
-  const [viewMode, setViewMode] = useState<ViewMode>("split");
+  const [isViewOnly] = useState(initialDocument?.permission === 'view');
+  const [viewMode, setViewMode] = useState<ViewMode>(isViewOnly ? "preview" : "split");
   const [documentTitle] = useState<string>(initialDocument?.title || `Document ${documentId.slice(0, 8)}`);
   const [isShareLink] = useState(!!token);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
-  const [isViewOnly] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | undefined>(undefined);
   const [synced, setSynced] = useState(false);
   const [connected, setConnected] = useState(false);
   const [activeUsers, setActiveUsers] = useState(1);
   const [currentContent, setCurrentContent] = useState(initialDocument?.content || '');
   const [showBacklinks, setShowBacklinks] = useState(false);
+  const [currentDocument, setCurrentDocument] = useState(initialDocument);
+
+  // Determine if document is published and generate public URL
+  const isDocumentPublished = currentDocument?.visibility === 'public' && !!currentDocument?.published_at;
+  const generatePublicUrl = useCallback(() => {
+    if (!isDocumentPublished || !currentDocument?.owner_username) return '';
+    return `/u/${currentDocument.owner_username}/${documentId}`;
+  }, [isDocumentPublished, currentDocument?.owner_username, documentId]);
 
   // Handle mobile view mode
   React.useEffect(() => {
@@ -157,6 +165,44 @@ export default function PageClient({ documentId, initialDocument, token }: PageC
     setCurrentContent(content);
   }, []);
 
+  // Function to refresh document data
+  const refreshDocument = useCallback(async () => {
+    try {
+      const refreshedDoc = await api.documents.getDocument(documentId, token);
+      setCurrentDocument(refreshedDoc);
+      
+      // If we need to get owner username, fetch it if not already present
+      if (refreshedDoc.visibility === 'public' && !refreshedDoc.owner_username) {
+        // This might not be needed if the API always returns owner_username for public docs
+        // But adding for completeness
+        const docWithOwner = { ...refreshedDoc };
+        if (!docWithOwner.owner_username && initialDocument?.owner_username) {
+          docWithOwner.owner_username = initialDocument.owner_username;
+        }
+        setCurrentDocument(docWithOwner);
+      }
+    } catch (error) {
+      console.error('Failed to refresh document:', error);
+    }
+  }, [api.documents, documentId, token, initialDocument?.owner_username]);
+
+  // Show error if document couldn't be loaded
+  if (!initialDocument && token) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center space-y-4">
+          <h1 className="text-2xl font-semibold">Share Link Error</h1>
+          <p className="text-muted-foreground">
+            This share link is invalid or has expired.
+          </p>
+          <a href="/auth/signin" className="text-primary hover:underline">
+            Sign in to access your documents
+          </a>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
       <MainLayout 
@@ -179,10 +225,11 @@ export default function PageClient({ documentId, initialDocument, token }: PageC
       >
         <DocumentEditor
           documentId={documentId}
-          initialDocument={initialDocument}
+          initialDocument={currentDocument}
           token={token}
           viewMode={viewMode}
           showBacklinks={showBacklinks}
+          isViewOnly={isViewOnly}
           onContentChange={handleContentChange}
           onSyncStatusChange={handleSyncStatusChange}
           onConnectionStatusChange={handleConnectionStatusChange}
@@ -197,6 +244,12 @@ export default function PageClient({ documentId, initialDocument, token }: PageC
         onOpenChange={setShareDialogOpen}
         resourceId={documentId}
         resourceType="document"
+        isPublished={isDocumentPublished}
+        publicUrl={generatePublicUrl()}
+        onPublishChange={async () => {
+          // Refresh document data to reflect the new publish state
+          await refreshDocument();
+        }}
       />
     </>
   );

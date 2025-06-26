@@ -38,7 +38,10 @@ async function getDocument(documentId: string, token?: string) {
       console.error('Error response:', errorText);
       
       if (response.status === 403 || response.status === 401) {
-        redirect("/");
+        // Don't redirect for share links - let the client handle the error
+        if (!token) {
+          redirect("/");
+        }
       }
       return null;
     }

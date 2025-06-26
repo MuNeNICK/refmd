@@ -12,7 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { AuthorAvatar } from "@/components/ui/author-avatar";
 import { 
   LogOut, 
   FileText,
@@ -355,11 +355,7 @@ export function Header({
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                      <Avatar className="h-8 w-8">
-                        <AvatarFallback className="text-xs">
-                          {(user?.name?.[0] || user?.email?.[0] || 'U').toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
+                      <AuthorAvatar name={user?.name} username={user?.email} className="h-8 w-8" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent className="w-56" align="end" forceMount>
@@ -387,11 +383,7 @@ export function Header({
                 variant="ghost" 
                 className="relative h-8 w-8 rounded-full md:hidden"
               >
-                <Avatar className="h-8 w-8">
-                  <AvatarFallback className="text-xs">
-                    {(user?.name?.[0] || user?.email?.[0] || 'U').toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
+                <AuthorAvatar name={user?.name} username={user?.email} className="h-8 w-8" />
               </Button>
             </div>
           )}

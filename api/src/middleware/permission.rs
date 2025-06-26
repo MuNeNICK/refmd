@@ -16,6 +16,7 @@ use crate::{
 pub struct PermissionCheck {
     pub has_access: bool,
     pub is_share_link: bool,
+    pub permission_level: Permission,
 }
 
 // Generic permission check that works for all document types
@@ -49,6 +50,7 @@ pub async fn check_resource_permission(
             return Ok(PermissionCheck {
                 has_access: true,
                 is_share_link: false,
+                permission_level: Permission::Owner,
             });
         }
         
@@ -59,6 +61,7 @@ pub async fn check_resource_permission(
                 return Ok(PermissionCheck {
                     has_access,
                     is_share_link: false,
+                    permission_level: perm,
                 });
             }
         }
@@ -72,6 +75,7 @@ pub async fn check_resource_permission(
                 return Ok(PermissionCheck {
                     has_access,
                     is_share_link: true,
+                    permission_level: perm,
                 });
             }
         }
@@ -80,6 +84,7 @@ pub async fn check_resource_permission(
     Ok(PermissionCheck {
         has_access: false,
         is_share_link: false,
+        permission_level: Permission::View, // Default to lowest permission when no access
     })
 }
 

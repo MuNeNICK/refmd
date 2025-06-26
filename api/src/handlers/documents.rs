@@ -2,7 +2,7 @@ use axum::{
     extract::{State, Extension, Path, Query},
     Json,
     Router,
-    routing::{get, post, delete},
+    routing::{get, post},
     middleware::from_fn_with_state,
     response::{IntoResponse, Response},
     http::{header, StatusCode},
@@ -17,9 +17,9 @@ use zip::write::FileOptions;
 use zip::ZipWriter;
 use bytes::Bytes;
 use crate::{
-    error::Result,
+    error::{Error, Result},
     state::AppState,
-    middleware::{auth::{auth_middleware, AuthUser}, optional_auth::{optional_auth_middleware, OptionalAuthUser}, permission::check_document_permission},
+    middleware::{optional_auth::{optional_auth_middleware, OptionalAuthUser}, permission::check_document_permission},
     db::models::Document,
     crdt::serialization,
     entities::share::Permission,
@@ -69,6 +69,16 @@ pub struct DocumentResponse {
     pub file_path: Option<String>,
     pub created_at: String,
     pub updated_at: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub content: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub permission: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub visibility: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub published_at: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub owner_username: Option<String>,
 }
 
 impl From<Document> for DocumentResponse {
@@ -82,6 +92,11 @@ impl From<Document> for DocumentResponse {
             file_path: doc.file_path,
             created_at: doc.created_at.to_rfc3339(),
             updated_at: doc.updated_at.to_rfc3339(),
+            content: None,
+            permission: None,
+            visibility: Some(doc.visibility),
+            published_at: doc.published_at.map(|dt| dt.to_rfc3339()),
+            owner_username: None, // This will be populated by the handler when needed
         }
     }
 }
@@ -108,30 +123,28 @@ pub struct DocumentUpdatesResponse {
 
 pub fn routes(state: Arc<AppState>) -> Router {
     Router::new()
-        // Routes requiring auth
+        // All routes use optional auth
         .route("/", get(list_documents).post(create_document))
-        .route("/:id", delete(delete_document))
+        .route("/:id", get(get_document_with_share).put(update_document_with_share).delete(delete_document))
+        .route("/:id/content", get(get_document_content_with_share))
+        .route("/:id/state", get(get_document_state_with_share))
+        .route("/:id/updates", post(get_document_updates_with_share))
+        .route("/:id/download", get(download_document_with_share))
         .route("/:id/file-path", get(get_document_file_path))
         .route("/:id/backlinks", get(crate::handlers::document_links::get_backlinks))
         .route("/:id/links", get(crate::handlers::document_links::get_outgoing_links))
         .route("/:id/link-stats", get(crate::handlers::document_links::get_link_stats))
         .route("/search", get(crate::handlers::document_links::search_documents))
-        .layer(from_fn_with_state(state.clone(), auth_middleware))
-        // Routes supporting optional auth (for share tokens)
-        .route("/:id", get(get_document_with_share).put(update_document_with_share))
-        .route("/:id/content", get(get_document_content_with_share))
-        .route("/:id/state", get(get_document_state_with_share))
-        .route("/:id/updates", post(get_document_updates_with_share))
-        .route("/:id/download", get(download_document_with_share))
         .layer(from_fn_with_state(state.clone(), optional_auth_middleware))
         .with_state(state)
 }
 
 async fn list_documents(
     State(state): State<Arc<AppState>>,
-    Extension(auth_user): Extension<AuthUser>,
+    Extension(auth_user): Extension<OptionalAuthUser>,
 ) -> Result<Json<DocumentListResponse>> {
-    let documents = state.document_service.list_documents(auth_user.user_id).await?;
+    let user_id = auth_user.user_id.ok_or(Error::Unauthorized)?;
+    let documents = state.document_service.list_documents(user_id).await?;
     let data: Vec<DocumentResponse> = documents.into_iter().map(Into::into).collect();
     
     let response = DocumentListResponse {
@@ -144,11 +157,12 @@ async fn list_documents(
 
 async fn create_document(
     State(state): State<Arc<AppState>>,
-    Extension(auth_user): Extension<AuthUser>,
+    Extension(auth_user): Extension<OptionalAuthUser>,
     Json(req): Json<CreateDocumentRequest>,
 ) -> Result<Json<DocumentResponse>> {
+    let user_id = auth_user.user_id.ok_or(Error::Unauthorized)?;
     let document = state.document_service.create_document(
-        auth_user.user_id,
+        user_id,
         &req.title,
         req.content.as_deref(),
         &req.doc_type,
@@ -161,6 +175,11 @@ async fn create_document(
         
         // Re-save document to file with content
         state.document_service.save_to_file_with_content(&document, content).await?;
+
+        // Initialize document links
+        if let Err(e) = state.document_links_service.update_document_links(document.id, content).await {
+            tracing::warn!("Failed to initialize document links for {}: {}", document.id, e);
+        }
     }
     
     Ok(Json(document.into()))
@@ -168,12 +187,31 @@ async fn create_document(
 
 async fn get_document(
     State(state): State<Arc<AppState>>,
-    Extension(auth_user): Extension<AuthUser>,
+    Extension(auth_user): Extension<OptionalAuthUser>,
     Path(id): Path<Uuid>,
 ) -> Result<Json<DocumentResponse>> {
-    let document = state.document_service.get_document(id, auth_user.user_id).await?;
+    let user_id = auth_user.user_id.ok_or(crate::error::Error::Unauthorized)?;
+    let document = state.document_service.get_document(id, user_id).await?;
     
-    Ok(Json(document.into()))
+    // Get content from CRDT
+    let content = state.crdt_service.get_document_content(id).await?;
+    
+    // Store owner_id before moving document
+    let owner_id = document.owner_id;
+    let is_public = document.visibility == "public";
+    
+    // Convert to response and add content
+    let mut response: DocumentResponse = document.into();
+    response.content = Some(content);
+    
+    // Get owner username for published documents
+    if is_public {
+        if let Ok(owner) = state.user_repository.get_by_id(owner_id).await {
+            response.owner_username = Some(owner.username);
+        }
+    }
+    
+    Ok(Json(response))
 }
 
 async fn get_document_with_share(
@@ -185,14 +223,24 @@ async fn get_document_with_share(
     let share_token = params.get("token").cloned();
     let user_id = auth_user.user_id;
     
+    tracing::info!(
+        "get_document_with_share: id={}, user_id={:?}, share_token={:?}", 
+        id, user_id, share_token
+    );
+    
     // Check permissions with optional auth and share token
     let check = check_document_permission(
         &state,
         id,
         user_id,
-        share_token,
+        share_token.clone(),
         Permission::View
     ).await?;
+    
+    tracing::info!(
+        "Permission check result: has_access={}, is_share_link={}", 
+        check.has_access, check.is_share_link
+    );
     
     if !check.has_access {
         return Err(crate::error::Error::Forbidden);
@@ -204,15 +252,39 @@ async fn get_document_with_share(
         .await?
         .ok_or_else(|| crate::error::Error::NotFound("Document not found".to_string()))?;
     
-    Ok(Json(document.into()))
+    // Get content from CRDT
+    let content = state.crdt_service.get_document_content(id).await?;
+    
+    // Store owner_id before moving document
+    let owner_id = document.owner_id;
+    let is_public = document.visibility == "public";
+    
+    // Convert to response and add content
+    let mut response: DocumentResponse = document.into();
+    response.content = Some(content);
+    
+    // Add permission level if this is a share link
+    if check.is_share_link {
+        response.permission = Some(check.permission_level.to_string().to_lowercase());
+    }
+    
+    // Get owner username for published documents
+    if is_public {
+        if let Ok(owner) = state.user_repository.get_by_id(owner_id).await {
+            response.owner_username = Some(owner.username);
+        }
+    }
+    
+    Ok(Json(response))
 }
 
 // GET /api/documents/:id/file-path
 async fn get_document_file_path(
     State(state): State<Arc<AppState>>,
-    Extension(auth_user): Extension<AuthUser>,
+    Extension(auth_user): Extension<OptionalAuthUser>,
     Path(id): Path<Uuid>,
 ) -> Result<Json<serde_json::Value>> {
+    let user_id = auth_user.user_id.ok_or(crate::error::Error::Unauthorized)?;
     // Get document and check ownership
     let document = state.document_repository
         .get_by_id(id)
@@ -220,7 +292,7 @@ async fn get_document_file_path(
         .ok_or_else(|| crate::error::Error::NotFound("Document not found".to_string()))?;
     
     // Check if user owns the document
-    if document.owner_id != auth_user.user_id {
+    if document.owner_id != user_id {
         return Err(crate::error::Error::Forbidden);
     }
     
@@ -231,13 +303,27 @@ async fn get_document_file_path(
 
 async fn update_document(
     State(state): State<Arc<AppState>>,
-    Extension(auth_user): Extension<AuthUser>,
+    Extension(auth_user): Extension<OptionalAuthUser>,
     Path(id): Path<Uuid>,
     Json(req): Json<UpdateDocumentRequest>,
 ) -> Result<Json<DocumentResponse>> {
+    let user_id = auth_user.user_id.ok_or(crate::error::Error::Unauthorized)?;
+    
+    // Use the shared update logic
+    update_document_internal(&state, id, user_id, req, "").await
+}
+
+// Shared logic for document updates to avoid code duplication
+async fn update_document_internal(
+    state: &Arc<AppState>,
+    id: Uuid,
+    user_id: Uuid,
+    req: UpdateDocumentRequest,
+    log_suffix: &str,
+) -> Result<Json<DocumentResponse>> {
     let document = state.document_service.update_document(
         id,
-        auth_user.user_id,
+        user_id,
         req.title.as_deref(),
         req.content.as_deref(),
         req.parent_id,
@@ -245,14 +331,19 @@ async fn update_document(
     
     // Update CRDT content if provided
     if let Some(ref content) = req.content {
-        tracing::info!("Updating document {} with content: {} chars", document.id, content.len());
+        tracing::info!("Updating document {} with content{}: {} chars", document.id, log_suffix, content.len());
         state.crdt_service.set_document_content(document.id, content).await?;
         
         // Save updated content to file
-        tracing::info!("Saving document {} to file", document.id);
+        tracing::info!("Saving document {} to file{}", document.id, log_suffix);
         state.document_service.save_to_file_with_content(&document, content).await?;
+
+        // Update document links
+        if let Err(e) = state.document_links_service.update_document_links(document.id, content).await {
+            tracing::warn!("Failed to update document links for {}: {}", document.id, e);
+        }
     } else {
-        tracing::info!("No content provided for document {} update", document.id);
+        tracing::info!("No content provided for document {} update{}", document.id, log_suffix);
     }
     
     Ok(Json(document.into()))
@@ -290,35 +381,17 @@ async fn update_document_with_share(
     // Use the document owner ID for the update (since share links don't have a user ID)
     let update_user_id = user_id.unwrap_or(document.owner_id);
     
-    let updated_document = state.document_service.update_document(
-        id,
-        update_user_id,
-        req.title.as_deref(),
-        req.content.as_deref(),
-        req.parent_id,
-    ).await?;
-    
-    // Update CRDT content if provided
-    if let Some(ref content) = req.content {
-        tracing::info!("Updating document {} with content via share link: {} chars", updated_document.id, content.len());
-        state.crdt_service.set_document_content(updated_document.id, content).await?;
-        
-        // Save updated content to file
-        tracing::info!("Saving document {} to file via share link", updated_document.id);
-        state.document_service.save_to_file_with_content(&updated_document, content).await?;
-    } else {
-        tracing::info!("No content provided for document {} update via share link", updated_document.id);
-    }
-    
-    Ok(Json(updated_document.into()))
+    // Use the shared update logic
+    update_document_internal(&state, id, update_user_id, req, "via share link").await
 }
 
 async fn delete_document(
     State(state): State<Arc<AppState>>,
-    Extension(auth_user): Extension<AuthUser>,
+    Extension(auth_user): Extension<OptionalAuthUser>,
     Path(id): Path<Uuid>,
 ) -> Result<()> {
-    state.document_service.delete_document(id, auth_user.user_id).await?;
+    let user_id = auth_user.user_id.ok_or(crate::error::Error::Unauthorized)?;
+    state.document_service.delete_document(id, user_id).await?;
     
     // Also remove from CRDT cache
     state.crdt_service.evict_from_cache(&id);
@@ -328,11 +401,12 @@ async fn delete_document(
 
 async fn get_document_content(
     State(state): State<Arc<AppState>>,
-    Extension(auth_user): Extension<AuthUser>,
+    Extension(auth_user): Extension<OptionalAuthUser>,
     Path(id): Path<Uuid>,
 ) -> Result<Json<DocumentContentResponse>> {
+    let user_id = auth_user.user_id.ok_or(crate::error::Error::Unauthorized)?;
     // Check permissions
-    state.document_service.get_document(id, auth_user.user_id).await?;
+    state.document_service.get_document(id, user_id).await?;
     
     // Get content from CRDT
     let content = state.crdt_service.get_document_content(id).await?;
@@ -370,11 +444,12 @@ async fn get_document_content_with_share(
 
 async fn get_document_state(
     State(state): State<Arc<AppState>>,
-    Extension(auth_user): Extension<AuthUser>,
+    Extension(auth_user): Extension<OptionalAuthUser>,
     Path(id): Path<Uuid>,
 ) -> Result<Json<DocumentStateResponse>> {
+    let user_id = auth_user.user_id.ok_or(crate::error::Error::Unauthorized)?;
     // Check permissions
-    state.document_service.get_document(id, auth_user.user_id).await?;
+    state.document_service.get_document(id, user_id).await?;
     
     // Get CRDT state
     let doc = state.crdt_service.load_or_create_document(id).await?;
@@ -424,12 +499,13 @@ async fn get_document_state_with_share(
 
 async fn get_document_updates(
     State(state): State<Arc<AppState>>,
-    Extension(auth_user): Extension<AuthUser>,
+    Extension(auth_user): Extension<OptionalAuthUser>,
     Path(id): Path<Uuid>,
     Json(req): Json<DocumentUpdatesRequest>,
 ) -> Result<Json<DocumentUpdatesResponse>> {
+    let user_id = auth_user.user_id.ok_or(crate::error::Error::Unauthorized)?;
     // Check permissions
-    state.document_service.get_document(id, auth_user.user_id).await?;
+    state.document_service.get_document(id, user_id).await?;
     
     // Get updates since timestamp
     let since = req.since.unwrap_or_else(|| Utc::now() - chrono::Duration::days(7));

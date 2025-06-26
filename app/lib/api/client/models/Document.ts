@@ -18,12 +18,32 @@ export type Document = {
     owner_id?: string;
     created_at?: string;
     updated_at?: string;
+    /**
+     * Document visibility (private, unlisted, public)
+     */
+    visibility?: Document.visibility;
+    /**
+     * Published date (only set when document is published)
+     */
+    published_at?: string | null;
+    /**
+     * Owner username (only included for published documents)
+     */
+    owner_username?: string | null;
 };
 export namespace Document {
     export enum type {
         DOCUMENT = 'document',
         FOLDER = 'folder',
         SCRAP = 'scrap',
+    }
+    /**
+     * Document visibility (private, unlisted, public)
+     */
+    export enum visibility {
+        PRIVATE = 'private',
+        UNLISTED = 'unlisted',
+        PUBLIC = 'public',
     }
 }
 

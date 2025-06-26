@@ -17,11 +17,16 @@ export function useActiveHeading(containerRef?: React.RefObject<HTMLElement>) {
     const timer = setTimeout(() => {
       const updateActiveHeading = () => {
         const container = containerRef?.current;
-        if (!container) return;
-
-        const containerRect = container.getBoundingClientRect();
-        const containerTop = containerRect.top;
-        const containerHeight = containerRect.height;
+        const isWindowScroll = !container;
+        
+        let containerTop = 0;
+        let containerHeight = window.innerHeight;
+        
+        if (container) {
+          const containerRect = container.getBoundingClientRect();
+          containerTop = containerRect.top;
+          containerHeight = containerRect.height;
+        }
         
         let activeHeading: string = "";
         let minDistance = Infinity;
@@ -31,8 +36,9 @@ export function useActiveHeading(containerRef?: React.RefObject<HTMLElement>) {
           const rect = heading.getBoundingClientRect();
           const headingTop = rect.top - containerTop;
           
-          // Check if heading is in the visible area (within top third of container)
-          if (headingTop >= -100 && headingTop <= containerHeight * 0.3) {
+          // Check if heading is in the visible area
+          const threshold = isWindowScroll ? 100 : containerHeight * 0.3;
+          if (headingTop >= -100 && headingTop <= threshold) {
             const distance = Math.abs(headingTop);
             if (distance < minDistance) {
               minDistance = distance;
@@ -96,7 +102,10 @@ export function useActiveHeading(containerRef?: React.RefObject<HTMLElement>) {
 
       // Set up scroll listener with throttling
       const scrollContainer = containerRef?.current;
-      if (scrollContainer) {
+      const scrollTarget = scrollContainer || window;
+      const observeTarget = scrollContainer || document.body;
+      
+      if (scrollTarget) {
         let scrollTimeout: NodeJS.Timeout;
         const handleScroll = () => {
           // Throttle scroll events to prevent excessive updates
@@ -106,7 +115,7 @@ export function useActiveHeading(containerRef?: React.RefObject<HTMLElement>) {
           }, 16); // ~60fps for smooth response
         };
         
-        scrollContainer.addEventListener('scroll', handleScroll, { passive: true });
+        scrollTarget.addEventListener('scroll', handleScroll, { passive: true });
         
         // Set up mutation observer to detect when headings are added/removed
         // Debounce the scanning to prevent excessive updates
@@ -118,7 +127,7 @@ export function useActiveHeading(containerRef?: React.RefObject<HTMLElement>) {
           }, 100);
         });
         
-        mutationObserverRef.current.observe(scrollContainer, {
+        mutationObserverRef.current.observe(observeTarget, {
           childList: true,
           subtree: true,
           attributes: true,
@@ -126,7 +135,7 @@ export function useActiveHeading(containerRef?: React.RefObject<HTMLElement>) {
         });
         
         return () => {
-          scrollContainer.removeEventListener('scroll', handleScroll);
+          scrollTarget.removeEventListener('scroll', handleScroll);
           mutationObserverRef.current?.disconnect();
         };
       }

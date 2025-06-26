@@ -9,7 +9,7 @@ use uuid::Uuid;
 use crate::{
     error::Result,
     state::AppState,
-    middleware::auth::AuthUser,
+    middleware::optional_auth::OptionalAuthUser,
 };
 
 #[derive(Debug, Deserialize)]
@@ -78,14 +78,16 @@ pub struct LinkStatsResponse {
 pub async fn get_backlinks(
     State(state): State<Arc<AppState>>,
     Path(document_id): Path<Uuid>,
-    Extension(auth_user): Extension<AuthUser>,
+    Extension(auth_user): Extension<OptionalAuthUser>,
 ) -> Result<Json<BacklinksResponse>> {
+    let user_id = auth_user.user_id.ok_or(crate::error::Error::Unauthorized)?;
     // Check if user has permission to view the document
-    if !state.document_repository.has_permission(document_id, auth_user.user_id, "view").await? {
+    if !state.document_repository.has_permission(document_id, user_id, "view").await? {
         return Err(crate::error::Error::Forbidden);
     }
     
-    let backlinks = state.document_links_service.get_backlinks(document_id).await?;
+    // Pass user_id to filter results based on permissions
+    let backlinks = state.document_links_service.get_backlinks(document_id, Some(user_id)).await?;
     
     let response = BacklinksResponse {
         total_count: backlinks.len(),
@@ -111,14 +113,15 @@ pub async fn get_backlinks(
 pub async fn get_outgoing_links(
     State(state): State<Arc<AppState>>,
     Path(document_id): Path<Uuid>,
-    Extension(auth_user): Extension<AuthUser>,
+    Extension(auth_user): Extension<OptionalAuthUser>,
 ) -> Result<Json<OutgoingLinksResponse>> {
+    let user_id = auth_user.user_id.ok_or(crate::error::Error::Unauthorized)?;
     // Check if user has permission to view the document
-    if !state.document_repository.has_permission(document_id, auth_user.user_id, "view").await? {
+    if !state.document_repository.has_permission(document_id, user_id, "view").await? {
         return Err(crate::error::Error::Forbidden);
     }
     
-    let links = state.document_links_service.get_outgoing_links(document_id).await?;
+    let links = state.document_links_service.get_outgoing_links(document_id, Some(user_id)).await?;
     
     let response = OutgoingLinksResponse {
         total_count: links.len(),
@@ -145,10 +148,11 @@ pub async fn get_outgoing_links(
 pub async fn search_documents(
     State(state): State<Arc<AppState>>,
     Query(query): Query<SearchQuery>,
-    Extension(auth_user): Extension<AuthUser>,
+    Extension(auth_user): Extension<OptionalAuthUser>,
 ) -> Result<Json<Vec<SearchResult>>> {
+    let user_id = auth_user.user_id.ok_or(crate::error::Error::Unauthorized)?;
     let resolver = state.document_links_service.link_resolver.clone();
-    let suggestions = resolver.get_suggestions(&query.q, auth_user.user_id).await?;
+    let suggestions = resolver.get_suggestions(&query.q, user_id).await?;
     
     let results: Vec<SearchResult> = suggestions
         .into_iter()
@@ -169,10 +173,11 @@ pub async fn search_documents(
 pub async fn get_link_stats(
     State(state): State<Arc<AppState>>,
     Path(document_id): Path<Uuid>,
-    Extension(auth_user): Extension<AuthUser>,
+    Extension(auth_user): Extension<OptionalAuthUser>,
 ) -> Result<Json<LinkStatsResponse>> {
+    let user_id = auth_user.user_id.ok_or(crate::error::Error::Unauthorized)?;
     // Check if user has permission to view the document
-    if !state.document_repository.has_permission(document_id, auth_user.user_id, "view").await? {
+    if !state.document_repository.has_permission(document_id, user_id, "view").await? {
         return Err(crate::error::Error::Forbidden);
     }
     

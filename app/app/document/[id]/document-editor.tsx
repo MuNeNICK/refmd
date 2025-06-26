@@ -21,6 +21,7 @@ interface DocumentEditorProps {
   token?: string;
   viewMode: ViewMode;
   showBacklinks?: boolean;
+  isViewOnly?: boolean;
   onContentChange?: (content: string) => void;
   onSyncStatusChange?: (synced: boolean) => void;
   onConnectionStatusChange?: (connected: boolean) => void;
@@ -35,6 +36,7 @@ export default function DocumentEditor({
   token,
   viewMode,
   showBacklinks = false,
+  isViewOnly = false,
   onContentChange,
   onSyncStatusChange,
   onConnectionStatusChange,
@@ -376,6 +378,7 @@ export default function DocumentEditor({
               userName={user?.name || undefined}
               userId={user?.id || undefined}
               documentPath={initialDocument?.file_path || undefined}
+              readOnly={isViewOnly}
               />
             </div>
           )}
@@ -385,6 +388,7 @@ export default function DocumentEditor({
               <Panel defaultSize={70} minSize={30}>
                 <MarkdownEditor
                   doc={doc}
+                  readOnly={isViewOnly}
                   awareness={awareness}
                   connected={connected}
                   onMount={handleEditorMount}
@@ -450,6 +454,7 @@ export default function DocumentEditor({
               <Panel defaultSize={50} minSize={30}>
                 <MarkdownEditor
                   doc={doc}
+                  readOnly={isViewOnly}
                   awareness={awareness}
                   connected={connected}
                   onMount={handleEditorMount}
@@ -491,6 +496,7 @@ export default function DocumentEditor({
               <Panel defaultSize={35} minSize={20}>
                 <MarkdownEditor
                   doc={doc}
+                  readOnly={isViewOnly}
                   awareness={awareness}
                   connected={connected}
                   onMount={handleEditorMount}

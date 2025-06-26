@@ -22,8 +22,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Copy, Users, Clock, Eye, Edit, Settings, Trash2 } from 'lucide-react';
+import { Copy, Users, Clock, Eye, Edit, Settings, Trash2, Globe, Lock, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
 
 interface ShareLink {
   id: string;
@@ -42,6 +45,10 @@ interface ShareDialogProps {
   trigger?: React.ReactNode;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  // Public document properties
+  isPublished?: boolean;
+  publicUrl?: string;
+  onPublishChange?: (published: boolean, publicUrl?: string) => void;
 }
 
 const PERMISSION_ICONS = {
@@ -56,7 +63,17 @@ const PERMISSION_LABELS = {
   admin: 'Admin',
 };
 
-export function ShareDialog({ resourceId, resourceType, activeUsers = 0, trigger, open, onOpenChange }: ShareDialogProps) {
+export function ShareDialog({ 
+  resourceId, 
+  resourceType, 
+  activeUsers = 0, 
+  trigger, 
+  open, 
+  onOpenChange,
+  isPublished = false,
+  publicUrl = '',
+  onPublishChange
+}: ShareDialogProps) {
   const [internalIsOpen, setInternalIsOpen] = useState(false);
   const api = getApiClient();
   
@@ -67,6 +84,13 @@ export function ShareDialog({ resourceId, resourceType, activeUsers = 0, trigger
   const [shareLinks, setShareLinks] = useState<ShareLink[]>([]);
   const [loading, setLoading] = useState(false);
   const [linkExpiry, setLinkExpiry] = useState<string>('7d');
+  
+  // Public document state
+  const [publishState, setPublishState] = useState({
+    isPublished,
+    url: publicUrl,
+    loading: false
+  });
 
   const baseUrl = getSiteUrl();
 
@@ -179,11 +203,84 @@ export function ShareDialog({ resourceId, resourceType, activeUsers = 0, trigger
     }
   };
 
+  // Public document/scrap functions
+  const handlePublish = async () => {
+    setPublishState(prev => ({ ...prev, loading: true }));
+    try {
+      let response;
+      if (resourceType === 'document') {
+        response = await api.publicDocuments.publishDocument(resourceId, {});
+      } else {
+        response = await api.scraps.publishScrap(resourceId);
+      }
+
+      const newState = {
+        isPublished: true,
+        url: response.public_url || '',
+        loading: false
+      };
+      
+      setPublishState(newState);
+      onPublishChange?.(true, response.public_url);
+      toast.success(`${resourceType === 'document' ? 'Document' : 'Scrap'} published successfully`);
+    } catch {
+      setPublishState(prev => ({ ...prev, loading: false }));
+      toast.error(`Failed to publish ${resourceType}`);
+    }
+  };
+
+  const handleUnpublish = async () => {
+    setPublishState(prev => ({ ...prev, loading: true }));
+    try {
+      if (resourceType === 'document') {
+        await api.publicDocuments.unpublishDocument(resourceId);
+      } else {
+        await api.scraps.unpublishScrap(resourceId);
+      }
+
+      const newState = {
+        isPublished: false,
+        url: '',
+        loading: false
+      };
+      
+      setPublishState(newState);
+      onPublishChange?.(false);
+      toast.success(`${resourceType === 'document' ? 'Document' : 'Scrap'} unpublished successfully`);
+    } catch {
+      setPublishState(prev => ({ ...prev, loading: false }));
+      toast.error(`Failed to unpublish ${resourceType}`);
+    }
+  };
+
+
+  const copyPublicUrl = () => {
+    if (publishState.url) {
+      const fullUrl = `${baseUrl}${publishState.url}`;
+      copyToClipboard(fullUrl);
+    }
+  };
+
+  const openPublicPage = () => {
+    if (publishState.url) {
+      window.open(`${baseUrl}${publishState.url}`, '_blank');
+    }
+  };
+
   useEffect(() => {
     if (isOpen) {
       loadShareLinks();
     }
   }, [isOpen, loadShareLinks]);
+
+  // Update publish state when props change
+  useEffect(() => {
+    setPublishState({
+      isPublished,
+      url: publicUrl,
+      loading: false
+    });
+  }, [isPublished, publicUrl]);
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -203,9 +300,86 @@ export function ShareDialog({ resourceId, resourceType, activeUsers = 0, trigger
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 overflow-auto p-4 space-y-4">
-          {/* Create link */}
+        <div className="flex-1 overflow-auto p-4 space-y-6">
+          {/* Public Document/Scrap Section */}
+          {(
+            <>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <Label className="text-sm font-medium flex items-center gap-2">
+                      {publishState.isPublished ? (
+                        <>
+                          <Globe className="w-4 h-4 text-green-600" />
+                          Public {resourceType === 'document' ? 'Document' : 'Scrap'}
+                        </>
+                      ) : (
+                        <>
+                          <Lock className="w-4 h-4 text-gray-600" />
+                          Private {resourceType === 'document' ? 'Document' : 'Scrap'}
+                        </>
+                      )}
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      {publishState.isPublished 
+                        ? `This ${resourceType} is publicly accessible at a permanent URL`
+                        : `Make this ${resourceType} publicly accessible without requiring a share link`
+                      }
+                    </p>
+                  </div>
+                  <Switch
+                    checked={publishState.isPublished}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        handlePublish();
+                      } else {
+                        handleUnpublish();
+                      }
+                    }}
+                    disabled={publishState.loading}
+                  />
+                </div>
+
+                {/* Public URL Display */}
+                {publishState.isPublished && publishState.url && (
+                  <div className="space-y-2">
+                    <Label className="text-xs text-muted-foreground">Public URL</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        value={`${baseUrl}${publishState.url}`}
+                        readOnly
+                        className="flex-1 font-mono text-sm bg-muted"
+                      />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={copyPublicUrl}
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={openPublicPage}
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+              </div>
+              
+              <Separator />
+            </>
+          )}
+
+          {/* Create temporary share link */}
           <div className="space-y-3">
+            <h4 className="font-medium">Temporary Share Links</h4>
+            <p className="text-sm text-muted-foreground">
+              Create temporary links with expiration dates and specific permissions
+            </p>
             <div className="flex gap-2">
               <Select value={permissionLevel} onValueChange={setPermissionLevel}>
                 <SelectTrigger className="w-32">
@@ -234,11 +408,11 @@ export function ShareDialog({ resourceId, resourceType, activeUsers = 0, trigger
             </div>
           </div>
 
-          {/* Existing links */}
+          {/* Existing temporary links */}
           <div className="space-y-2">
-            <h4 className="font-medium">Active share links</h4>
+            <h4 className="font-medium">Active temporary links</h4>
             {shareLinks.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No share links created yet.</p>
+              <p className="text-sm text-muted-foreground">No temporary share links created yet.</p>
             ) : (
               shareLinks.map((link) => {
                 const Icon = PERMISSION_ICONS[link.permission_level as keyof typeof PERMISSION_ICONS] || Eye;

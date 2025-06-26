@@ -213,8 +213,6 @@ fn detect_content_type(filename: &str, data: &[u8]) -> String {
             Some("mp3") => "audio/mpeg".to_string(),
             Some("wav") => "audio/wav".to_string(),
             Some("ogg") => "audio/ogg".to_string(),
-            // Document formats
-            Some("pdf") => "application/pdf".to_string(),
             // Microsoft Office formats
             Some("xlsx") => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet".to_string(),
             Some("xls") => "application/vnd.ms-excel".to_string(),

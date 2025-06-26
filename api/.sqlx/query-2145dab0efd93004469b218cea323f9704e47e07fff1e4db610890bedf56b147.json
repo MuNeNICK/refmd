@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            UPDATE documents\n            SET \n                title = COALESCE($3, title),\n                parent_id = COALESCE($4, parent_id),\n                updated_at = NOW(),\n                last_edited_by = $2,\n                last_edited_at = NOW()\n            WHERE id = $1 AND owner_id = $2\n            RETURNING id, owner_id, title, type as \"type: _\", parent_id, file_path, crdt_state, version, \n                created_at as \"created_at!\", updated_at as \"updated_at!\", last_edited_by, last_edited_at\n            ",
+  "query": "\n                SELECT DISTINCT ON (LOWER(title)) \n                       id, owner_id, title, type as \"type: _\", parent_id, file_path, \n                       crdt_state, version, COALESCE(visibility, 'private') as \"visibility!\", published_at,\n                       created_at as \"created_at!\", updated_at as \"updated_at!\", last_edited_by, last_edited_at\n                FROM documents\n                WHERE LOWER(title) = ANY($1) AND (owner_id = $2 OR id IN (\n                    SELECT document_id FROM document_permissions \n                    WHERE user_id = $2 AND permission >= 'view'\n                ))\n                ORDER BY LOWER(title), updated_at DESC\n                ",
   "describe": {
     "columns": [
       {
@@ -45,30 +45,38 @@
       },
       {
         "ordinal": 8,
-        "name": "created_at!",
-        "type_info": "Timestamptz"
+        "name": "visibility!",
+        "type_info": "Text"
       },
       {
         "ordinal": 9,
-        "name": "updated_at!",
+        "name": "published_at",
         "type_info": "Timestamptz"
       },
       {
         "ordinal": 10,
+        "name": "created_at!",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 11,
+        "name": "updated_at!",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 12,
         "name": "last_edited_by",
         "type_info": "Uuid"
       },
       {
-        "ordinal": 11,
+        "ordinal": 13,
         "name": "last_edited_at",
         "type_info": "Timestamptz"
       }
     ],
     "parameters": {
       "Left": [
-        "Uuid",
-        "Uuid",
-        "Text",
+        "TextArray",
         "Uuid"
       ]
     },
@@ -81,11 +89,13 @@
       true,
       true,
       true,
+      null,
+      true,
       true,
       true,
       true,
       true
     ]
   },
-  "hash": "62081d74c0bb0ffbda58fef5942550e3c261b44d3543c0dcf8e5277de6968e4b"
+  "hash": "2145dab0efd93004469b218cea323f9704e47e07fff1e4db610890bedf56b147"
 }

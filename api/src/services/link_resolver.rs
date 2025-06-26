@@ -25,8 +25,8 @@ impl LinkResolver {
                     Document,
                     r#"
                     SELECT id, owner_id, title, type as "type: _", parent_id, file_path, 
-                           crdt_state, version, created_at as "created_at!", 
-                           updated_at as "updated_at!", last_edited_by, last_edited_at
+                           crdt_state, version, COALESCE(visibility, 'private') as "visibility!", published_at,
+                           created_at as "created_at!", updated_at as "updated_at!", last_edited_by, last_edited_at
                     FROM documents
                     WHERE id = $1 AND (owner_id = $2 OR id IN (
                         SELECT document_id FROM document_permissions 
@@ -47,8 +47,8 @@ impl LinkResolver {
                     Document,
                     r#"
                     SELECT id, owner_id, title, type as "type: _", parent_id, file_path, 
-                           crdt_state, version, created_at as "created_at!", 
-                           updated_at as "updated_at!", last_edited_by, last_edited_at
+                           crdt_state, version, COALESCE(visibility, 'private') as "visibility!", published_at,
+                           created_at as "created_at!", updated_at as "updated_at!", last_edited_by, last_edited_at
                     FROM documents
                     WHERE LOWER(title) = LOWER($1) AND (owner_id = $2 OR id IN (
                         SELECT document_id FROM document_permissions 
@@ -68,14 +68,99 @@ impl LinkResolver {
         }
     }
 
+    /// Batch resolve multiple link targets efficiently
+    pub async fn resolve_targets_batch(&self, targets: &[&LinkTarget], owner_id: Uuid) -> Result<Vec<Option<Document>>> {
+        if targets.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        // Separate IDs and titles for batch processing
+        let mut ids = Vec::new();
+        let mut titles = Vec::new();
+        let mut target_map = std::collections::HashMap::new();
+
+        for (idx, target) in targets.iter().enumerate() {
+            match target {
+                LinkTarget::Id(id) => {
+                    ids.push(*id);
+                    target_map.insert(format!("id:{}", id), idx);
+                }
+                LinkTarget::Title(title) => {
+                    titles.push(title.clone());
+                    target_map.insert(format!("title:{}", title.to_lowercase()), idx);
+                }
+            }
+        }
+
+        let mut results = vec![None; targets.len()];
+
+        // Batch fetch by IDs
+        if !ids.is_empty() {
+            let id_docs = sqlx::query_as!(
+                Document,
+                r#"
+                SELECT id, owner_id, title, type as "type: _", parent_id, file_path, 
+                       crdt_state, version, COALESCE(visibility, 'private') as "visibility!", published_at,
+                       created_at as "created_at!", updated_at as "updated_at!", last_edited_by, last_edited_at
+                FROM documents
+                WHERE id = ANY($1) AND (owner_id = $2 OR id IN (
+                    SELECT document_id FROM document_permissions 
+                    WHERE user_id = $2 AND permission >= 'view'
+                ))
+                "#,
+                &ids,
+                owner_id
+            )
+            .fetch_all(self.pool.as_ref())
+            .await?;
+
+            for doc in id_docs {
+                if let Some(&idx) = target_map.get(&format!("id:{}", doc.id)) {
+                    results[idx] = Some(doc);
+                }
+            }
+        }
+
+        // Batch fetch by titles
+        if !titles.is_empty() {
+            let title_docs = sqlx::query_as!(
+                Document,
+                r#"
+                SELECT DISTINCT ON (LOWER(title)) 
+                       id, owner_id, title, type as "type: _", parent_id, file_path, 
+                       crdt_state, version, COALESCE(visibility, 'private') as "visibility!", published_at,
+                       created_at as "created_at!", updated_at as "updated_at!", last_edited_by, last_edited_at
+                FROM documents
+                WHERE LOWER(title) = ANY($1) AND (owner_id = $2 OR id IN (
+                    SELECT document_id FROM document_permissions 
+                    WHERE user_id = $2 AND permission >= 'view'
+                ))
+                ORDER BY LOWER(title), updated_at DESC
+                "#,
+                &titles.iter().map(|t| t.to_lowercase()).collect::<Vec<_>>(),
+                owner_id
+            )
+            .fetch_all(self.pool.as_ref())
+            .await?;
+
+            for doc in title_docs {
+                if let Some(&idx) = target_map.get(&format!("title:{}", doc.title.to_lowercase())) {
+                    results[idx] = Some(doc);
+                }
+            }
+        }
+
+        Ok(results)
+    }
+
     /// Search for documents by partial title match
     pub async fn search_by_title(&self, query: &str, owner_id: Uuid, limit: i64) -> Result<Vec<Document>> {
         let documents = sqlx::query_as!(
             Document,
             r#"
             SELECT id, owner_id, title, type as "type: _", parent_id, file_path, 
-                   crdt_state, version, created_at as "created_at!", 
-                   updated_at as "updated_at!", last_edited_by, last_edited_at
+                   crdt_state, version, COALESCE(visibility, 'private') as "visibility!", published_at,
+                   created_at as "created_at!", updated_at as "updated_at!", last_edited_by, last_edited_at
             FROM documents
             WHERE (LOWER(title) LIKE LOWER($1) OR title ILIKE $2) 
                   AND type IN ('document', 'scrap')

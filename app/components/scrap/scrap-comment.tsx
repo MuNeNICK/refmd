@@ -3,7 +3,7 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { AuthorAvatar } from '@/components/ui/author-avatar';
 import { Edit2, Trash2, MessageSquare, Eye, Edit } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { Markdown } from '@/components/markdown/markdown';
@@ -76,11 +76,7 @@ export function ScrapCommentComponent({
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <MessageSquare className="h-3 w-3" />
-            <Avatar className="h-5 w-5">
-              <AvatarFallback className="text-xs">
-                {comment.authorName?.charAt(0).toUpperCase() || 'U'}
-              </AvatarFallback>
-            </Avatar>
+            <AuthorAvatar name={comment.authorName} username={null} className="h-5 w-5" />
             <span className="font-medium">{comment.authorName || 'Unknown'}</span>
             <span>•</span>
             <time dateTime={comment.createdAt} suppressHydrationWarning>

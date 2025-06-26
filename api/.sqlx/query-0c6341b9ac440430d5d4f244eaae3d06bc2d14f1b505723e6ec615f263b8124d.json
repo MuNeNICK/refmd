@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT id, email, name, password_hash, created_at as \"created_at!\", updated_at as \"updated_at!\"\n            FROM users\n            WHERE email = $1\n            ",
+  "query": "\n            SELECT id, email, name, username, password_hash, created_at as \"created_at!\", updated_at as \"updated_at!\"\n            FROM users\n            WHERE id = $1\n            ",
   "describe": {
     "columns": [
       {
@@ -20,26 +20,32 @@
       },
       {
         "ordinal": 3,
+        "name": "username",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
         "name": "password_hash",
         "type_info": "Text"
       },
       {
-        "ordinal": 4,
+        "ordinal": 5,
         "name": "created_at!",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 5,
+        "ordinal": 6,
         "name": "updated_at!",
         "type_info": "Timestamptz"
       }
     ],
     "parameters": {
       "Left": [
-        "Text"
+        "Uuid"
       ]
     },
     "nullable": [
+      false,
       false,
       false,
       false,
@@ -48,5 +54,5 @@
       true
     ]
   },
-  "hash": "eb3d3e71a17384c5abac6df51666dd74da25ca440ccb2c42c6294a28b7dcb182"
+  "hash": "0c6341b9ac440430d5d4f244eaae3d06bc2d14f1b505723e6ec615f263b8124d"
 }

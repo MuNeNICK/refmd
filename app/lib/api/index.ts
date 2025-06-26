@@ -194,13 +194,18 @@ function setupClientInterceptors(client: RefMDClient) {
           }
           
           // If we couldn't refresh the token and got a 401, redirect to signin
-          if (error instanceof ApiError && error.status === 401 && !isAuthEndpoint) {
+          // But don't redirect if we're using a share token or checking current user
+          const isShareRequest = options.url?.includes('token=') || false;
+          const isGetCurrentUser = options.url?.includes('/users/me') || false;
+          // Also check if we're on a shared page (has token in URL)
+          const isOnSharedPage = typeof window !== 'undefined' && window.location.search.includes('token=');
+          
+          if (error instanceof ApiError && error.status === 401 && !isAuthEndpoint && !isShareRequest && !isGetCurrentUser && !isOnSharedPage) {
             clearTokens();
             if (typeof window !== 'undefined') {
               // Dispatch custom event for auth context to handle
               window.dispatchEvent(new CustomEvent('auth:error', { detail: { error } }));
-              // Also redirect directly as a fallback
-              window.location.href = '/auth/signin';
+              // Don't redirect directly - let the auth context handle it
             }
           }
           
@@ -211,6 +216,14 @@ function setupClientInterceptors(client: RefMDClient) {
       executeRequest();
     });
   };
+}
+
+// Create a public API client without authentication
+export function getPublicApiClient(): RefMDClient {
+  return new RefMDClient({
+    BASE: getApiUrl(),
+    TOKEN: undefined, // Explicitly set to undefined to ensure no auth
+  });
 }
 
 export * from './client';

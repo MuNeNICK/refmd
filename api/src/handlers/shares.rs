@@ -18,13 +18,15 @@ use crate::{
 
 pub fn routes(state: Arc<AppState>) -> Router {
     Router::new()
-        // Routes requiring authentication
-        .route("/documents/:id/share", post(create_share_link))
-        .route("/documents/:id/shares", get(list_document_shares))
-        .route("/:token", delete(delete_share))
-        .layer(from_fn_with_state(state.clone(), auth_middleware))
         // Public routes (no auth required for viewing shared documents)
         .route("/:token", get(get_shared_document))
+        // Routes requiring authentication
+        .nest("/", Router::new()
+            .route("/documents/:id/share", post(create_share_link))
+            .route("/documents/:id/shares", get(list_document_shares))
+            .route("/:token", delete(delete_share))
+            .layer(from_fn_with_state(state.clone(), auth_middleware))
+        )
         .with_state(state)
 }
 

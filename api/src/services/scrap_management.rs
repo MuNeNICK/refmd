@@ -74,9 +74,22 @@ impl ScrapService {
         
         tracing::debug!("Successfully fetched scrap with {} posts", posts.len());
 
+        let mut scrap = self.document_to_scrap(document.clone());
+        
+        // Get owner username for published scraps
+        if scrap.visibility == "public" {
+            if let Ok(owner) = sqlx::query!("SELECT username FROM users WHERE id = $1", document.owner_id)
+                .fetch_one(&*self.pool)
+                .await 
+            {
+                scrap.owner_username = Some(owner.username);
+            }
+        }
+
         Ok(ScrapWithPosts {
-            scrap: self.document_to_scrap(document),
+            scrap,
             posts,
+            permission: None,
         })
     }
 
@@ -131,10 +144,34 @@ impl ScrapService {
         if !has_access {
             return Err(Error::Forbidden);
         }
+        
+        self.add_post_internal(scrap_id, user_id, request).await
+    }
+    
+    // Internal method that skips permission check (for use with share tokens)
+    pub async fn add_post_with_permission_bypass(
+        &self,
+        scrap_id: Uuid,
+        user_id: Uuid,
+        request: CreateScrapPostRequest,
+    ) -> Result<ScrapPost> {
+        self.add_post_internal(scrap_id, user_id, request).await
+    }
+    
+    async fn add_post_internal(
+        &self,
+        scrap_id: Uuid,
+        user_id: Uuid,
+        request: CreateScrapPostRequest,
+    ) -> Result<ScrapPost> {
+        tracing::info!("add_post_internal: scrap_id={}, user_id={}", scrap_id, user_id);
 
         // Use transaction to ensure atomicity
         let mut tx = self.pool.begin().await
-            .map_err(|e| Error::InternalServerError(format!("Failed to start transaction: {}", e)))?;
+            .map_err(|e| {
+                tracing::error!("Failed to start transaction: {}", e);
+                Error::InternalServerError(format!("Failed to start transaction: {}", e))
+            })?;
 
         // Create post in database within transaction
         let db_post = ScrapRepository::create_scrap_post_tx(
@@ -143,10 +180,18 @@ impl ScrapService {
             user_id,
             request.content.clone(),
         )
-        .await?;
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to create post in DB: {:?}", e);
+            e
+        })?;
 
         // Get author name
-        let author_name = self.get_user_name(user_id).await?;
+        let author_name = self.get_user_name(user_id).await
+            .map_err(|e| {
+                tracing::error!("Failed to get user name for user_id={}: {:?}", user_id, e);
+                e
+            })?;
 
         let post = ScrapPost {
             id: db_post.id,
@@ -158,11 +203,20 @@ impl ScrapService {
         };
 
         // Get document within transaction
-        let document = ScrapRepository::get_scrap_by_id_tx(&mut tx, scrap_id).await?;
+        let document = ScrapRepository::get_scrap_by_id_tx(&mut tx, scrap_id).await
+            .map_err(|e| {
+                tracing::error!("Failed to get scrap document: scrap_id={}, error={:?}", scrap_id, e);
+                e
+            })?;
         
         // Commit transaction first to ensure post is saved
         tx.commit().await
-            .map_err(|e| Error::InternalServerError(format!("Failed to commit transaction: {}", e)))?;
+            .map_err(|e| {
+                tracing::error!("Failed to commit transaction: {}", e);
+                Error::InternalServerError(format!("Failed to commit transaction: {}", e))
+            })?;
+        
+        tracing::info!("Post created successfully in DB: post_id={}, scrap_id={}", post.id, scrap_id);
 
         // Update CRDT and file with retry mechanism
         if let Some(_file_path) = &document.file_path {
@@ -191,7 +245,11 @@ impl ScrapService {
 
     async fn update_scrap_content_with_post(&self, document_id: Uuid, post: &ScrapPost) -> Result<()> {
         // Get current content from CRDT with retry
-        let content = self.crdt_service.get_document_content(document_id).await?;
+        let content = self.crdt_service.get_document_content(document_id).await
+            .map_err(|e| {
+                tracing::error!("Failed to get CRDT content for document {}: {:?}", document_id, e);
+                e
+            })?;
         
         // Add post to content
         let new_content = ScrapParser::add_post_to_content(&content, post)?;
@@ -237,9 +295,22 @@ impl ScrapService {
         let document = ScrapRepository::get_scrap_by_id(&*self.pool, id).await?;
         let posts = ScrapRepository::get_scrap_posts(&*self.pool, id).await?;
         
+        let mut scrap = self.document_to_scrap(document.clone());
+        
+        // Get owner username for published scraps
+        if scrap.visibility == "public" {
+            if let Ok(owner) = sqlx::query!("SELECT username FROM users WHERE id = $1", document.owner_id)
+                .fetch_one(&*self.pool)
+                .await 
+            {
+                scrap.owner_username = Some(owner.username);
+            }
+        }
+        
         Ok(ScrapWithPosts {
-            scrap: self.document_to_scrap(document),
+            scrap,
             posts,
+            permission: None,
         })
     }
 
@@ -248,6 +319,37 @@ impl ScrapService {
     }
 
     pub async fn update_post(
+        &self,
+        scrap_id: Uuid,
+        post_id: Uuid,
+        user_id: Uuid,
+        request: UpdateScrapPostRequest,
+    ) -> Result<ScrapPost> {
+        // Check if user owns the post or has access to the scrap
+        let post = ScrapRepository::get_scrap_post(&*self.pool, post_id).await?;
+        if post.author_id != user_id {
+            // If not the author, check if they have access to the scrap
+            let has_access = ScrapRepository::check_scrap_access(&*self.pool, scrap_id, user_id).await?;
+            if !has_access {
+                return Err(Error::Forbidden);
+            }
+        }
+        
+        self.update_post_internal(scrap_id, post_id, user_id, request).await
+    }
+    
+    // Internal method that skips permission check (for use with share tokens)
+    pub async fn update_post_with_permission_bypass(
+        &self,
+        scrap_id: Uuid,
+        post_id: Uuid,
+        user_id: Uuid,
+        request: UpdateScrapPostRequest,
+    ) -> Result<ScrapPost> {
+        self.update_post_internal(scrap_id, post_id, user_id, request).await
+    }
+    
+    async fn update_post_internal(
         &self,
         scrap_id: Uuid,
         post_id: Uuid,
@@ -280,7 +382,11 @@ impl ScrapService {
         };
 
         // Get document within transaction
-        let document = ScrapRepository::get_scrap_by_id_tx(&mut tx, scrap_id).await?;
+        let document = ScrapRepository::get_scrap_by_id_tx(&mut tx, scrap_id).await
+            .map_err(|e| {
+                tracing::error!("Failed to get scrap document: scrap_id={}, error={:?}", scrap_id, e);
+                e
+            })?;
         
         // Commit transaction
         tx.commit().await
@@ -339,6 +445,35 @@ impl ScrapService {
         post_id: Uuid,
         user_id: Uuid,
     ) -> Result<()> {
+        // Check if user owns the post or has access to the scrap
+        let post = ScrapRepository::get_scrap_post(&*self.pool, post_id).await?;
+        if post.author_id != user_id {
+            // If not the author, check if they have access to the scrap
+            let has_access = ScrapRepository::check_scrap_access(&*self.pool, scrap_id, user_id).await?;
+            if !has_access {
+                return Err(Error::Forbidden);
+            }
+        }
+        
+        self.delete_post_internal(scrap_id, post_id, user_id).await
+    }
+    
+    // Internal method that skips permission check (for use with share tokens)
+    pub async fn delete_post_with_permission_bypass(
+        &self,
+        scrap_id: Uuid,
+        post_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<()> {
+        self.delete_post_internal(scrap_id, post_id, user_id).await
+    }
+    
+    async fn delete_post_internal(
+        &self,
+        scrap_id: Uuid,
+        post_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<()> {
         // Use transaction for atomicity
         let mut tx = self.pool.begin().await
             .map_err(|e| Error::InternalServerError(format!("Failed to start transaction: {}", e)))?;
@@ -347,7 +482,11 @@ impl ScrapService {
         ScrapRepository::delete_scrap_post_tx(&mut tx, post_id, user_id).await?;
 
         // Get document within transaction
-        let document = ScrapRepository::get_scrap_by_id_tx(&mut tx, scrap_id).await?;
+        let document = ScrapRepository::get_scrap_by_id_tx(&mut tx, scrap_id).await
+            .map_err(|e| {
+                tracing::error!("Failed to get scrap document: scrap_id={}, error={:?}", scrap_id, e);
+                e
+            })?;
         
         // Commit transaction
         tx.commit().await
@@ -403,22 +542,19 @@ impl ScrapService {
     async fn get_user_name(&self, user_id: Uuid) -> Result<String> {
         use crate::repository::UserRepository;
         
+        // Check if this is a deterministic UUID for anonymous users
+        // These UUIDs have a specific pattern created from share token hash
         let user_repo = UserRepository::new(self.pool.clone());
-        let user = user_repo.get_by_id(user_id).await?;
-        Ok(user.name)
+        match user_repo.get_by_id(user_id).await {
+            Ok(user) => Ok(user.name),
+            Err(_) => {
+                // For anonymous users (share link users), return a generic name
+                Ok("Anonymous".to_string())
+            }
+        }
     }
 
     fn document_to_scrap(&self, document: crate::db::models::Document) -> Scrap {
-        Scrap {
-            id: document.id,
-            owner_id: document.owner_id,
-            title: document.title,
-            file_path: document.file_path,
-            parent_id: document.parent_id,
-            created_at: document.created_at,
-            updated_at: document.updated_at,
-            last_edited_by: document.last_edited_by,
-            last_edited_at: document.last_edited_at,
-        }
+        document.into()
     }
 }

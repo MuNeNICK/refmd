@@ -1756,6 +1756,69 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /scraps/{id}/publish:
+    post:
+      tags:
+        - Scraps
+      summary: Publish a scrap publicly
+      operationId: publishScrap
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Scrap ID
+      responses:
+        '200':
+          description: Scrap published successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublishDocumentResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /scraps/{id}/unpublish:
+    post:
+      tags:
+        - Scraps
+      summary: Unpublish a scrap
+      operationId: unpublishScrap
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Scrap ID
+      responses:
+        '200':
+          description: Scrap unpublished successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   /scraps/{id}/shares:
     get:
       tags:
@@ -1834,6 +1897,158 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ===== Public Documents =====
+  /documents/{id}/publish:
+    post:
+      tags:
+        - Public Documents
+      summary: Publish a document
+      description: Make a document publicly accessible at /u/username/document-id
+      operationId: publishDocument
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PublishDocumentRequest'
+      responses:
+        '201':
+          description: Document published successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublishDocumentResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /documents/{id}/unpublish:
+    delete:
+      tags:
+        - Public Documents
+      summary: Unpublish a document
+      description: Make a document private (remove from public access)
+      operationId: unpublishDocument
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Document unpublished successfully
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+
+  /my-public-documents:
+    get:
+      tags:
+        - Public Documents
+      summary: List my published documents
+      description: Get list of documents published by the current user
+      operationId: listMyPublicDocuments
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Published documents retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicDocumentListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /u/{username}/{document_id}:
+    get:
+      tags:
+        - Public Documents
+      summary: Get public document
+      description: Get a publicly published document by username and document ID
+      operationId: getPublicDocument
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: document_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Public document retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicDocumentResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /u/{username}:
+    get:
+      tags:
+        - Public Documents
+      summary: List user's public documents
+      description: Get list of public documents by a specific user
+      operationId: listUserPublicDocuments
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          description: Maximum number of results
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: offset
+          in: query
+          description: Number of items to skip
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: Public documents retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicDocumentListResponse'
         '404':
           $ref: '#/components/responses/NotFound'
 
@@ -2087,6 +2302,19 @@ components:
         updated_at:
           type: string
           format: date-time
+        visibility:
+          type: string
+          enum: [private, unlisted, public]
+          description: Document visibility (private, unlisted, public)
+        published_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Published date (only set when document is published)
+        owner_username:
+          type: string
+          nullable: true
+          description: Owner username (only included for published documents)
 
     CreateDocumentRequest:
       type: object
@@ -2596,6 +2824,19 @@ components:
           type: string
           format: date-time
           nullable: true
+        visibility:
+          type: string
+          enum: [private, unlisted, public]
+          description: Scrap visibility (private, unlisted, public)
+        published_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Published date (only set when scrap is published)
+        owner_username:
+          type: string
+          nullable: true
+          description: Owner username (only included for published scraps)
 
     ScrapPost:
       type: object
@@ -2767,6 +3008,97 @@ components:
           type: string
           format: date-time
 
+    # ===== Public Documents =====
+    PublishDocumentRequest:
+      type: object
+      properties: {}
+
+    PublishDocumentResponse:
+      type: object
+      properties:
+        public_url:
+          type: string
+          description: Public URL for the document
+          example: "/u/username/ca41e13d-bc50-45c7-bb7b-fca0f30be4ab"
+
+    PublicDocument:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        content:
+          type: string
+        document_type:
+          type: string
+        published_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        author:
+          $ref: '#/components/schemas/AuthorInfo'
+
+    AuthorInfo:
+      type: object
+      properties:
+        username:
+          type: string
+        name:
+          type: string
+
+    PublicDocumentResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        content:
+          type: string
+        document_type:
+          type: string
+        published_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        author:
+          $ref: '#/components/schemas/AuthorInfo'
+
+    PublicDocumentSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        document_type:
+          type: string
+        published_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    PublicDocumentListResponse:
+      type: object
+      properties:
+        documents:
+          type: array
+          items:
+            $ref: '#/components/schemas/PublicDocumentSummary'
+        total:
+          type: integer
+          description: Total number of documents in this response
+
   responses:
     BadRequest:
       description: Bad request
@@ -2814,6 +3146,8 @@ tags:
     description: File attachment management
   - name: Sharing
     description: Document sharing functionality
+  - name: Public Documents
+    description: Persistent public document sharing
   - name: Socket.IO
     description: Real-time collaboration statistics
   - name: Scraps

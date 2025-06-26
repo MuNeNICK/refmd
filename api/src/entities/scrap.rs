@@ -1,6 +1,7 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
+use crate::db::models::Document;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Scrap {
@@ -13,6 +14,9 @@ pub struct Scrap {
     pub updated_at: DateTime<Utc>,
     pub last_edited_by: Option<Uuid>,
     pub last_edited_at: Option<DateTime<Utc>>,
+    pub visibility: String,
+    pub published_at: Option<DateTime<Utc>>,
+    pub owner_username: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -29,6 +33,8 @@ pub struct ScrapPost {
 pub struct ScrapWithPosts {
     pub scrap: Scrap,
     pub posts: Vec<ScrapPost>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub permission: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -50,4 +56,23 @@ pub struct CreateScrapPostRequest {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UpdateScrapPostRequest {
     pub content: String,
+}
+
+impl From<Document> for Scrap {
+    fn from(doc: Document) -> Self {
+        Self {
+            id: doc.id,
+            owner_id: doc.owner_id,
+            title: doc.title,
+            file_path: doc.file_path,
+            parent_id: doc.parent_id,
+            created_at: doc.created_at,
+            updated_at: doc.updated_at,
+            last_edited_by: doc.last_edited_by,
+            last_edited_at: doc.last_edited_at,
+            visibility: doc.visibility,
+            published_at: doc.published_at,
+            owner_username: None, // This will be populated when needed
+        }
+    }
 }
