@@ -201,19 +201,12 @@ function MarkdownComponent({ content, components, onCheckboxChange, isPublic }: 
     // Ensure content is a plain string
     const safe = typeof content === 'string' ? content : String(content)
     
-    // Filter out problematic HTML tags and malformed elements
-    let sanitized = safe
-      .replace(/<\/?anonymous[^>]*>/gi, '')
-      .replace(/<[^>]*>/g, (match) => {
-        // Only allow known HTML tags to prevent anonymous tag errors
-        const allowedTags = /^<\/?(?:div|span|p|h[1-6]|strong|em|b|i|u|a|img|pre|code|ul|ol|li|blockquote|table|thead|tbody|tr|td|th|br|hr)[^>]*>$/i
-        return allowedTags.test(match) ? match : ''
-      })
+    // Only remove specifically problematic tags that cause rendering errors
+    const sanitized = safe
+      .replace(/<\/?anonymous[^>]*>/gi, '') // Remove anonymous tags that cause React errors
     
-    // If content seems problematic, fall back to plain text preview
-    if (sanitized.includes('<script') || sanitized.includes('javascript:')) {
-      sanitized = safe.replace(/<[^>]*>/g, '') // Strip all HTML
-    }
+    // rehype-raw will handle HTML sanitization properly, so we don't need to strip all HTML
+    // Only do minimal intervention for known problematic cases
     
     return { sanitizedContent: sanitized }
   }, [content])
