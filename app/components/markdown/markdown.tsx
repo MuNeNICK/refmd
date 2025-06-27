@@ -140,55 +140,75 @@ const createDefaultComponents = (isPublic?: boolean): import('react-markdown').C
   h4: createHeadingComponent(4),
   h5: createHeadingComponent(5),
   h6: createHeadingComponent(6),
-  code({ node, className, children, ...props }) {
-    const match = /language-(\w+)/.exec(className || '')
+  code({ className, children, ...props }) {
+    // For code blocks, preserve everything and let pre handle it
+    const parent = (props as { parent?: { tagName?: string } }).parent;
+    const isCodeBlock = parent && parent.tagName === 'pre';
     
-    // Check if it's an inline code element
-    // In react-markdown v8+, inline code is when the parent is not 'pre'
-    const isInline = !node || (node.position?.start.line === node.position?.end.line)
-    
-    // Inline code
-    if (isInline) {
+    if (isCodeBlock) {
       return (
-        <code className="bg-muted px-1 py-0.5 rounded text-sm" {...props}>
+        <code className={className} {...props}>
           {children}
         </code>
       )
     }
     
-    // Code block with or without language
+    // For inline code
     return (
-      <CodeBlock language={match?.[1]} className="not-prose">
-        {String(children).replace(/\n$/, '')}
-      </CodeBlock>
+      <code className="bg-muted px-1 py-0.5 rounded text-sm" {...props}>
+        {children}
+      </code>
     )
   },
-  pre({ children, ...props }) {
-    // If the pre element already contains a CodeBlock component (from the code function above),
-    // just return the children without wrapping
-    const hasCodeBlock = React.Children.toArray(children).some(
-      child => {
-        if (!React.isValidElement(child)) return false;
-        
-        // Check if it's a CodeBlock component
-        if (child.type === CodeBlock) return true;
-        
-        // Check if it has the 'not-prose' className
-        const childProps = child.props as { className?: string };
-        return childProps.className?.includes('not-prose') ?? false;
-      }
+  pre({ children }) {
+    const childrenArray = React.Children.toArray(children);
+    
+    // Check if we have a code element
+    const codeElement = childrenArray.find(
+      child => React.isValidElement(child) && 
+              child.props &&
+              typeof child.props === 'object' &&
+              'className' in child.props && 
+              'children' in child.props
     );
     
-    if (hasCodeBlock) {
-      return <>{children}</>;
+    if (codeElement && React.isValidElement(codeElement)) {
+      // Extract language from className
+      const className = (codeElement.props as { className?: string }).className || '';
+      const match = /language-(\w+)/.exec(className);
+      const language = match?.[1];
+      
+      // Extract the text content
+      const codeContent = String((codeElement.props as { children?: React.ReactNode }).children).replace(/\n$/, '');
+      
+      return (
+        <CodeBlock language={language} className="not-prose">
+          {codeContent}
+        </CodeBlock>
+      );
     }
     
-    // Otherwise, render pre blocks with consistent styling
+    // For pre elements without code element (happens when ``` has no language)
+    // Extract all text content including nested elements
+    const extractText = (node: React.ReactNode): string => {
+      if (typeof node === 'string') return node;
+      if (React.isValidElement(node) && node.props && typeof node.props === 'object' && 'children' in node.props) {
+        return String((node.props as { children?: React.ReactNode }).children);
+      }
+      return '';
+    };
+    
+    const textContent = childrenArray
+      .map(child => extractText(child))
+      .join('')
+      .replace(/\n$/, '');
+    
+    // Render as CodeBlock without language for consistent styling
     return (
-      <pre {...props}>
-        {children}
-      </pre>
-    )
+      <CodeBlock language={undefined} className="not-prose">
+        {textContent}
+      </CodeBlock>
+    );
   }
 })
 

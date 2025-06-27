@@ -61,7 +61,7 @@ export function CodeBlock({ language, children, className }: CodeBlockProps) {
       </Button>
       <Suspense fallback={<CodeBlockSkeleton />}>
         <SyntaxHighlighter
-          language={language}
+          language={language || 'text'}
           style={oneDark}
           PreTag="pre"
           customStyle={{
