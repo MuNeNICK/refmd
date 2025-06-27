@@ -68,7 +68,15 @@ export function SecondaryViewer({
             
             // Load document content
             const contentResponse = await api.documents.getDocumentContent(documentId)
-            setContent(contentResponse || '')
+            
+            // Handle response - API returns {content: string} object
+            const content = typeof contentResponse === 'object' && contentResponse !== null && 'content' in contentResponse
+              ? (contentResponse as { content: string }).content
+              : typeof contentResponse === 'string' 
+                ? contentResponse 
+                : ''
+            
+            setContent(content)
             setCurrentType('document')
           } catch (docError) {
             // If document fails and type wasn't explicitly set, try as scrap
