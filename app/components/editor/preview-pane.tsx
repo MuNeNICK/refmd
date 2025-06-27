@@ -37,6 +37,10 @@ interface PreviewPaneProps {
   contentStats?: { wordCount: number; charCount: number };
   token?: string;
   onCheckboxChange?: (lineIndex: number, checked: boolean) => void;
+  isSecondaryViewer?: boolean;
+  onNavigate?: (documentId: string, type?: 'document' | 'scrap') => void;
+  className?: string;
+  forceFloatingToc?: boolean;
 }
 
 function PreviewPaneComponent({ 
@@ -47,7 +51,11 @@ function PreviewPaneComponent({
   viewMode = "preview",
   previewRef,
   token,
-  onCheckboxChange
+  onCheckboxChange,
+  isSecondaryViewer = false,
+  onNavigate,
+  className,
+  forceFloatingToc = false
 }: PreviewPaneProps) {
   const [showFloatingToc, setShowFloatingToc] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -156,7 +164,7 @@ function PreviewPaneComponent({
   }, [scrollPercentage, actualPreviewRef]);
 
   return (
-    <div className="h-full bg-background relative overflow-hidden flex flex-col">
+    <div className={cn("h-full bg-background relative overflow-hidden flex flex-col", className)}>
       <div className="flex-1 overflow-auto" ref={actualPreviewRef} onScroll={handleScroll}>
         <div className={cn(
           "w-full mx-auto flex gap-8 p-4 sm:p-6 md:p-8",
@@ -165,7 +173,8 @@ function PreviewPaneComponent({
           <div className="flex-1 min-w-0 overflow-hidden">
             <div className={cn(
               "prose prose-neutral dark:prose-invert markdown-preview break-words overflow-wrap-anywhere",
-              viewMode === "preview" ? "max-w-3xl mx-auto" : "max-w-none"
+              viewMode === "preview" ? "max-w-3xl mx-auto" : "max-w-none",
+              isSecondaryViewer && "markdown-preview-secondary"
             )}>
               {useMemo(() => {
                 try {
@@ -260,6 +269,7 @@ function PreviewPaneComponent({
                                 href={href || '#'} 
                                 data-wiki-target={isWikiLink ? target : undefined}
                                 data-mention-target={isMentionLink ? target : undefined}
+                                onNavigate={onNavigate}
                                 {...props}
                               >
                                 {children}
@@ -338,24 +348,27 @@ function PreviewPaneComponent({
                 } catch {
                   return <div>Error rendering markdown</div>;
                 }
-              }, [content, headingComponents, documentId, token, onCheckboxChange])}
+              }, [content, headingComponents, documentId, token, onCheckboxChange, onNavigate])}
             </div>
           </div>
-          {/* Table of Contents - only show in preview mode, not in split mode */}
-          {viewMode === "preview" && (
+          {/* Table of Contents - only show in preview mode on desktop when not forced to floating */}
+          {viewMode === "preview" && !isMobile && !isSecondaryViewer && !forceFloatingToc && (
             <aside className="w-64 shrink-0 hidden lg:block">
-              <CollapsibleToc contentSelector=".markdown-preview" containerRef={actualPreviewRef as React.RefObject<HTMLElement>} />
+              <CollapsibleToc 
+                contentSelector=".markdown-preview:not(.markdown-preview-secondary)" 
+                containerRef={actualPreviewRef as React.RefObject<HTMLElement>} 
+              />
             </aside>
           )}
         </div>
       </div>
       
-      {/* Floating TOC button - show in split mode or on mobile in preview mode */}
-      {(viewMode === "split" || (viewMode === "preview" && isMobile)) && (
+      {/* Floating TOC button - show when appropriate */}
+      {(viewMode === "split" || (viewMode === "preview" && isMobile) || isSecondaryViewer || forceFloatingToc) && (
           <Button
             ref={tocButtonRef}
             onClick={() => setShowFloatingToc(!showFloatingToc)}
-            className="fixed bottom-6 right-6 p-3 bg-primary text-primary-foreground rounded-full shadow-lg hover:shadow-xl transition-all z-50"
+            className="absolute bottom-6 right-6 p-3 bg-primary text-primary-foreground rounded-full shadow-lg hover:shadow-xl transition-all z-40"
             title="Table of Contents"
             size="icon"
           >
@@ -367,7 +380,7 @@ function PreviewPaneComponent({
           {showFloatingToc && (
             <div 
               ref={floatingTocRef}
-              className="fixed bottom-20 right-6 max-w-[90vw] bg-background border rounded-lg shadow-xl z-50"
+              className="absolute bottom-20 right-6 w-[300px] max-w-[calc(100%-3rem)] bg-background border rounded-lg shadow-xl z-40"
             >
               <div className="flex items-center justify-between p-2 border-b">
                 <h3 className="text-xs font-semibold pr-4">Table of Contents</h3>
@@ -382,7 +395,7 @@ function PreviewPaneComponent({
               </div>
               <div className="max-h-[60vh]">
                 <CollapsibleToc 
-                  contentSelector=".markdown-preview"
+                  contentSelector={isSecondaryViewer ? ".markdown-preview-secondary" : ".markdown-preview:not(.markdown-preview-secondary)"}
                   containerRef={actualPreviewRef as React.RefObject<HTMLElement>}
                   onItemClick={() => setShowFloatingToc(false)}
                   small={true}
@@ -404,6 +417,10 @@ export const PreviewPane = memo(PreviewPaneComponent, (prevProps, nextProps) => 
     prevProps.documentId === nextProps.documentId &&
     prevProps.contentStats?.wordCount === nextProps.contentStats?.wordCount &&
     prevProps.contentStats?.charCount === nextProps.contentStats?.charCount &&
-    prevProps.onCheckboxChange === nextProps.onCheckboxChange
+    prevProps.onCheckboxChange === nextProps.onCheckboxChange &&
+    prevProps.isSecondaryViewer === nextProps.isSecondaryViewer &&
+    prevProps.onNavigate === nextProps.onNavigate &&
+    prevProps.className === nextProps.className &&
+    prevProps.forceFloatingToc === nextProps.forceFloatingToc
   );
 });

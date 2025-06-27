@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useCallback, memo } from 'react';
-import { FileText, Edit, Trash2, MoreHorizontal, NotebookText, History } from 'lucide-react';
+import { FileText, Edit, Trash2, MoreHorizontal, NotebookText, History, FileCode } from 'lucide-react';
 import { 
   SidebarMenuItem, 
   SidebarMenuButton, 
@@ -40,6 +40,7 @@ interface FileNodeProps {
   isDropTarget: boolean;
   isAuthenticated?: boolean;
   onSelect: (id: string, type: 'file' | 'folder' | 'scrap') => void;
+  onOpenInSecondary?: (id: string, type?: 'document' | 'scrap') => void;
   onRename: (id: string, newTitle: string) => void;
   onDelete: (id: string) => void;
   onDragStart: (e: React.DragEvent, id: string) => void;
@@ -58,6 +59,7 @@ export const FileNode = memo(function FileNode({
   isDropTarget,
   isAuthenticated = false,
   onSelect,
+  onOpenInSecondary,
   onRename,
   onDelete,
   onDragStart,
@@ -107,6 +109,13 @@ export const FileNode = memo(function FileNode({
   const handleSelect = useCallback(() => {
     onSelect(node.id, node.type);
   }, [node.id, node.type, onSelect]);
+
+  const handleOpenInSecondary = useCallback(() => {
+    if (onOpenInSecondary) {
+      const type = node.type === 'scrap' ? 'scrap' : 'document';
+      onOpenInSecondary(node.id, type);
+    }
+  }, [node.id, node.type, onOpenInSecondary]);
 
   const handleShowHistory = useCallback(async () => {
     try {
@@ -194,6 +203,15 @@ export const FileNode = memo(function FileNode({
                 </SidebarMenuAction>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
+                {onOpenInSecondary && node.type !== 'folder' && (
+                  <>
+                    <DropdownMenuItem onClick={handleOpenInSecondary}>
+                      <FileCode className="h-4 w-4 mr-2" />
+                      Open in Secondary Viewer
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                  </>
+                )}
                 <DropdownMenuItem onClick={handleStartRename}>
                   <Edit className="h-4 w-4 mr-2" />
                   Rename

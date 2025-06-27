@@ -24,6 +24,7 @@ interface ScrapPostComponentProps {
   isDeleting?: boolean;
   scrapId: string; // The scrap/document ID
   isViewOnly?: boolean;
+  onNavigate?: (documentId: string, type?: 'document' | 'scrap') => void;
 }
 
 export function ScrapPostComponent({
@@ -36,6 +37,7 @@ export function ScrapPostComponent({
   isDeleting,
   scrapId,
   isViewOnly = false,
+  onNavigate,
 }: ScrapPostComponentProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [showComments, setShowComments] = useState(true);
@@ -232,6 +234,7 @@ export function ScrapPostComponent({
             <ScrapMarkdown 
               content={cleanContent} 
               documentId={scrapId}
+              onNavigate={onNavigate}
             />
           </div>
           

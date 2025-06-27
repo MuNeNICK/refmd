@@ -26,6 +26,7 @@ interface MainLayoutProps {
   onDownload?: () => void;
   onBacklinksToggle?: () => void;
   showBacklinks?: boolean;
+  onOpenDocumentInSecondary?: (documentId: string, type?: 'document' | 'scrap') => void;
   showEditorFeatures?: boolean;
   hideFileTree?: boolean;
   isViewOnly?: boolean;
@@ -46,6 +47,7 @@ export default function MainLayout({
   onDownload,
   onBacklinksToggle,
   showBacklinks,
+  onOpenDocumentInSecondary,
   showEditorFeatures = false,
   hideFileTree = false,
   isViewOnly = false
@@ -131,6 +133,7 @@ export default function MainLayout({
                 <FileTree
                   onDocumentSelect={handleDocumentSelect}
                   selectedDocumentId={selectedDocumentId}
+                  onOpenInSecondary={onOpenDocumentInSecondary}
                 />
               </Sidebar>
             )}
@@ -162,6 +165,7 @@ export default function MainLayout({
                   <FileTree
                     onDocumentSelect={handleDocumentSelect}
                     selectedDocumentId={selectedDocumentId}
+                    onOpenInSecondary={onOpenDocumentInSecondary}
                   />
                 </div>
               </Panel>

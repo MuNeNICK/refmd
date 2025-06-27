@@ -282,6 +282,7 @@ export function Header({
                 </Button>
               )}
               
+              
               {/* Desktop actions */}
               <Button
                 onClick={onShare}
