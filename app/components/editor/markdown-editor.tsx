@@ -494,6 +494,228 @@ export function MarkdownEditor({
       dragAndDrop: true,
     });
 
+    // Add custom action for handling Enter key in lists
+    editor.addAction({
+      id: 'markdown-list-continuation',
+      label: 'Continue Markdown List',
+      keybindings: [monaco.KeyCode.Enter],
+      precondition: '!suggestWidgetVisible && !inSnippetMode',
+      run: function(ed: editor.ICodeEditor) {
+        const model = ed.getModel();
+        const position = ed.getPosition();
+        
+        if (!model || !position) {
+          // Fall back to default behavior
+          ed.trigger('keyboard', 'type', { text: '\n' });
+          return;
+        }
+        
+        const lineNumber = position.lineNumber;
+        const lineContent = model.getLineContent(lineNumber);
+        const cursorColumn = position.column;
+        
+        // Get the content before cursor to check for list patterns
+        const contentBeforeCursor = lineContent.substring(0, cursorColumn - 1);
+        
+        // Regular expressions for different list types
+        const unorderedListRegex = /^(\s*)([-*+])\s(.*)$/;
+        const orderedListRegex = /^(\s*)(\d+)\.\s(.*)$/;
+        const taskListRegex = /^(\s*)([-*+])\s\[([x\s])\]\s(.*)$/;
+        
+        // Check if current line is a list item
+        let match;
+        let listType = null;
+        let indent = '';
+        let marker = '';
+        let content = '';
+        
+        if ((match = taskListRegex.exec(lineContent))) {
+          listType = 'task';
+          indent = match[1];
+          marker = match[2];
+          content = match[3];
+        } else if ((match = unorderedListRegex.exec(lineContent))) {
+          listType = 'unordered';
+          indent = match[1];
+          marker = match[2];
+          content = match[3];
+        } else if ((match = orderedListRegex.exec(lineContent))) {
+          listType = 'ordered';
+          indent = match[1];
+          marker = match[2];
+          content = match[3];
+        }
+        
+        if (!listType) {
+          // Not a list, use default behavior
+          ed.trigger('keyboard', 'type', { text: '\n' });
+          return;
+        }
+        
+        // Check if the list item is empty (just the marker)
+        const isEmptyItem = content.trim() === '' && cursorColumn <= contentBeforeCursor.length + 1;
+        
+        if (isEmptyItem) {
+          // Empty list item - remove the marker and exit list mode
+          const range = {
+            startLineNumber: lineNumber,
+            startColumn: 1,
+            endLineNumber: lineNumber,
+            endColumn: model.getLineMaxColumn(lineNumber)
+          };
+          
+          // Replace with just the indentation (removes the list marker)
+          model.applyEdits([{
+            range: range,
+            text: indent,
+            forceMoveMarkers: true
+          }]);
+          
+          // Position cursor at the proper indentation
+          ed.setPosition({
+            lineNumber: lineNumber,
+            column: indent.length + 1
+          });
+          
+          return;
+        }
+        
+        // Continue the list
+        let newLineContent = '\n' + indent;
+        
+        switch (listType) {
+          case 'task':
+            newLineContent += marker + ' [ ] ';
+            break;
+          case 'unordered':
+            newLineContent += marker + ' ';
+            break;
+          case 'ordered':
+            const nextNumber = parseInt(marker) + 1;
+            newLineContent += nextNumber + '. ';
+            break;
+        }
+        
+        // Insert the new line
+        ed.trigger('keyboard', 'type', { text: newLineContent });
+      }
+    });
+
+    // Add custom action for Tab key to indent lists
+    editor.addAction({
+      id: 'markdown-indent-list',
+      label: 'Indent Markdown List',
+      keybindings: [monaco.KeyCode.Tab],
+      precondition: '!suggestWidgetVisible && !inSnippetMode',
+      run: function(ed: editor.ICodeEditor) {
+        const model = ed.getModel();
+        const selection = ed.getSelection();
+        
+        if (!model || !selection) {
+          // Fall back to default behavior
+          ed.trigger('keyboard', 'tab', {});
+          return;
+        }
+        
+        const lineNumber = selection.startLineNumber;
+        const lineContent = model.getLineContent(lineNumber);
+        
+        // Check if current line is a list item
+        const listPatterns = [
+          /^(\s*)([-*+])\s(.*)$/,           // Unordered list
+          /^(\s*)(\d+)\.\s(.*)$/,           // Ordered list
+          /^(\s*)([-*+])\s\[([x\s])\]\s(.*)$/ // Task list
+        ];
+        
+        let isListItem = false;
+        for (const pattern of listPatterns) {
+          if (pattern.test(lineContent)) {
+            isListItem = true;
+            break;
+          }
+        }
+        
+        if (isListItem) {
+          // Add 2 spaces at the beginning of the line
+          const range = new monaco.Range(lineNumber, 1, lineNumber, 1);
+          const edits = [{
+            range: range,
+            text: '  ',
+            forceMoveMarkers: true
+          }];
+          
+          // Apply the edit
+          ed.executeEdits('markdown-indent-list', edits);
+          
+          // Move cursor to maintain relative position
+          const newPosition = new monaco.Position(lineNumber, selection.startColumn + 2);
+          ed.setPosition(newPosition);
+        } else {
+          // Fall back to default tab behavior
+          ed.trigger('keyboard', 'tab', {});
+        }
+      }
+    });
+
+    // Add custom action for Shift+Tab to unindent lists
+    editor.addAction({
+      id: 'markdown-unindent-list',
+      label: 'Unindent Markdown List',
+      keybindings: [monaco.KeyMod.Shift | monaco.KeyCode.Tab],
+      precondition: '!suggestWidgetVisible && !inSnippetMode',
+      run: function(ed: editor.ICodeEditor) {
+        const model = ed.getModel();
+        const selection = ed.getSelection();
+        
+        if (!model || !selection) {
+          // Fall back to default behavior
+          ed.trigger('keyboard', 'outdent', {});
+          return;
+        }
+        
+        const lineNumber = selection.startLineNumber;
+        const lineContent = model.getLineContent(lineNumber);
+        
+        // Check if current line is a list item
+        const listPatterns = [
+          /^(\s*)([-*+])\s(.*)$/,           // Unordered list
+          /^(\s*)(\d+)\.\s(.*)$/,           // Ordered list
+          /^(\s*)([-*+])\s\[([x\s])\]\s(.*)$/ // Task list
+        ];
+        
+        let isListItem = false;
+        let currentIndent = '';
+        for (const pattern of listPatterns) {
+          const match = pattern.exec(lineContent);
+          if (match) {
+            isListItem = true;
+            currentIndent = match[1];
+            break;
+          }
+        }
+        
+        if (isListItem && currentIndent.length >= 2) {
+          // Remove 2 spaces from the beginning
+          const range = new monaco.Range(lineNumber, 1, lineNumber, 3);
+          const edits = [{
+            range: range,
+            text: '',
+            forceMoveMarkers: true
+          }];
+          
+          // Apply the edit
+          ed.executeEdits('markdown-unindent-list', edits);
+          
+          // Move cursor to maintain relative position
+          const newPosition = new monaco.Position(lineNumber, Math.max(1, selection.startColumn - 2));
+          ed.setPosition(newPosition);
+        } else {
+          // Fall back to default outdent behavior
+          ed.trigger('keyboard', 'outdent', {});
+        }
+      }
+    });
+
     // Dispose old wiki link providers if any
     wikiLinkProvidersRef.current.forEach(disposable => disposable.dispose());
     wikiLinkProvidersRef.current = [];
