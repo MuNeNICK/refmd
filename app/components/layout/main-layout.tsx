@@ -170,7 +170,7 @@ export default function MainLayout({
             )}
             
             {/* Content Panel */}
-            <Panel defaultSize={87} className="overflow-hidden">
+            <Panel defaultSize={hideFileTree ? 100 : (sidebarOpen ? 87 : 100)} className="overflow-hidden">
               <main className="h-full w-full overflow-hidden">
                 {children}
               </main>
