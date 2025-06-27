@@ -348,7 +348,7 @@ function PreviewPaneComponent({
                 } catch {
                   return <div>Error rendering markdown</div>;
                 }
-              }, [content, headingComponents, documentId, token, onCheckboxChange])}
+              }, [content, headingComponents, documentId, token, onCheckboxChange, onNavigate])}
             </div>
           </div>
           {/* Table of Contents - only show in preview mode on desktop when not forced to floating */}

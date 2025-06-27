@@ -25,7 +25,7 @@ export function SecondaryViewer({
   onClose,
   onDocumentChange 
 }: SecondaryViewerProps) {
-  const [document, setDocument] = useState<Document | null>(null)
+  const [, setDocument] = useState<Document | null>(null)
   const [scrapData, setScrapData] = useState<ScrapWithPosts | null>(null)
   const [content, setContent] = useState<string>('')
   const [isLoading, setIsLoading] = useState(false)
@@ -68,7 +68,7 @@ export function SecondaryViewer({
             
             // Load document content
             const contentResponse = await api.documents.getDocumentContent(documentId)
-            setContent(contentResponse.content || '')
+            setContent(contentResponse || '')
             setCurrentType('document')
           } catch (docError) {
             // If document fails and type wasn't explicitly set, try as scrap
@@ -79,7 +79,7 @@ export function SecondaryViewer({
                 setDocument(null)
                 setContent('')
                 setCurrentType('scrap')
-              } catch (scrapError) {
+              } catch {
                 throw docError // Throw original error if both fail
               }
             } else {

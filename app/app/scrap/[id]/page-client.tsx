@@ -45,7 +45,6 @@ export function ScrapPageClient({ initialData, scrapId, shareToken }: ScrapPageC
     showSecondaryViewer,
     setSecondaryDocumentId,
     setSecondaryDocumentType,
-    setShowSecondaryViewer,
     openSecondaryViewer,
     closeSecondaryViewer
   } = useSecondaryViewer();
@@ -307,8 +306,6 @@ export function ScrapPageClient({ initialData, scrapId, shareToken }: ScrapPageC
         isRealtimeConnected={isConnected && !connectionError}
         realtimeUserCount={userCount}
         onShare={!isViewOnly && user ? () => setShareDialogOpen(true) : undefined}
-        onSecondaryDocumentToggle={() => setShowSecondaryViewer(!showSecondaryViewer)}
-        showSecondaryDocument={showSecondaryViewer}
         onOpenDocumentInSecondary={handleOpenDocumentInSecondary}
       >
         <div className="h-full w-full bg-background">
@@ -337,8 +334,6 @@ export function ScrapPageClient({ initialData, scrapId, shareToken }: ScrapPageC
       isRealtimeConnected={isConnected && !connectionError}
       realtimeUserCount={userCount}
       onShare={!isViewOnly && user ? () => setShareDialogOpen(true) : undefined}
-      onSecondaryDocumentToggle={() => setShowSecondaryViewer(!showSecondaryViewer)}
-      showSecondaryDocument={showSecondaryViewer}
       onOpenDocumentInSecondary={handleOpenDocumentInSecondary}
     >
       {showSecondaryViewer ? (

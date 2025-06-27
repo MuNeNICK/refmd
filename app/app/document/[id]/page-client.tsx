@@ -37,7 +37,6 @@ export default function PageClient({ documentId, initialDocument, token }: PageC
     showSecondaryViewer,
     setSecondaryDocumentId,
     setSecondaryDocumentType,
-    setShowSecondaryViewer,
     openSecondaryViewer,
     closeSecondaryViewer
   } = useSecondaryViewer();
