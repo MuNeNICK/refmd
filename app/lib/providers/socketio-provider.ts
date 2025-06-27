@@ -221,6 +221,11 @@ export class SocketIOProvider extends Observable<string> {
   }
 
   private _setupAwarenessHandlers() {
+    // Check if awareness is already destroyed
+    if ((this.awareness as unknown as { _destroyed?: boolean })._destroyed) {
+      return;
+    }
+
     // Listen for awareness updates
     const awarenessHandler = ({ added, updated, removed }: { added: number[], updated: number[], removed: number[] }) => {
       if (this._hasJoined) {
@@ -419,7 +424,15 @@ export class SocketIOProvider extends Observable<string> {
     return this._pendingUpdates.length > 0;
   }
 
+  private _destroyed = false;
+
   destroy() {
+    // Prevent double destruction
+    if (this._destroyed) {
+      return;
+    }
+    this._destroyed = true;
+
     // Flush any remaining updates before destroying
     this.flushPendingUpdates();
     
@@ -443,11 +456,19 @@ export class SocketIOProvider extends Observable<string> {
       this.doc.off('update', this._docUpdateHandler);
       this._docUpdateHandler = undefined;
     }
-    if (this._awarenessUpdateHandler) {
-      this.awareness.off('update', this._awarenessUpdateHandler);
+    if (this._awarenessUpdateHandler && this.awareness && typeof this.awareness.off === 'function') {
+      try {
+        this.awareness.off('update', this._awarenessUpdateHandler);
+      } catch (error) {
+        // Ignore errors when removing handlers - awareness might already be destroyed
+        if (!(error as Error)?.message?.includes('event handler')) {
+          console.error('Error removing awareness handler:', error);
+        }
+      }
       this._awarenessUpdateHandler = undefined;
     }
-    this.awareness.destroy();
+    // Don't destroy awareness - it's not owned by this provider
+    // The awareness instance is passed in and should be managed by its owner
     
     // Remove socket listeners
     this.socket.off('connect');

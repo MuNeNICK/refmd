@@ -164,12 +164,13 @@ export function MarkdownEditor({
       return;
     }
     
-    let bindingCreated = false;
+    // Track if this effect has been cleaned up to prevent double cleanup
+    let isCleanedUp = false;
     
     // Dynamically import MonacoBinding to avoid SSR issues
     import('y-monaco').then(({ MonacoBinding }) => {
-      // Double-check everything is still valid
-      if (!monacoEditor || !doc || !awareness || monacoBindingRef.current) {
+      // Double-check everything is still valid and not cleaned up
+      if (isCleanedUp || !monacoEditor || !doc || !awareness || monacoBindingRef.current) {
         return;
       }
       
@@ -185,7 +186,6 @@ export function MarkdownEditor({
         );
         
         monacoBindingRef.current = binding;
-        bindingCreated = true;
         
         // Set user info in awareness
         const userInfo = {
@@ -204,29 +204,36 @@ export function MarkdownEditor({
     });
     
     return () => {
-      // Use a flag to track if we should cleanup
-      const shouldCleanup = bindingCreated;
+      isCleanedUp = true;
       
-      // Small delay to prevent cleanup during StrictMode double mount
-      setTimeout(() => {
-        // Only cleanup if we created a binding and it's still the current one
-        if (shouldCleanup && monacoBindingRef.current) {
+      // Cleanup immediately to ensure it happens before awareness is destroyed
+      // Store the binding reference
+      const bindingToCleanup = monacoBindingRef.current;
+      monacoBindingRef.current = null; // Clear ref immediately to prevent double cleanup
+      
+      if (bindingToCleanup) {
+        // Small delay only for the actual destroy call
+        setTimeout(() => {
           try {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (monacoBindingRef.current as any).destroy();
+            const binding = bindingToCleanup as unknown as { destroy?: () => void; _destroyed?: boolean };
+            // Check if destroy method exists and binding hasn't been destroyed
+            if (binding && typeof binding.destroy === 'function' && !binding._destroyed) {
+              binding.destroy();
+            }
           } catch (error) {
-            console.error('Error destroying MonacoBinding:', error);
-          } finally {
-            monacoBindingRef.current = null;
+            // Silently ignore "event handler doesn't exist" errors
+            if (!(error as Error)?.message?.includes('event handler')) {
+              console.error('Error destroying MonacoBinding:', error);
+            }
           }
-        }
-      }, 100);
+        }, 50); // Shorter delay than awareness cleanup (100ms)
+      }
     };
   }, [doc, awareness, monacoEditor, userName, userId]);
 
   // Inject dynamic CSS for remote cursor colors
   useEffect(() => {
-    if (!awareness) return;
+    if (!awareness || (awareness as unknown as { _destroyed?: boolean })._destroyed) return;
 
     const styleElement = document.createElement('style');
     styleElement.id = 'collaborative-cursor-styles';
@@ -274,8 +281,20 @@ export function MarkdownEditor({
     awareness.on('update', handler);
 
     return () => {
-      awareness.off('update', handler);
-      styleElement.remove();
+      // Check if awareness still exists and hasn't been destroyed
+      if (awareness && typeof awareness.off === 'function' && !(awareness as unknown as { _destroyed?: boolean })._destroyed) {
+        try {
+          awareness.off('update', handler);
+        } catch (error) {
+          // Ignore errors when removing handlers - awareness might already be destroyed
+          if (!(error as Error)?.message?.includes('event handler')) {
+            console.error('Error removing awareness handler:', error);
+          }
+        }
+      }
+      if (styleElement && styleElement.parentNode) {
+        styleElement.remove();
+      }
     };
   }, [awareness]);
 

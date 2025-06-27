@@ -111,17 +111,38 @@ export function useCollaborativeDocument({
       // Small delay to prevent immediate cleanup in StrictMode double mount
       setTimeout(() => {
         // Only cleanup if the current state still points to these instances
+        // Important: Destroy provider first, then awareness, then doc
         if (provider === providerToCleanup && providerToCleanup) {
-          (providerToCleanup as SocketIOProvider).destroy();
+          try {
+            (providerToCleanup as SocketIOProvider).destroy();
+          } catch (error) {
+            console.error('Error destroying provider:', error);
+          }
           setProvider(null);
         }
-        if (awareness === awarenessToCleanup && awarenessToCleanup) {
-          (awarenessToCleanup as Awareness).destroy();
-          setAwareness(null);
-        }
+        // Note: Y.Doc.destroy() might automatically destroy awareness
+        // so we destroy doc first, then check if awareness needs manual destruction
         if (doc === docToCleanup && docToCleanup) {
-          (docToCleanup as Y.Doc).destroy();
+          try {
+            (docToCleanup as Y.Doc).destroy();
+          } catch (error) {
+            console.error('Error destroying doc:', error);
+          }
           setDoc(null);
+        }
+        // Only destroy awareness if it hasn't been destroyed by doc.destroy()
+        if (awareness === awarenessToCleanup && awarenessToCleanup && !(awarenessToCleanup as unknown as { _destroyed?: boolean })._destroyed) {
+          try {
+            // Mark awareness as destroyed to prevent further operations
+            (awarenessToCleanup as unknown as { _destroyed: boolean })._destroyed = true;
+            (awarenessToCleanup as Awareness).destroy();
+          } catch (error) {
+            // Ignore errors when destroying - it might already be destroyed
+            if (!(error as Error)?.message?.includes('event handler')) {
+              console.error('Error destroying awareness:', error);
+            }
+          }
+          setAwareness(null);
         }
         initializingRef.current = false;
       }, 100);

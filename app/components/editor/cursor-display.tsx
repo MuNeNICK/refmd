@@ -26,7 +26,7 @@ export function CursorDisplay({ awareness, className }: CursorDisplayProps) {
   const [users, setUsers] = useState<Map<number, CursorInfo>>(new Map());
 
   useEffect(() => {
-    if (!awareness) return;
+    if (!awareness || (awareness as unknown as { _destroyed?: boolean })._destroyed) return;
 
     const updateUsers = () => {
       const states = awareness.getStates();
@@ -56,7 +56,17 @@ export function CursorDisplay({ awareness, className }: CursorDisplayProps) {
     awareness.on('update', handler);
 
     return () => {
-      awareness.off('update', handler);
+      // Check if awareness still exists and hasn't been destroyed
+      if (awareness && typeof awareness.off === 'function' && !(awareness as unknown as { _destroyed?: boolean })._destroyed) {
+        try {
+          awareness.off('update', handler);
+        } catch (error) {
+          // Ignore errors when removing handlers - awareness might already be destroyed
+          if (!(error as Error)?.message?.includes('event handler')) {
+            console.error('Error removing awareness handler:', error);
+          }
+        }
+      }
     };
   }, [awareness]);
 

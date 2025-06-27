@@ -111,7 +111,7 @@ export default function DocumentEditor({
     let timeoutId: NodeJS.Timeout | null = null;
     let rafId: number | null = null;
     
-    // Update content when Yjs document changes
+    // Update content when Yjs document changes - defined inside effect for stable reference
     const updateContent = () => {
       if (timeoutId) {
         clearTimeout(timeoutId);
@@ -139,17 +139,33 @@ export default function DocumentEditor({
     yText.observe(updateContent);
 
     return () => {
+      // First unobserve to prevent any more updates
+      try {
+        yText.unobserve(updateContent);
+      } catch (error) {
+        // Ignore "event handler doesn't exist" errors
+        if (!(error as Error)?.message?.includes('event handler')) {
+          console.error('Error unobserving yText:', error);
+        }
+      }
+      
+      // Then clean up timers
       if (timeoutId) {
         clearTimeout(timeoutId);
       }
       if (rafId) {
         cancelAnimationFrame(rafId);
       }
+      
       // Force immediate content update on unmount
-      const finalContent = yText.toString();
-      setContent(finalContent);
-      onContentChange?.(finalContent);
-      yText.unobserve(updateContent);
+      try {
+        const finalContent = yText.toString();
+        setContent(finalContent);
+        onContentChange?.(finalContent);
+      } catch (error) {
+        // yText might be destroyed already
+        console.error('Error getting final content:', error);
+      }
     };
   }, [doc, getText, onContentChange]);
 
@@ -160,7 +176,7 @@ export default function DocumentEditor({
 
   // Update active users
   useEffect(() => {
-    if (!awareness) return;
+    if (!awareness || (awareness as unknown as { _destroyed?: boolean })._destroyed) return;
 
     const updateActiveUsers = () => {
       const activeUsers = awareness.getStates().size || 1;
@@ -178,7 +194,17 @@ export default function DocumentEditor({
     awareness.on('update', handler);
 
     return () => {
-      awareness.off('update', handler);
+      // Check if awareness still exists and hasn't been destroyed
+      if (awareness && typeof awareness.off === 'function' && !(awareness as unknown as { _destroyed?: boolean })._destroyed) {
+        try {
+          awareness.off('update', handler);
+        } catch (error) {
+          // Ignore errors when removing handlers - awareness might already be destroyed
+          if (!(error as Error)?.message?.includes('event handler')) {
+            console.error('Error removing awareness handler:', error);
+          }
+        }
+      }
     };
   }, [awareness, onActiveUsersChange]);
 

@@ -59,6 +59,7 @@ export function ScrapMarkdown({ content, documentId }: ScrapMarkdownProps) {
       
       // Use regular img for external images or base64
       return (
+        // eslint-disable-next-line @next/next/no-img-element
         <img
           src={imageSrc}
           alt={alt || ""}
