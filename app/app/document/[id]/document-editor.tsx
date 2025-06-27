@@ -430,6 +430,7 @@ export default function DocumentEditor({
               userId={user?.id || undefined}
               documentPath={initialDocument?.file_path || undefined}
               readOnly={isViewOnly}
+              onFilePaste={handleFileUpload}
               />
             </div>
           )}
@@ -455,6 +456,7 @@ export default function DocumentEditor({
                   userName={user?.name || undefined}
                   userId={user?.id || undefined}
                   documentPath={initialDocument?.file_path || undefined}
+                  onFilePaste={handleFileUpload}
                 />
               </Panel>
               <PanelResizeHandle className="w-1 bg-border hover:bg-accent transition-colors" />
@@ -485,6 +487,7 @@ export default function DocumentEditor({
                   userName={user?.name || undefined}
                   userId={user?.id || undefined}
                   documentPath={initialDocument?.file_path || undefined}
+                  onFilePaste={handleFileUpload}
                 />
               </Panel>
               <PanelResizeHandle className="w-1 bg-border hover:bg-accent transition-colors" />
@@ -586,6 +589,7 @@ export default function DocumentEditor({
                   userName={user?.name || undefined}
                   userId={user?.id || undefined}
                   documentPath={initialDocument?.file_path || undefined}
+                  onFilePaste={handleFileUpload}
                 />
               </Panel>
               <PanelResizeHandle className="w-1 bg-border hover:bg-accent transition-colors" />
@@ -628,6 +632,7 @@ export default function DocumentEditor({
                   userName={user?.name || undefined}
                   userId={user?.id || undefined}
                   documentPath={initialDocument?.file_path || undefined}
+                  onFilePaste={handleFileUpload}
                 />
               </Panel>
               <PanelResizeHandle className="w-1 bg-border hover:bg-accent transition-colors" />
@@ -674,6 +679,7 @@ export default function DocumentEditor({
                   userName={user?.name || undefined}
                   userId={user?.id || undefined}
                   documentPath={initialDocument?.file_path || undefined}
+                  onFilePaste={handleFileUpload}
                 />
               </Panel>
               <PanelResizeHandle className="w-1 bg-border hover:bg-accent transition-colors" />

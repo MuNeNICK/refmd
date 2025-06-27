@@ -145,6 +145,31 @@ export function ScrapPostForm({
     }
   };
 
+  // Handle paste event for files
+  const handlePaste = useCallback((e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const clipboardData = e.clipboardData;
+    
+    // Check if we have files in the clipboard
+    if (clipboardData?.files && clipboardData.files.length > 0) {
+      // Get all files from clipboard
+      const files = Array.from(clipboardData.files);
+      
+      // Filter out empty files
+      const validFiles = files.filter(file => file.size > 0);
+      
+      // Only prevent default if we have valid files to handle
+      if (validFiles.length > 0) {
+        e.preventDefault();
+        
+        // Handle all pasted files
+        handleFileUpload(validFiles);
+        return;
+      }
+    }
+    
+    // Let normal text paste go through
+  }, [handleFileUpload]);
+
   // Check for [[ trigger
   const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newContent = e.target.value;
@@ -200,6 +225,7 @@ export function ScrapPostForm({
                 value={content}
                 onChange={handleTextareaChange}
                 onKeyDown={handleKeyDown}
+                onPaste={handlePaste}
                 placeholder={placeholder}
                 className="min-h-[100px] resize-none"
                 disabled={isLoading}

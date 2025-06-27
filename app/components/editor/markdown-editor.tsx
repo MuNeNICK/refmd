@@ -33,6 +33,7 @@ export interface MarkdownEditorProps {
   userId?: string;
   documentPath?: string;
   readOnly?: boolean;
+  onFilePaste?: (files: File[]) => void;
 }
 
 function generateUserColor(userId?: string, light = false): string {
@@ -70,6 +71,7 @@ export function MarkdownEditor({
   userName,
   userId,
   readOnly = false,
+  onFilePaste,
 }: MarkdownEditorProps) {
   const { theme } = useTheme();
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
@@ -145,6 +147,13 @@ export function MarkdownEditor({
       onEditorReady(insertTextAtCursor);
     }
   }, [onEditorReady, insertTextAtCursor]);
+  
+  // Handle pasted files (images, PDFs, documents, etc.)
+  const handleFilePaste = useCallback((files: File[]) => {
+    if (onFilePaste) {
+      onFilePaste(files);
+    }
+  }, [onFilePaste]);
 
   // Set up Monaco binding when doc, awareness, and editor are ready
   useEffect(() => {
@@ -409,6 +418,53 @@ export function MarkdownEditor({
     editorRef.current = editor;
     monacoRef.current = monaco;
     setMonacoEditor(editor);
+    
+    // Set up paste handler for files (images, PDFs, documents, etc.)
+    // Only set up if we have a handler function
+    if (handleFilePaste) {
+      const pasteHandler = (e: ClipboardEvent) => {
+        // Check if the paste event is happening within the editor
+        const target = e.target as HTMLElement;
+        const editorDomNode = editor.getDomNode();
+        
+        if (!editorDomNode || !editorDomNode.contains(target)) {
+          // Paste is not in our editor, ignore
+          return;
+        }
+        
+        const clipboardData = e.clipboardData;
+        
+        // Check if we have files in the clipboard
+        if (clipboardData?.files && clipboardData.files.length > 0) {
+          // Get all files from clipboard
+          const files = Array.from(clipboardData.files);
+          
+          // Filter out empty files (sometimes clipboard contains empty file entries)
+          const validFiles = files.filter(file => file.size > 0);
+          
+          // Only prevent default if we have valid files to handle
+          if (validFiles.length > 0) {
+              e.preventDefault();
+            e.stopPropagation();
+            
+            // Handle all pasted files (images and other types)
+            handleFilePaste(validFiles);
+            return;
+          }
+        }
+        
+        // Let normal text paste go through - don't prevent default
+      };
+      
+      // Add paste listener at document level
+      document.addEventListener('paste', pasteHandler, true);
+      
+      // Store the handler for cleanup
+      const editorWithHandler = editor as editor.IStandaloneCodeEditor & {
+        _imagePasteHandler?: (e: ClipboardEvent) => void;
+      };
+      editorWithHandler._imagePasteHandler = pasteHandler;
+    }
 
     // Configure editor options
     editor.updateOptions({
@@ -431,6 +487,11 @@ export function MarkdownEditor({
       formatOnType: false,
       suggestOnTriggerCharacters: true,
       readOnly: readOnly,
+      // Ensure paste is enabled
+      domReadOnly: readOnly, // This is important - it controls whether DOM operations like paste are allowed
+      copyWithSyntaxHighlighting: true,
+      emptySelectionClipboard: true,
+      dragAndDrop: true,
     });
 
     // Dispose old wiki link providers if any
@@ -497,17 +558,24 @@ export function MarkdownEditor({
     if (onMount) {
       onMount(editor);
     }
-    
-    // Cleanup function for scroll listener
+  }, [onMount, onScroll, onSelectionChange, onContentStatsChange, readOnly, handleFilePaste]);
+
+  // Cleanup paste handler on unmount
+  useEffect(() => {
     return () => {
-      if (scrollRafId !== null) {
-        cancelAnimationFrame(scrollRafId);
-      }
-      if (statsRafId) {
-        cancelAnimationFrame(statsRafId);
+      const editor = editorRef.current;
+      if (editor) {
+        const editorWithHandler = editor as editor.IStandaloneCodeEditor & {
+          _imagePasteHandler?: (e: ClipboardEvent) => void;
+        };
+        const handler = editorWithHandler._imagePasteHandler;
+        if (handler) {
+          document.removeEventListener('paste', handler, true);
+          delete editorWithHandler._imagePasteHandler;
+        }
       }
     };
-  }, [onMount, onScroll, onSelectionChange, onContentStatsChange, readOnly]);
+  }, []);
 
   // Handle scroll to line
   useEffect(() => {
@@ -791,6 +859,12 @@ export function MarkdownEditor({
               fontSize: 16,
               fontFamily: "'JetBrains Mono', 'Fira Code', Consolas, monospace",
               scrollBeyondLastLine: true,
+              // Ensure clipboard operations work
+              copyWithSyntaxHighlighting: true,
+              emptySelectionClipboard: true,
+              dragAndDrop: true,
+              readOnly: readOnly,
+              domReadOnly: readOnly,
             }}
             loading={
               <div className="flex items-center justify-center h-full">
