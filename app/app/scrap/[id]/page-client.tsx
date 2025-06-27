@@ -15,8 +15,8 @@ import { getApiClient } from '@/lib/api';
 import { ScrapMetadataParser } from '@/lib/utils/scrap-metadata-parser';
 import { ShareDialog } from '@/components/collaboration/share-dialog';
 import { useScrapConnection } from '@/lib/hooks/useScrapConnection';
-import { useSecondaryDocument } from '@/components/providers/secondary-document-provider';
-import { SecondaryDocumentViewer } from '@/components/document/secondary-document-viewer';
+import { useSecondaryViewer } from '@/components/providers/secondary-viewer-provider';
+import { SecondaryViewer } from '@/components/document/secondary-viewer';
 import { PanelGroup, Panel, PanelResizeHandle } from '@/components/ui/resizable';
 
 interface ScrapPageClientProps {
@@ -41,12 +41,14 @@ export function ScrapPageClient({ initialData, scrapId, shareToken }: ScrapPageC
   // Secondary document state
   const {
     secondaryDocumentId,
-    showSecondaryDocument,
+    secondaryDocumentType,
+    showSecondaryViewer,
     setSecondaryDocumentId,
-    setShowSecondaryDocument,
-    openSecondaryDocument,
-    closeSecondaryDocument
-  } = useSecondaryDocument();
+    setSecondaryDocumentType,
+    setShowSecondaryViewer,
+    openSecondaryViewer,
+    closeSecondaryViewer
+  } = useSecondaryViewer();
 
   // Use the singleton API client with automatic token management
   const client = getApiClient();
@@ -289,12 +291,12 @@ export function ScrapPageClient({ initialData, scrapId, shareToken }: ScrapPageC
     setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc');
   };
   
-  const handleOpenDocumentInSecondary = useCallback((docId: string) => {
-    openSecondaryDocument(docId);
-  }, [openSecondaryDocument]);
+  const handleOpenDocumentInSecondary = useCallback((docId: string, type: 'document' | 'scrap' = 'document') => {
+    openSecondaryViewer(docId, type);
+  }, [openSecondaryViewer]);
 
   // Show only SecondaryDocumentViewer in full screen on mobile when enabled
-  if (isMobile && showSecondaryDocument) {
+  if (isMobile && showSecondaryViewer) {
     return (
       <MainLayout
         documentTitle={scrapData.scrap.title}
@@ -305,16 +307,20 @@ export function ScrapPageClient({ initialData, scrapId, shareToken }: ScrapPageC
         isRealtimeConnected={isConnected && !connectionError}
         realtimeUserCount={userCount}
         onShare={!isViewOnly && user ? () => setShareDialogOpen(true) : undefined}
-        onSecondaryDocumentToggle={() => setShowSecondaryDocument(!showSecondaryDocument)}
-        showSecondaryDocument={showSecondaryDocument}
+        onSecondaryDocumentToggle={() => setShowSecondaryViewer(!showSecondaryViewer)}
+        showSecondaryDocument={showSecondaryViewer}
         onOpenDocumentInSecondary={handleOpenDocumentInSecondary}
       >
         <div className="h-full w-full bg-background">
-          <SecondaryDocumentViewer 
-            documentId={secondaryDocumentId} 
+          <SecondaryViewer 
+            documentId={secondaryDocumentId}
+            documentType={secondaryDocumentType}
             className="h-full" 
-            onClose={closeSecondaryDocument}
-            onDocumentChange={setSecondaryDocumentId}
+            onClose={closeSecondaryViewer}
+            onDocumentChange={(id, type) => {
+              setSecondaryDocumentId(id);
+              if (type) setSecondaryDocumentType(type);
+            }}
           />
         </div>
       </MainLayout>
@@ -331,13 +337,13 @@ export function ScrapPageClient({ initialData, scrapId, shareToken }: ScrapPageC
       isRealtimeConnected={isConnected && !connectionError}
       realtimeUserCount={userCount}
       onShare={!isViewOnly && user ? () => setShareDialogOpen(true) : undefined}
-      onSecondaryDocumentToggle={() => setShowSecondaryDocument(!showSecondaryDocument)}
-      showSecondaryDocument={showSecondaryDocument}
+      onSecondaryDocumentToggle={() => setShowSecondaryViewer(!showSecondaryViewer)}
+      showSecondaryDocument={showSecondaryViewer}
       onOpenDocumentInSecondary={handleOpenDocumentInSecondary}
     >
-      {showSecondaryDocument ? (
+      {showSecondaryViewer ? (
         <PanelGroup direction="horizontal" className="h-full w-full">
-          <Panel defaultSize={70} minSize={30}>
+          <Panel defaultSize={50} minSize={30}>
             <div className="flex flex-col h-full overflow-y-auto">
               <div className="max-w-4xl mx-auto w-full p-3 sm:p-6">
                 <div className="space-y-4 pb-6">
@@ -405,12 +411,16 @@ export function ScrapPageClient({ initialData, scrapId, shareToken }: ScrapPageC
             </div>
           </Panel>
           <PanelResizeHandle className="w-1 bg-border hover:bg-accent transition-colors" />
-          <Panel defaultSize={30} minSize={20} maxSize={50}>
-            <SecondaryDocumentViewer 
-              documentId={secondaryDocumentId} 
+          <Panel defaultSize={50} minSize={20} maxSize={70}>
+            <SecondaryViewer 
+              documentId={secondaryDocumentId}
+              documentType={secondaryDocumentType}
               className="h-full border-l" 
-              onClose={closeSecondaryDocument}
-              onDocumentChange={setSecondaryDocumentId}
+              onClose={closeSecondaryViewer}
+              onDocumentChange={(id, type) => {
+                setSecondaryDocumentId(id);
+                if (type) setSecondaryDocumentType(type);
+              }}
             />
           </Panel>
         </PanelGroup>

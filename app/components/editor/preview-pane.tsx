@@ -38,7 +38,7 @@ interface PreviewPaneProps {
   token?: string;
   onCheckboxChange?: (lineIndex: number, checked: boolean) => void;
   isSecondaryViewer?: boolean;
-  onNavigate?: (documentId: string) => void;
+  onNavigate?: (documentId: string, type?: 'document' | 'scrap') => void;
   className?: string;
   forceFloatingToc?: boolean;
 }

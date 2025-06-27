@@ -14,7 +14,7 @@ import { PanelGroup, Panel, PanelResizeHandle } from '@/components/ui/resizable'
 import type { editor } from 'monaco-editor';
 import { useAuth } from '@/lib/auth/authContext';
 import { BacklinksPanel } from '@/components/document/backlinks-panel';
-import { SecondaryDocumentViewer } from '@/components/document/secondary-document-viewer';
+import { SecondaryViewer } from '@/components/document/secondary-viewer';
 
 interface DocumentEditorProps {
   documentId: string;
@@ -22,8 +22,9 @@ interface DocumentEditorProps {
   token?: string;
   viewMode: ViewMode;
   showBacklinks?: boolean;
-  showSecondaryDocument?: boolean;
+  showSecondaryViewer?: boolean;
   secondaryDocumentId?: string | null;
+  secondaryDocumentType?: 'document' | 'scrap';
   isViewOnly?: boolean;
   onContentChange?: (content: string) => void;
   onSyncStatusChange?: (synced: boolean) => void;
@@ -32,7 +33,7 @@ interface DocumentEditorProps {
   onContentStatsChange?: (stats: { wordCount: number; charCount: number }) => void;
   onBacklinksClose?: () => void;
   onSecondaryDocumentClose?: () => void;
-  onSecondaryDocumentChange?: (documentId: string) => void;
+  onSecondaryDocumentChange?: (documentId: string, type?: 'document' | 'scrap') => void;
 }
 
 export default function DocumentEditor({ 
@@ -41,8 +42,9 @@ export default function DocumentEditor({
   token,
   viewMode,
   showBacklinks = false,
-  showSecondaryDocument = false,
+  showSecondaryViewer = false,
   secondaryDocumentId = null,
+  secondaryDocumentType = 'document',
   isViewOnly = false,
   onContentChange,
   onSyncStatusChange,
@@ -382,7 +384,7 @@ export default function DocumentEditor({
     return React.memo(PreviewPane);
   }, []);
 
-  // Show only BacklinksPanel or SecondaryDocumentViewer in full screen on mobile when enabled
+  // Show only BacklinksPanel or SecondaryViewer in full screen on mobile when enabled
   if (isMobile && showBacklinks) {
     return (
       <div className="h-full w-full bg-background">
@@ -391,11 +393,12 @@ export default function DocumentEditor({
     );
   }
   
-  if (isMobile && showSecondaryDocument) {
+  if (isMobile && showSecondaryViewer) {
     return (
       <div className="h-full w-full bg-background">
-        <SecondaryDocumentViewer 
+        <SecondaryViewer 
           documentId={secondaryDocumentId} 
+          documentType={secondaryDocumentType}
           className="h-full" 
           onClose={onSecondaryDocumentClose}
           onDocumentChange={onSecondaryDocumentChange}
@@ -407,7 +410,7 @@ export default function DocumentEditor({
   return (
     <>
       <div className="h-full w-full flex overflow-hidden" ref={editorContainerRef}>
-        {viewMode === "editor" && !showBacklinks && !showSecondaryDocument && (
+        {viewMode === "editor" && !showBacklinks && !showSecondaryViewer && (
             <div className="h-full w-full">
               <MarkdownEditor
               doc={doc}
@@ -431,7 +434,7 @@ export default function DocumentEditor({
             </div>
           )}
           
-          {viewMode === "editor" && showBacklinks && !showSecondaryDocument && (
+          {viewMode === "editor" && showBacklinks && !showSecondaryViewer && (
             <PanelGroup direction="horizontal" className="h-full w-full">
               <Panel defaultSize={70} minSize={30}>
                 <MarkdownEditor
@@ -461,7 +464,7 @@ export default function DocumentEditor({
             </PanelGroup>
           )}
           
-          {viewMode === "editor" && !showBacklinks && showSecondaryDocument && (
+          {viewMode === "editor" && !showBacklinks && showSecondaryViewer && (
             <PanelGroup direction="horizontal" className="h-full w-full">
               <Panel defaultSize={70} minSize={30}>
                 <MarkdownEditor
@@ -486,8 +489,9 @@ export default function DocumentEditor({
               </Panel>
               <PanelResizeHandle className="w-1 bg-border hover:bg-accent transition-colors" />
               <Panel defaultSize={30} minSize={20} maxSize={50}>
-                <SecondaryDocumentViewer 
+                <SecondaryViewer 
                   documentId={secondaryDocumentId} 
+                  documentType={secondaryDocumentType}
                   className="h-full border-l" 
                   onClose={onSecondaryDocumentClose}
                   onDocumentChange={onSecondaryDocumentChange}
@@ -496,7 +500,7 @@ export default function DocumentEditor({
             </PanelGroup>
           )}
           
-          {viewMode === "preview" && !showBacklinks && !showSecondaryDocument && (
+          {viewMode === "preview" && !showBacklinks && !showSecondaryViewer && (
             <div className="h-full w-full">
               <MemoizedPreviewPane
                 content={content}
@@ -511,7 +515,7 @@ export default function DocumentEditor({
             </div>
           )}
           
-          {viewMode === "preview" && showBacklinks && !showSecondaryDocument && (
+          {viewMode === "preview" && showBacklinks && !showSecondaryViewer && (
             <PanelGroup direction="horizontal" className="h-full w-full">
               <Panel defaultSize={70} minSize={30}>
                 <MemoizedPreviewPane
@@ -532,7 +536,7 @@ export default function DocumentEditor({
             </PanelGroup>
           )}
           
-          {viewMode === "preview" && !showBacklinks && showSecondaryDocument && (
+          {viewMode === "preview" && !showBacklinks && showSecondaryViewer && (
             <PanelGroup direction="horizontal" className="h-full w-full">
               <Panel defaultSize={50} minSize={30}>
                 <MemoizedPreviewPane
@@ -549,8 +553,9 @@ export default function DocumentEditor({
               </Panel>
               <PanelResizeHandle className="w-1 bg-border hover:bg-accent transition-colors" />
               <Panel defaultSize={50} minSize={20} maxSize={70}>
-                <SecondaryDocumentViewer 
+                <SecondaryViewer 
                   documentId={secondaryDocumentId} 
+                  documentType={secondaryDocumentType}
                   className="h-full border-l" 
                   onClose={onSecondaryDocumentClose}
                   onDocumentChange={onSecondaryDocumentChange}
@@ -559,7 +564,7 @@ export default function DocumentEditor({
             </PanelGroup>
           )}
           
-          {viewMode === "split" && !showBacklinks && !showSecondaryDocument && (
+          {viewMode === "split" && !showBacklinks && !showSecondaryViewer && (
             <PanelGroup direction="horizontal" className="h-full w-full">
               <Panel defaultSize={50} minSize={30}>
                 <MarkdownEditor
@@ -601,7 +606,7 @@ export default function DocumentEditor({
             </PanelGroup>
           )}
           
-          {viewMode === "split" && showBacklinks && !showSecondaryDocument && (
+          {viewMode === "split" && showBacklinks && !showSecondaryViewer && (
             <PanelGroup direction="horizontal" className="h-full w-full">
               <Panel defaultSize={35} minSize={20}>
                 <MarkdownEditor
@@ -647,7 +652,7 @@ export default function DocumentEditor({
             </PanelGroup>
           )}
           
-          {viewMode === "split" && !showBacklinks && showSecondaryDocument && (
+          {viewMode === "split" && !showBacklinks && showSecondaryViewer && (
             <PanelGroup direction="horizontal" className="h-full w-full">
               <Panel defaultSize={33.33} minSize={20}>
                 <MarkdownEditor
@@ -688,8 +693,9 @@ export default function DocumentEditor({
               </Panel>
               <PanelResizeHandle className="w-1 bg-border hover:bg-accent transition-colors" />
               <Panel defaultSize={33.34} minSize={20} maxSize={50}>
-                <SecondaryDocumentViewer 
+                <SecondaryViewer 
                   documentId={secondaryDocumentId} 
+                  documentType={secondaryDocumentType}
                   className="h-full border-l" 
                   onClose={onSecondaryDocumentClose}
                   onDocumentChange={onSecondaryDocumentChange}

@@ -19,7 +19,7 @@ interface WikiLinkProps extends Omit<React.AnchorHTMLAttributes<HTMLAnchorElemen
   'data-wiki-target'?: string
   'data-mention-target'?: string
   isPublic?: boolean
-  onNavigate?: (documentId: string) => void
+  onNavigate?: (documentId: string, type?: 'document' | 'scrap') => void
 }
 
 // Simple in-memory cache for document metadata and search results
@@ -208,7 +208,8 @@ export function WikiLink({
     if (onNavigate && !openInNewTab) {
       const id = resolvedId || await resolveDocument()
       if (id) {
-        onNavigate(id)
+        const type = documentType === 'scrap' ? 'scrap' : 'document'
+        onNavigate(id, type)
       } else {
         toast.error(`Document "${target}" not found`)
       }

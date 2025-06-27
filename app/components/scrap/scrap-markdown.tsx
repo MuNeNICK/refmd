@@ -11,9 +11,10 @@ import type { Components } from 'react-markdown';
 interface ScrapMarkdownProps {
   content: string;
   documentId?: string;
+  onNavigate?: (documentId: string, type?: 'document' | 'scrap') => void;
 }
 
-export function ScrapMarkdown({ content, documentId }: ScrapMarkdownProps) {
+export function ScrapMarkdown({ content, documentId, onNavigate }: ScrapMarkdownProps) {
   const apiUrl = getApiUrl();
 
   const customComponents: Components = useMemo(() => ({
@@ -93,6 +94,7 @@ export function ScrapMarkdown({ content, documentId }: ScrapMarkdownProps) {
             className={className}
             data-wiki-target={isWikiLink ? target : undefined}
             data-mention-target={isMentionLink ? target : undefined}
+            onNavigate={onNavigate}
             {...props}
           >
             {children}
@@ -124,7 +126,7 @@ export function ScrapMarkdown({ content, documentId }: ScrapMarkdownProps) {
       
       return <p {...props}>{children}</p>;
     },
-  }), [apiUrl, documentId]);
+  }), [apiUrl, documentId, onNavigate]);
 
   return <Markdown content={content} components={customComponents} />;
 }

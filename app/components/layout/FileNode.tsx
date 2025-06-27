@@ -40,7 +40,7 @@ interface FileNodeProps {
   isDropTarget: boolean;
   isAuthenticated?: boolean;
   onSelect: (id: string, type: 'file' | 'folder' | 'scrap') => void;
-  onOpenInSecondary?: (id: string) => void;
+  onOpenInSecondary?: (id: string, type?: 'document' | 'scrap') => void;
   onRename: (id: string, newTitle: string) => void;
   onDelete: (id: string) => void;
   onDragStart: (e: React.DragEvent, id: string) => void;
@@ -112,9 +112,10 @@ export const FileNode = memo(function FileNode({
 
   const handleOpenInSecondary = useCallback(() => {
     if (onOpenInSecondary) {
-      onOpenInSecondary(node.id);
+      const type = node.type === 'scrap' ? 'scrap' : 'document';
+      onOpenInSecondary(node.id, type);
     }
-  }, [node.id, onOpenInSecondary]);
+  }, [node.id, node.type, onOpenInSecondary]);
 
   const handleShowHistory = useCallback(async () => {
     try {

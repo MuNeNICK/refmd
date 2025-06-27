@@ -39,7 +39,7 @@ interface DocumentNode {
 interface FileTreeProps {
   onDocumentSelect: (documentId: string, documentType?: 'file' | 'folder' | 'scrap') => void;
   selectedDocumentId?: string;
-  onOpenInSecondary?: (documentId: string) => void;
+  onOpenInSecondary?: (documentId: string, type?: 'document' | 'scrap') => void;
 }
 
 function FileTreeComponent({ onDocumentSelect, selectedDocumentId, onOpenInSecondary }: FileTreeProps) {

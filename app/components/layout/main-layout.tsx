@@ -26,9 +26,7 @@ interface MainLayoutProps {
   onDownload?: () => void;
   onBacklinksToggle?: () => void;
   showBacklinks?: boolean;
-  onSecondaryDocumentToggle?: () => void;
-  showSecondaryDocument?: boolean;
-  onOpenDocumentInSecondary?: (documentId: string) => void;
+  onOpenDocumentInSecondary?: (documentId: string, type?: 'document' | 'scrap') => void;
   showEditorFeatures?: boolean;
   hideFileTree?: boolean;
   isViewOnly?: boolean;
@@ -49,8 +47,6 @@ export default function MainLayout({
   onDownload,
   onBacklinksToggle,
   showBacklinks,
-  onSecondaryDocumentToggle,
-  showSecondaryDocument,
   onOpenDocumentInSecondary,
   showEditorFeatures = false,
   hideFileTree = false,
@@ -123,8 +119,6 @@ export default function MainLayout({
           onDownload={onDownload}
           onBacklinksToggle={onBacklinksToggle}
           showBacklinks={showBacklinks}
-          onSecondaryDocumentToggle={onSecondaryDocumentToggle}
-          showSecondaryDocument={showSecondaryDocument}
           showEditorFeatures={showEditorFeatures}
           hideSidebarToggle={hideFileTree || false}
           isViewOnly={isViewOnly}

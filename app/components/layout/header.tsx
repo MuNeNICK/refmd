@@ -51,8 +51,6 @@ interface HeaderProps {
   onDownload?: () => void;
   onBacklinksToggle?: () => void;
   showBacklinks?: boolean;
-  onSecondaryDocumentToggle?: () => void;
-  showSecondaryDocument?: boolean;
   // Show editor features only when in document view
   showEditorFeatures?: boolean;
   hideSidebarToggle?: boolean;
@@ -72,8 +70,6 @@ export function Header({
   onDownload,
   onBacklinksToggle,
   showBacklinks,
-  onSecondaryDocumentToggle,
-  showSecondaryDocument,
   showEditorFeatures = false,
   hideSidebarToggle = false,
   isViewOnly = false,
@@ -286,18 +282,6 @@ export function Header({
                 </Button>
               )}
               
-              {/* Secondary document button */}
-              {onSecondaryDocumentToggle && (
-                <Button
-                  onClick={onSecondaryDocumentToggle}
-                  variant={showSecondaryDocument ? "secondary" : "ghost"}
-                  size="icon"
-                  className="hidden md:flex h-9 w-9"
-                  title="Toggle secondary document"
-                >
-                  <FileCode className="h-4 w-4" />
-                </Button>
-              )}
               
               {/* Desktop actions */}
               <Button
