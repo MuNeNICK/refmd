@@ -533,7 +533,7 @@ export function MarkdownEditor({
           listType = 'task';
           indent = match[1];
           marker = match[2];
-          content = match[3];
+          content = match[4];
         } else if ((match = unorderedListRegex.exec(lineContent))) {
           listType = 'unordered';
           indent = match[1];
