@@ -2,6 +2,44 @@
 
 RefMD is a modern, real-time collaborative markdown editor with advanced features for document management, sharing, and team collaboration. Built with a Rust backend and Next.js frontend, it provides a robust platform for creating and editing markdown documents with live synchronization.
 
+## Screenshots
+
+### Document Editor
+
+<div align="center">
+  <img src="screenshots/editor-dark.png" alt="Document Editor Dark Theme" width="800"/>
+  <p><em>Document Editor - Dark Theme with Split View</em></p>
+</div>
+
+<div align="center">
+  <img src="screenshots/editor-light.png" alt="Document Editor Light Theme" width="800"/>
+  <p><em>Document Editor - Light Theme with Live Preview</em></p>
+</div>
+
+### Collaboration Features
+
+<div align="center">
+  <img src="screenshots/split-view.png" alt="Split View Collaboration" width="800"/>
+  <p><em>Split View - Edit Multiple Documents Simultaneously</em></p>
+</div>
+
+<div align="center">
+  <img src="screenshots/collaboration-scrap.png" alt="Scrap Collaboration" width="800"/>
+  <p><em>Scrap - Real-time Thread-based Discussions</em></p>
+</div>
+
+### Sharing & Publishing
+
+<div align="center">
+  <img src="screenshots/share-dialog.png" alt="Share Dialog" width="800"/>
+  <p><em>Document Sharing - Permission Management</em></p>
+</div>
+
+<div align="center">
+  <img src="screenshots/public-document.png" alt="Public Document View" width="800"/>
+  <p><em>Public Document - Read-only Shared View</em></p>
+</div>
+
 ## Features
 
 ### Core Features
