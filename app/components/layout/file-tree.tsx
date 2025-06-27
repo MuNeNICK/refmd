@@ -302,7 +302,8 @@ function FileTreeComponent({ onDocumentSelect, selectedDocumentId, onOpenInSecon
     if (targetType === 'file' && parentId !== undefined) {
       // When dropped on a file, move to the file's parent folder
       originalHandleDrop(e, parentId, 'folder', undefined);
-    } else if (targetId && targetType) {
+    } else {
+      // Pass through to original handler, including root drops (where targetId is undefined)
       originalHandleDrop(e, targetId, targetType, parentId);
     }
   }, [originalHandleDrop]);
@@ -445,10 +446,10 @@ function FileTreeComponent({ onDocumentSelect, selectedDocumentId, onOpenInSecon
 
       <SidebarContent
         className="relative"
-        onDragOver={handleDragOver}
+        onDragOver={(e) => handleDragOver(e)}
         onDragEnter={(e) => handleDragEnter(e, '', 'folder')}
         onDragLeave={handleDragLeave}
-        onDrop={(e) => handleDrop(e, undefined, undefined)}
+        onDrop={(e) => handleDrop(e, undefined, 'folder')}
       >
         {/* Root drop zone overlay */}
         {((dragState.draggedItem && dragState.dropTarget === '') || (dragState.isExternalDrag && dragState.dropTarget === '')) && (

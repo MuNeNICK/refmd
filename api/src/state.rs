@@ -73,6 +73,18 @@ impl AppState {
         // Create public document service
         let public_document_service = Arc::new(PublicDocumentService::new(db_pool.clone()));
         
+        let frontend_url = config.frontend_url.clone().unwrap_or_else(|| "http://localhost:3000".to_string());
+        
+        // Create URL generator service
+        let url_generator = Arc::new(UrlGeneratorService::new(frontend_url.clone()));
+        
+        // Create file service first
+        let file_service = Arc::new(FileService::new(
+            db_pool.clone(),
+            storage_path.clone(),
+            frontend_url.clone(),
+        ));
+        
         // Create document service with batch sync if enabled
         let document_service = Arc::new(DocumentService::new(
             document_repository.clone(),
@@ -80,18 +92,8 @@ impl AppState {
             crdt_service.clone(),
             git_batch_sync_service.clone(),
             Arc::new(config.clone()),
-        ).with_links_service(document_links_service.clone()));
-        
-        let frontend_url = config.frontend_url.clone().unwrap_or_else(|| "http://localhost:3000".to_string());
-        
-        // Create URL generator service
-        let url_generator = Arc::new(UrlGeneratorService::new(frontend_url.clone()));
-        
-        let file_service = Arc::new(FileService::new(
-            db_pool.clone(),
-            storage_path,
-            frontend_url.clone(),
-        ));
+        ).with_links_service(document_links_service.clone())
+         .with_file_service(file_service.clone()));
         
         // Create share service with frontend URL from config
         let share_service = Arc::new(ShareService::new(

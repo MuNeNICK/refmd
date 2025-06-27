@@ -229,4 +229,41 @@ impl DocumentRepository {
         
         Ok(())
     }
+
+    pub async fn get_all_descendants(&self, folder_id: Uuid) -> Result<Vec<Document>> {
+        // Using a recursive CTE to get all descendants of a folder
+        let documents = sqlx::query_as::<_, Document>(
+            r#"
+            WITH RECURSIVE descendant_tree AS (
+                -- Start with direct children of the folder
+                SELECT id, owner_id, title, type, parent_id, file_path, crdt_state, version,
+                    COALESCE(visibility, 'private') as visibility, published_at,
+                    created_at, updated_at, last_edited_by, last_edited_at
+                FROM documents
+                WHERE parent_id = $1
+                
+                UNION ALL
+                
+                -- Recursively get children of children
+                SELECT d.id, d.owner_id, d.title, d.type, d.parent_id, d.file_path, d.crdt_state, d.version,
+                    COALESCE(d.visibility, 'private') as visibility, d.published_at,
+                    d.created_at, d.updated_at, d.last_edited_by, d.last_edited_at
+                FROM documents d
+                INNER JOIN descendant_tree dt ON d.parent_id = dt.id
+            )
+            SELECT id, owner_id, title, type as "type", parent_id, 
+                file_path, crdt_state, version,
+                visibility, published_at,
+                created_at, updated_at, 
+                last_edited_by, last_edited_at
+            FROM descendant_tree
+            ORDER BY type DESC, title  -- Folders first, then documents
+            "#
+        )
+        .bind(folder_id)
+        .fetch_all(self.pool.as_ref())
+        .await?;
+        
+        Ok(documents)
+    }
 }

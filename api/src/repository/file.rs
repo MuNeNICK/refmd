@@ -119,4 +119,20 @@ impl FileRepository {
 
         Ok(attachment)
     }
+
+    pub async fn update_storage_path(&self, id: Uuid, new_path: String) -> Result<()> {
+        sqlx::query!(
+            r#"
+            UPDATE attachments
+            SET storage_path = $2
+            WHERE id = $1
+            "#,
+            id,
+            new_path
+        )
+        .execute(self.pool.as_ref())
+        .await?;
+
+        Ok(())
+    }
 }

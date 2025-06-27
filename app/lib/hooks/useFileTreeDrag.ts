@@ -116,7 +116,7 @@ export function useFileTreeDrag({ onMove, onFileUpload }: UseFileTreeDragProps) 
     }, 100);
   }, []);
 
-  const handleDrop = useCallback(async (e: React.DragEvent, targetId: string, targetType: 'file' | 'folder' | 'scrap', parentId?: string) => {
+  const handleDrop = useCallback(async (e: React.DragEvent, targetId?: string, targetType?: 'file' | 'folder' | 'scrap', parentId?: string) => {
     e.preventDefault();
     e.stopPropagation();
 
@@ -127,7 +127,7 @@ export function useFileTreeDrag({ onMove, onFileUpload }: UseFileTreeDragProps) 
     } else {
       const draggedNodeId = e.dataTransfer.getData('text/plain') || dragState.draggedItem;
       
-      if (draggedNodeId && draggedNodeId !== targetId) {
+      if (draggedNodeId && (!targetId || draggedNodeId !== targetId)) {
         if (!targetId || targetType === 'folder') {
           await onMove(draggedNodeId, targetId);
         }

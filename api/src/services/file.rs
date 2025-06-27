@@ -285,18 +285,15 @@ impl FileService {
     fn sanitize_filename(&self, name: &str) -> String {
         let mut sanitized = name.trim().to_string();
         
-        // Replace spaces with underscores
-        sanitized = sanitized.replace(' ', "_");
-        
         // Replace problematic characters
         let invalid_chars = ['/', '\\', ':', '*', '?', '"', '<', '>', '|', '\0'];
         for &ch in &invalid_chars {
-            sanitized = sanitized.replace(ch, "_");
+            sanitized = sanitized.replace(ch, "-");
         }
         
-        // Replace multiple underscores with single underscore
-        while sanitized.contains("__") {
-            sanitized = sanitized.replace("__", "_");
+        // Replace multiple spaces/dashes with single dash
+        while sanitized.contains("--") {
+            sanitized = sanitized.replace("--", "-");
         }
         
         // Limit length
@@ -311,6 +308,117 @@ impl FileService {
         
         sanitized
     }
+
+    // Move all attachments for a document from old path to new path
+    pub async fn move_attachments(
+        &self,
+        document_id: Uuid,
+        old_base_path: &Path,
+        new_base_path: &Path,
+    ) -> Result<()> {
+        // Get all attachments for this document
+        let attachments = self.file_repository.list_by_document(document_id, 1000).await?;
+        
+        if attachments.is_empty() {
+            return Ok(());
+        }
+
+        // Create the new attachments directory
+        let new_attachments_dir = new_base_path.join("attachments");
+        fs::create_dir_all(&new_attachments_dir).await?;
+
+        // Move each attachment file and update database
+        for attachment in attachments {
+            let old_path = PathBuf::from(&attachment.storage_path);
+            
+            // Only proceed if the file exists
+            if old_path.exists() {
+                let new_path = new_attachments_dir.join(&attachment.filename);
+                
+                // Move the file
+                fs::rename(&old_path, &new_path).await
+                    .map_err(|e| Error::InternalServerError(format!("Failed to move attachment {}: {}", attachment.filename, e)))?;
+                
+                // Update the database record with new path
+                self.file_repository.update_storage_path(
+                    attachment.id,
+                    new_path.to_string_lossy().to_string()
+                ).await?;
+            }
+        }
+
+        // Try to remove the old attachments directory if it's empty
+        let old_attachments_dir = old_base_path.join("attachments");
+        if old_attachments_dir.exists() {
+            // Ignore errors when removing directory (it might not be empty if shared with other documents)
+            let _ = fs::remove_dir(&old_attachments_dir).await;
+        }
+
+        Ok(())
+    }
+
+    // Move attachments when a folder is moved (affects all child documents)
+    pub async fn move_folder_attachments(
+        &self,
+        folder_id: Uuid,
+        old_folder_path: &Path,
+        new_folder_path: &Path,
+    ) -> Result<()> {
+        // Get all documents in this folder (recursively)
+        let documents = self.document_repository.get_all_descendants(folder_id).await?;
+        
+        for document in documents {
+            if document.r#type != "folder" {
+                // Calculate old and new paths for this document
+                let relative_path = self.get_relative_document_path(&document, folder_id).await?;
+                
+                let old_doc_path = old_folder_path.join(&relative_path);
+                let new_doc_path = new_folder_path.join(&relative_path);
+                
+                // Move attachments for this document
+                self.move_attachments(document.id, &old_doc_path, &new_doc_path).await?;
+            }
+        }
+        
+        Ok(())
+    }
+
+    // Helper to get the relative path of a document from a specific folder
+    async fn get_relative_document_path(
+        &self,
+        document: &crate::db::models::Document,
+        from_folder_id: Uuid,
+    ) -> Result<PathBuf> {
+        let mut path_components = vec![];
+        let mut current_parent_id = document.parent_id;
+        
+        // Build path from document up to the specified folder
+        while let Some(parent_id) = current_parent_id {
+            if parent_id == from_folder_id {
+                break;
+            }
+            
+            if let Some(parent) = self.document_repository.get_by_id(parent_id).await? {
+                if parent.r#type == "folder" {
+                    path_components.push(self.sanitize_filename(&parent.title));
+                }
+                current_parent_id = parent.parent_id;
+            } else {
+                break;
+            }
+        }
+        
+        // Reverse to get correct order
+        path_components.reverse();
+        
+        // Build the relative path
+        let mut relative_path = PathBuf::new();
+        for component in path_components {
+            relative_path = relative_path.join(component);
+        }
+        
+        Ok(relative_path)
+    }
 }
 
 #[cfg(test)]
@@ -320,33 +428,36 @@ mod tests {
 
     // Helper to create a test FileService instance
     fn create_test_service() -> FileService {
+        use sqlx::postgres::PgPoolOptions;
+        let pool = std::sync::Arc::new(PgPoolOptions::new().connect_lazy("postgres://test").unwrap());
         FileService {
-            file_repository: Arc::new(FileRepository::new(sqlx::Pool::disconnected())),
-            document_repository: Arc::new(DocumentRepository::new(sqlx::Pool::disconnected())),
+            file_repository: FileRepository::new(pool.clone()),
+            document_repository: DocumentRepository::new(pool.clone()),
+            share_service: ShareService::new(pool.clone(), "http://localhost".to_string()),
             storage_path: PathBuf::from("/tmp"),
         }
     }
 
     #[test]
-    fn test_sanitize_filename_spaces_to_underscores() {
+    fn test_sanitize_filename_spaces() {
         let service = create_test_service();
 
-        // Test spaces are replaced with underscores
-        assert_eq!(service.sanitize_filename("my file name.txt"), "my_file_name.txt");
-        assert_eq!(service.sanitize_filename("multiple   spaces.pdf"), "multiple___spaces.pdf");
-        assert_eq!(service.sanitize_filename(" leading and trailing spaces "), "leading_and_trailing_spaces");
+        // Test spaces are kept as-is (not replaced with dashes in filenames themselves)
+        assert_eq!(service.sanitize_filename("my file name.txt"), "my file name.txt");
+        assert_eq!(service.sanitize_filename("multiple   spaces.pdf"), "multiple   spaces.pdf");
+        assert_eq!(service.sanitize_filename(" leading and trailing spaces "), "leading and trailing spaces");
     }
 
     #[test]
     fn test_sanitize_filename_invalid_chars() {
         let service = create_test_service();
 
-        // Test invalid characters are replaced with underscores
-        assert_eq!(service.sanitize_filename("file:name.txt"), "file_name.txt");
-        assert_eq!(service.sanitize_filename("file*name?.txt"), "file_name_.txt");
-        assert_eq!(service.sanitize_filename("file<>name|.txt"), "file_name_.txt");
-        assert_eq!(service.sanitize_filename("path/to/file.txt"), "path_to_file.txt");
-        assert_eq!(service.sanitize_filename("path\\to\\file.txt"), "path_to_file.txt");
+        // Test invalid characters are replaced with dashes
+        assert_eq!(service.sanitize_filename("file:name.txt"), "file-name.txt");
+        assert_eq!(service.sanitize_filename("file*name?.txt"), "file-name-.txt");
+        assert_eq!(service.sanitize_filename("file<>name|.txt"), "file--name-.txt");
+        assert_eq!(service.sanitize_filename("path/to/file.txt"), "path-to-file.txt");
+        assert_eq!(service.sanitize_filename("path\\to\\file.txt"), "path-to-file.txt");
     }
 
     #[test]

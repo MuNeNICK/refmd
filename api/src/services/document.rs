@@ -9,6 +9,7 @@ use crate::{
     services::crdt::CrdtService,
     services::git_batch_sync::GitBatchSyncService,
     services::document_links::DocumentLinksService,
+    services::file::FileService,
     config::Config,
 };
 
@@ -19,6 +20,7 @@ pub struct DocumentService {
     git_batch_sync_service: Option<Arc<GitBatchSyncService>>,
     config: Arc<Config>,
     document_links_service: Option<Arc<DocumentLinksService>>,
+    file_service: Option<Arc<FileService>>,
 }
 
 impl DocumentService {
@@ -36,11 +38,17 @@ impl DocumentService {
             git_batch_sync_service,
             config,
             document_links_service: None,
+            file_service: None,
         }
     }
     
     pub fn with_links_service(mut self, links_service: Arc<DocumentLinksService>) -> Self {
         self.document_links_service = Some(links_service);
+        self
+    }
+    
+    pub fn with_file_service(mut self, file_service: Arc<FileService>) -> Self {
+        self.file_service = Some(file_service);
         self
     }
     
@@ -439,8 +447,34 @@ updated_at: {}
     // Move file when document is moved or renamed
     async fn move_file(&self, document: &Document, old_path: Option<&str>) -> Result<()> {
         if document.r#type == "folder" {
-            // For folders, we need to move all child documents
-            // This would require recursive updates - for now, we'll regenerate paths on next save
+            // For folders, we need to move all child documents and their attachments
+            if let Some(old_file_path) = old_path {
+                let old_folder_path = self.upload_dir.join(old_file_path);
+                let new_folder_path = self.generate_file_path(document).await?;
+                
+                if old_folder_path.exists() && old_folder_path != new_folder_path {
+                    // Create new folder directory
+                    fs::create_dir_all(&new_folder_path).await?;
+                    
+                    // Move attachments for all descendant documents
+                    if let Some(ref file_service) = self.file_service {
+                        file_service.move_folder_attachments(
+                            document.id,
+                            &old_folder_path,
+                            &new_folder_path
+                        ).await?;
+                    }
+                    
+                    // Update file paths for all descendant documents
+                    let descendants = self.document_repo.get_all_descendants(document.id).await?;
+                    for descendant in descendants {
+                        if descendant.r#type != "folder" {
+                            // Trigger save to update file paths
+                            self.save_to_file(&descendant).await?;
+                        }
+                    }
+                }
+            }
             return Ok(());
         }
         
@@ -454,8 +488,24 @@ updated_at: {}
                     fs::create_dir_all(parent).await?;
                 }
                 
-                // Move the file
+                // Move the document file
                 fs::rename(&old_full_path, &new_file_path).await?;
+                
+                // Move attachments if FileService is available
+                if let Some(ref file_service) = self.file_service {
+                    // Get the directory paths (without the .md file)
+                    let old_dir_path = old_full_path.parent()
+                        .ok_or_else(|| Error::InternalServerError("Invalid old path".to_string()))?;
+                    let new_dir_path = new_file_path.parent()
+                        .ok_or_else(|| Error::InternalServerError("Invalid new path".to_string()))?;
+                    
+                    // Move all attachments for this document
+                    file_service.move_attachments(
+                        document.id,
+                        old_dir_path,
+                        new_dir_path
+                    ).await?;
+                }
                 
                 // Update the file_path in database
                 let relative_path = new_file_path.strip_prefix(&self.upload_dir)
