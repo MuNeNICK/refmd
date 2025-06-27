@@ -39,9 +39,10 @@ interface DocumentNode {
 interface FileTreeProps {
   onDocumentSelect: (documentId: string, documentType?: 'file' | 'folder' | 'scrap') => void;
   selectedDocumentId?: string;
+  onOpenInSecondary?: (documentId: string) => void;
 }
 
-function FileTreeComponent({ onDocumentSelect, selectedDocumentId }: FileTreeProps) {
+function FileTreeComponent({ onDocumentSelect, selectedDocumentId, onOpenInSecondary }: FileTreeProps) {
   const { documents, expandedFolders, loading, toggleFolder, expandFolder, expandParentFolders, refreshDocuments, updateDocuments } = useFileTree();
   const router = useRouter();
   const { user } = useAuth();
@@ -380,6 +381,7 @@ function FileTreeComponent({ onDocumentSelect, selectedDocumentId }: FileTreePro
         isDropTarget={false}
         isAuthenticated={!!user}
         onSelect={(id, type) => onDocumentSelect(id, type)}
+        onOpenInSecondary={onOpenInSecondary}
         onRename={renameDocument}
         onDelete={deleteDocument}
         onDragStart={handleDragStart}
@@ -390,7 +392,7 @@ function FileTreeComponent({ onDocumentSelect, selectedDocumentId }: FileTreePro
         onDragOver={handleDragOver}
       />
     );
-  }, [expandedFolders, selectedDocumentId, dragState, hasChildDropTarget, toggleFolder, onDocumentSelect, renameDocument, deleteDocument, createNewDocument, handleDragStart, handleDragEnd, handleDragEnter, handleDragLeave, handleDrop, handleDragOver, user]);
+  }, [expandedFolders, selectedDocumentId, dragState, hasChildDropTarget, toggleFolder, onDocumentSelect, onOpenInSecondary, renameDocument, deleteDocument, createNewDocument, handleDragStart, handleDragEnd, handleDragEnter, handleDragLeave, handleDrop, handleDragOver, user]);
 
   if (loading) {
     return (

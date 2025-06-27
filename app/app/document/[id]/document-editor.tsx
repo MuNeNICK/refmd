@@ -14,6 +14,7 @@ import { PanelGroup, Panel, PanelResizeHandle } from '@/components/ui/resizable'
 import type { editor } from 'monaco-editor';
 import { useAuth } from '@/lib/auth/authContext';
 import { BacklinksPanel } from '@/components/document/backlinks-panel';
+import { SecondaryDocumentViewer } from '@/components/document/secondary-document-viewer';
 
 interface DocumentEditorProps {
   documentId: string;
@@ -21,6 +22,8 @@ interface DocumentEditorProps {
   token?: string;
   viewMode: ViewMode;
   showBacklinks?: boolean;
+  showSecondaryDocument?: boolean;
+  secondaryDocumentId?: string | null;
   isViewOnly?: boolean;
   onContentChange?: (content: string) => void;
   onSyncStatusChange?: (synced: boolean) => void;
@@ -28,6 +31,8 @@ interface DocumentEditorProps {
   onActiveUsersChange?: (count: number) => void;
   onContentStatsChange?: (stats: { wordCount: number; charCount: number }) => void;
   onBacklinksClose?: () => void;
+  onSecondaryDocumentClose?: () => void;
+  onSecondaryDocumentChange?: (documentId: string) => void;
 }
 
 export default function DocumentEditor({ 
@@ -36,13 +41,17 @@ export default function DocumentEditor({
   token,
   viewMode,
   showBacklinks = false,
+  showSecondaryDocument = false,
+  secondaryDocumentId = null,
   isViewOnly = false,
   onContentChange,
   onSyncStatusChange,
   onConnectionStatusChange,
   onActiveUsersChange,
   onContentStatsChange,
-  onBacklinksClose
+  onBacklinksClose,
+  onSecondaryDocumentClose,
+  onSecondaryDocumentChange
 }: DocumentEditorProps) {
   const [selectedLine] = useState<number | undefined>();
   const [editorScrollPercentage, setEditorScrollPercentage] = useState(0);
@@ -373,7 +382,7 @@ export default function DocumentEditor({
     return React.memo(PreviewPane);
   }, []);
 
-  // Show only BacklinksPanel in full screen on mobile when showBacklinks is true
+  // Show only BacklinksPanel or SecondaryDocumentViewer in full screen on mobile when enabled
   if (isMobile && showBacklinks) {
     return (
       <div className="h-full w-full bg-background">
@@ -381,11 +390,24 @@ export default function DocumentEditor({
       </div>
     );
   }
+  
+  if (isMobile && showSecondaryDocument) {
+    return (
+      <div className="h-full w-full bg-background">
+        <SecondaryDocumentViewer 
+          documentId={secondaryDocumentId} 
+          className="h-full" 
+          onClose={onSecondaryDocumentClose}
+          onDocumentChange={onSecondaryDocumentChange}
+        />
+      </div>
+    );
+  }
 
   return (
     <>
       <div className="h-full w-full flex overflow-hidden" ref={editorContainerRef}>
-        {viewMode === "editor" && !showBacklinks && (
+        {viewMode === "editor" && !showBacklinks && !showSecondaryDocument && (
             <div className="h-full w-full">
               <MarkdownEditor
               doc={doc}
@@ -409,7 +431,7 @@ export default function DocumentEditor({
             </div>
           )}
           
-          {viewMode === "editor" && showBacklinks && (
+          {viewMode === "editor" && showBacklinks && !showSecondaryDocument && (
             <PanelGroup direction="horizontal" className="h-full w-full">
               <Panel defaultSize={70} minSize={30}>
                 <MarkdownEditor
@@ -439,7 +461,42 @@ export default function DocumentEditor({
             </PanelGroup>
           )}
           
-          {viewMode === "preview" && !showBacklinks && (
+          {viewMode === "editor" && !showBacklinks && showSecondaryDocument && (
+            <PanelGroup direction="horizontal" className="h-full w-full">
+              <Panel defaultSize={70} minSize={30}>
+                <MarkdownEditor
+                  doc={doc}
+                  readOnly={isViewOnly}
+                  awareness={awareness}
+                  connected={connected}
+                  onMount={handleEditorMount}
+                  onScroll={handleEditorScroll}
+                  scrollToLine={selectedLine}
+                  onContentStatsChange={onContentStatsChange}
+                  syncScroll={syncScroll}
+                  onSyncScrollToggle={() => setSyncScroll(!syncScroll)}
+                  viewMode={viewMode}
+                  onFileUpload={triggerFileUpload}
+                  isDragOver={isDragOver}
+                  onEditorReady={handleEditorReady}
+                  userName={user?.name || undefined}
+                  userId={user?.id || undefined}
+                  documentPath={initialDocument?.file_path || undefined}
+                />
+              </Panel>
+              <PanelResizeHandle className="w-1 bg-border hover:bg-accent transition-colors" />
+              <Panel defaultSize={30} minSize={20} maxSize={50}>
+                <SecondaryDocumentViewer 
+                  documentId={secondaryDocumentId} 
+                  className="h-full border-l" 
+                  onClose={onSecondaryDocumentClose}
+                  onDocumentChange={onSecondaryDocumentChange}
+                />
+              </Panel>
+            </PanelGroup>
+          )}
+          
+          {viewMode === "preview" && !showBacklinks && !showSecondaryDocument && (
             <div className="h-full w-full">
               <MemoizedPreviewPane
                 content={content}
@@ -454,7 +511,7 @@ export default function DocumentEditor({
             </div>
           )}
           
-          {viewMode === "preview" && showBacklinks && (
+          {viewMode === "preview" && showBacklinks && !showSecondaryDocument && (
             <PanelGroup direction="horizontal" className="h-full w-full">
               <Panel defaultSize={70} minSize={30}>
                 <MemoizedPreviewPane
@@ -475,7 +532,34 @@ export default function DocumentEditor({
             </PanelGroup>
           )}
           
-          {viewMode === "split" && !showBacklinks && (
+          {viewMode === "preview" && !showBacklinks && showSecondaryDocument && (
+            <PanelGroup direction="horizontal" className="h-full w-full">
+              <Panel defaultSize={50} minSize={30}>
+                <MemoizedPreviewPane
+                  content={content}
+                  onScroll={handlePreviewScroll}
+                  scrollPercentage={editorScrollPercentage}
+                  documentId={documentId}
+                  viewMode={viewMode}
+                  contentStats={{ wordCount: 0, charCount: 0 }}
+                  token={token}
+                  onCheckboxChange={handleCheckboxChange}
+                  forceFloatingToc={true}
+                />
+              </Panel>
+              <PanelResizeHandle className="w-1 bg-border hover:bg-accent transition-colors" />
+              <Panel defaultSize={50} minSize={20} maxSize={70}>
+                <SecondaryDocumentViewer 
+                  documentId={secondaryDocumentId} 
+                  className="h-full border-l" 
+                  onClose={onSecondaryDocumentClose}
+                  onDocumentChange={onSecondaryDocumentChange}
+                />
+              </Panel>
+            </PanelGroup>
+          )}
+          
+          {viewMode === "split" && !showBacklinks && !showSecondaryDocument && (
             <PanelGroup direction="horizontal" className="h-full w-full">
               <Panel defaultSize={50} minSize={30}>
                 <MarkdownEditor
@@ -517,7 +601,7 @@ export default function DocumentEditor({
             </PanelGroup>
           )}
           
-          {viewMode === "split" && showBacklinks && (
+          {viewMode === "split" && showBacklinks && !showSecondaryDocument && (
             <PanelGroup direction="horizontal" className="h-full w-full">
               <Panel defaultSize={35} minSize={20}>
                 <MarkdownEditor
@@ -559,6 +643,57 @@ export default function DocumentEditor({
               <PanelResizeHandle className="w-1 bg-border hover:bg-accent transition-colors" />
               <Panel defaultSize={30} minSize={20} maxSize={40}>
                 <BacklinksPanel documentId={documentId} className="h-full border-l" onClose={onBacklinksClose} />
+              </Panel>
+            </PanelGroup>
+          )}
+          
+          {viewMode === "split" && !showBacklinks && showSecondaryDocument && (
+            <PanelGroup direction="horizontal" className="h-full w-full">
+              <Panel defaultSize={33.33} minSize={20}>
+                <MarkdownEditor
+                  doc={doc}
+                  readOnly={isViewOnly}
+                  awareness={awareness}
+                  connected={connected}
+                  onMount={handleEditorMount}
+                  onScroll={handleEditorScroll}
+                  scrollPercentage={syncScroll ? previewScrollPercentage : undefined}
+                  scrollToLine={selectedLine}
+                  onContentStatsChange={onContentStatsChange}
+                  syncScroll={syncScroll}
+                  onSyncScrollToggle={() => setSyncScroll(!syncScroll)}
+                  viewMode={viewMode}
+                  onFileUpload={triggerFileUpload}
+                  isDragOver={isDragOver}
+                  onEditorReady={handleEditorReady}
+                  userName={user?.name || undefined}
+                  userId={user?.id || undefined}
+                  documentPath={initialDocument?.file_path || undefined}
+                />
+              </Panel>
+              <PanelResizeHandle className="w-1 bg-border hover:bg-accent transition-colors" />
+              <Panel defaultSize={33.33} minSize={20}>
+                <div className="h-full bg-background">
+                  <MemoizedPreviewPane
+                    content={content}
+                    onScroll={handlePreviewScroll}
+                    scrollPercentage={syncScroll ? editorScrollPercentage : undefined}
+                    documentId={documentId}
+                    viewMode={viewMode}
+                    contentStats={{ wordCount: 0, charCount: 0 }}
+                    token={token}
+                    onCheckboxChange={handleCheckboxChange}
+                  />
+                </div>
+              </Panel>
+              <PanelResizeHandle className="w-1 bg-border hover:bg-accent transition-colors" />
+              <Panel defaultSize={33.34} minSize={20} maxSize={50}>
+                <SecondaryDocumentViewer 
+                  documentId={secondaryDocumentId} 
+                  className="h-full border-l" 
+                  onClose={onSecondaryDocumentClose}
+                  onDocumentChange={onSecondaryDocumentChange}
+                />
               </Panel>
             </PanelGroup>
           )}

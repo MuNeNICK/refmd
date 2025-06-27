@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import type { ScrapWithPosts, ScrapPost } from '@/lib/api/client';
@@ -15,6 +15,9 @@ import { getApiClient } from '@/lib/api';
 import { ScrapMetadataParser } from '@/lib/utils/scrap-metadata-parser';
 import { ShareDialog } from '@/components/collaboration/share-dialog';
 import { useScrapConnection } from '@/lib/hooks/useScrapConnection';
+import { useSecondaryDocument } from '@/components/providers/secondary-document-provider';
+import { SecondaryDocumentViewer } from '@/components/document/secondary-document-viewer';
+import { PanelGroup, Panel, PanelResizeHandle } from '@/components/ui/resizable';
 
 interface ScrapPageClientProps {
   initialData: ScrapWithPosts & { permission?: string };
@@ -33,6 +36,17 @@ export function ScrapPageClient({ initialData, scrapId, shareToken }: ScrapPageC
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc'); // Default to newest first
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [userCount, setUserCount] = useState(0);
+  const [isMobile, setIsMobile] = useState(false);
+  
+  // Secondary document state
+  const {
+    secondaryDocumentId,
+    showSecondaryDocument,
+    setSecondaryDocumentId,
+    setShowSecondaryDocument,
+    openSecondaryDocument,
+    closeSecondaryDocument
+  } = useSecondaryDocument();
 
   // Use the singleton API client with automatic token management
   const client = getApiClient();
@@ -40,6 +54,17 @@ export function ScrapPageClient({ initialData, scrapId, shareToken }: ScrapPageC
   // Check permission level from initial data
   const isViewOnly = initialData.permission === 'view';
   
+  // Check if mobile
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768); // md breakpoint
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // Refresh data from server
   const refreshScrapData = useCallback(async () => {
@@ -263,6 +288,38 @@ export function ScrapPageClient({ initialData, scrapId, shareToken }: ScrapPageC
   const toggleSortOrder = () => {
     setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc');
   };
+  
+  const handleOpenDocumentInSecondary = useCallback((docId: string) => {
+    openSecondaryDocument(docId);
+  }, [openSecondaryDocument]);
+
+  // Show only SecondaryDocumentViewer in full screen on mobile when enabled
+  if (isMobile && showSecondaryDocument) {
+    return (
+      <MainLayout
+        documentTitle={scrapData.scrap.title}
+        selectedDocumentId={scrapId}
+        showEditorFeatures={false}
+        isViewOnly={isViewOnly}
+        hideFileTree={!!shareToken}
+        isRealtimeConnected={isConnected && !connectionError}
+        realtimeUserCount={userCount}
+        onShare={!isViewOnly && user ? () => setShareDialogOpen(true) : undefined}
+        onSecondaryDocumentToggle={() => setShowSecondaryDocument(!showSecondaryDocument)}
+        showSecondaryDocument={showSecondaryDocument}
+        onOpenDocumentInSecondary={handleOpenDocumentInSecondary}
+      >
+        <div className="h-full w-full bg-background">
+          <SecondaryDocumentViewer 
+            documentId={secondaryDocumentId} 
+            className="h-full" 
+            onClose={closeSecondaryDocument}
+            onDocumentChange={setSecondaryDocumentId}
+          />
+        </div>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout
@@ -274,10 +331,16 @@ export function ScrapPageClient({ initialData, scrapId, shareToken }: ScrapPageC
       isRealtimeConnected={isConnected && !connectionError}
       realtimeUserCount={userCount}
       onShare={!isViewOnly && user ? () => setShareDialogOpen(true) : undefined}
+      onSecondaryDocumentToggle={() => setShowSecondaryDocument(!showSecondaryDocument)}
+      showSecondaryDocument={showSecondaryDocument}
+      onOpenDocumentInSecondary={handleOpenDocumentInSecondary}
     >
-      <div className="flex flex-col h-full overflow-y-auto">
-        <div className="max-w-4xl mx-auto w-full p-3 sm:p-6">
-          <div className="space-y-4 pb-6">
+      {showSecondaryDocument ? (
+        <PanelGroup direction="horizontal" className="h-full w-full">
+          <Panel defaultSize={70} minSize={30}>
+            <div className="flex flex-col h-full overflow-y-auto">
+              <div className="max-w-4xl mx-auto w-full p-3 sm:p-6">
+                <div className="space-y-4 pb-6">
 
             {/* Add post form - only visible if not view-only */}
             {!isViewOnly && (
@@ -337,9 +400,87 @@ export function ScrapPageClient({ initialData, scrapId, shareToken }: ScrapPageC
                 />
               ))
             )}
+                </div>
+              </div>
+            </div>
+          </Panel>
+          <PanelResizeHandle className="w-1 bg-border hover:bg-accent transition-colors" />
+          <Panel defaultSize={30} minSize={20} maxSize={50}>
+            <SecondaryDocumentViewer 
+              documentId={secondaryDocumentId} 
+              className="h-full border-l" 
+              onClose={closeSecondaryDocument}
+              onDocumentChange={setSecondaryDocumentId}
+            />
+          </Panel>
+        </PanelGroup>
+      ) : (
+        <div className="flex flex-col h-full overflow-y-auto">
+          <div className="max-w-4xl mx-auto w-full p-3 sm:p-6">
+            <div className="space-y-4 pb-6">
+
+              {/* Add post form - only visible if not view-only */}
+              {!isViewOnly && (
+                <ScrapPostForm
+                  onSubmit={handleAddPost}
+                  isLoading={isLoading}
+                  placeholder="Enter a new post..."
+                  documentId={scrapData.scrap.id}
+                />
+              )}
+
+              {/* Sort button and Posts header */}
+              {scrapData.posts.length > 0 && (
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm text-muted-foreground">
+                    {scrapData.posts.length} {scrapData.posts.length === 1 ? 'post' : 'posts'}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={toggleSortOrder}
+                    className="h-8 px-2 text-muted-foreground hover:text-foreground"
+                  >
+                    {sortOrder === 'desc' ? (
+                      <>
+                        <ArrowDown className="h-3.5 w-3.5 mr-1" />
+                        Newest first
+                      </>
+                    ) : (
+                      <>
+                        <ArrowUp className="h-3.5 w-3.5 mr-1" />
+                        Oldest first
+                      </>
+                    )}
+                  </Button>
+                </div>
+              )}
+
+              {/* Posts */}
+              {scrapData.posts.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  No posts yet
+                </div>
+              ) : (
+                sortedPosts.map((post) => (
+                  <ScrapPostComponent
+                    key={`${post.id}-${post.updated_at}`}
+                    post={post}
+                    currentUserId={user?.id}
+                    currentUserName={user?.name}
+                    onUpdate={handleUpdatePost}
+                    onDelete={handleDeletePost}
+                    isUpdating={editingPostId === post.id}
+                    isDeleting={deletingPostId === post.id}
+                    scrapId={scrapId}
+                    isViewOnly={isViewOnly}
+                  />
+                ))
+              )}
+            </div>
           </div>
         </div>
-      </div>
+      )}
       
       {/* Share Dialog */}
       <ShareDialog

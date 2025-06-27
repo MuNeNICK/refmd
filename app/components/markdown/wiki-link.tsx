@@ -19,6 +19,7 @@ interface WikiLinkProps extends Omit<React.AnchorHTMLAttributes<HTMLAnchorElemen
   'data-wiki-target'?: string
   'data-mention-target'?: string
   isPublic?: boolean
+  onNavigate?: (documentId: string) => void
 }
 
 // Simple in-memory cache for document metadata and search results
@@ -41,6 +42,7 @@ export function WikiLink({
   'data-wiki-target': wikiTarget,
   'data-mention-target': mentionTarget,
   isPublic = false,
+  onNavigate,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   ...props 
 }: WikiLinkProps) {
@@ -196,8 +198,22 @@ export function WikiLink({
       return
     }
     
+    // Check if Ctrl/Cmd key is held
+    const openInNewTab = e.ctrlKey || e.metaKey
+    
     e.preventDefault()
     e.stopPropagation()
+    
+    // If onNavigate is provided and not opening in new tab, use it
+    if (onNavigate && !openInNewTab) {
+      const id = resolvedId || await resolveDocument()
+      if (id) {
+        onNavigate(id)
+      } else {
+        toast.error(`Document "${target}" not found`)
+      }
+      return
+    }
     
     // If we already have a resolved ID, navigate directly
     if (resolvedId) {
@@ -207,7 +223,13 @@ export function WikiLink({
       const query = queryString ? `?${queryString}` : ''
       
       const path = documentType === 'scrap' ? `/scrap/${resolvedId}` : `/document/${resolvedId}`
-      router.push(`${path}${query}`)
+      const url = `${path}${query}`
+      
+      if (openInNewTab) {
+        window.open(url, '_blank')
+      } else {
+        router.push(url)
+      }
       return
     }
     
@@ -220,11 +242,17 @@ export function WikiLink({
       const query = queryString ? `?${queryString}` : ''
       
       const path = documentType === 'scrap' ? `/scrap/${id}` : `/document/${id}`
-      router.push(`${path}${query}`)
+      const url = `${path}${query}`
+      
+      if (openInNewTab) {
+        window.open(url, '_blank')
+      } else {
+        router.push(url)
+      }
     } else {
       toast.error(`Document "${target}" not found`)
     }
-  }, [isPublic, resolvedId, resolveDocument, router, target, documentType])
+  }, [isPublic, resolvedId, resolveDocument, router, target, documentType, onNavigate])
   
   // Load document metadata for preview
   const loadDocumentMetadata = useCallback(async () => {

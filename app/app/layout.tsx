@@ -9,6 +9,7 @@ import { PublicEnvScript } from "next-runtime-env";
 import { QueryProvider } from "@/components/providers/query-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { YjsConfig } from "@/components/providers/yjs-config";
+import { SecondaryDocumentProvider } from "@/components/providers/secondary-document-provider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -45,11 +46,13 @@ export default function RootLayout({
           <QueryProvider>
             <AuthProvider>
               <FileTreeProvider>
-                <TooltipProvider>
-                  <YjsConfig />
-                  {children}
-                  <Toaster />
-                </TooltipProvider>
+                <SecondaryDocumentProvider>
+                  <TooltipProvider>
+                    <YjsConfig />
+                    {children}
+                    <Toaster />
+                  </TooltipProvider>
+                </SecondaryDocumentProvider>
               </FileTreeProvider>
             </AuthProvider>
           </QueryProvider>

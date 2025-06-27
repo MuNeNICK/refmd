@@ -8,6 +8,7 @@ import { ViewMode } from '@/components/layout/header';
 import { getApiClient } from '@/lib/api';
 import type { Document } from '@/lib/api/client/models/Document';
 import { toast } from 'sonner';
+import { useSecondaryDocument } from '@/components/providers/secondary-document-provider';
 
 // Dynamic import only the editor part
 const DocumentEditor = dynamic(
@@ -30,6 +31,15 @@ interface PageClientProps {
 
 export default function PageClient({ documentId, initialDocument, token }: PageClientProps) {
   const api = getApiClient();
+  const {
+    secondaryDocumentId,
+    showSecondaryDocument,
+    setSecondaryDocumentId,
+    setShowSecondaryDocument,
+    openSecondaryDocument,
+    closeSecondaryDocument
+  } = useSecondaryDocument();
+  
   const [isViewOnly] = useState(initialDocument?.permission === 'view');
   const [viewMode, setViewMode] = useState<ViewMode>(isViewOnly ? "preview" : "split");
   const [documentTitle] = useState<string>(initialDocument?.title || `Document ${documentId.slice(0, 8)}`);
@@ -42,6 +52,10 @@ export default function PageClient({ documentId, initialDocument, token }: PageC
   const [currentContent, setCurrentContent] = useState(initialDocument?.content || '');
   const [showBacklinks, setShowBacklinks] = useState(false);
   const [currentDocument, setCurrentDocument] = useState(initialDocument);
+  
+  const handleOpenDocumentInSecondary = useCallback((docId: string) => {
+    openSecondaryDocument(docId);
+  }, [openSecondaryDocument]);
 
   // Determine if document is published and generate public URL
   const isDocumentPublished = currentDocument?.visibility === 'public' && !!currentDocument?.published_at;
@@ -219,6 +233,9 @@ export default function PageClient({ documentId, initialDocument, token }: PageC
         onDownload={handleDownload}
         onBacklinksToggle={() => setShowBacklinks(!showBacklinks)}
         showBacklinks={showBacklinks}
+        onSecondaryDocumentToggle={() => setShowSecondaryDocument(!showSecondaryDocument)}
+        showSecondaryDocument={showSecondaryDocument}
+        onOpenDocumentInSecondary={handleOpenDocumentInSecondary}
         showEditorFeatures={!isViewOnly}
         hideFileTree={isShareLink}
         isViewOnly={isViewOnly}
@@ -229,6 +246,8 @@ export default function PageClient({ documentId, initialDocument, token }: PageC
           token={token}
           viewMode={viewMode}
           showBacklinks={showBacklinks}
+          showSecondaryDocument={showSecondaryDocument}
+          secondaryDocumentId={secondaryDocumentId}
           isViewOnly={isViewOnly}
           onContentChange={handleContentChange}
           onSyncStatusChange={handleSyncStatusChange}
@@ -236,6 +255,8 @@ export default function PageClient({ documentId, initialDocument, token }: PageC
           onActiveUsersChange={handleActiveUsersChange}
           onContentStatsChange={handleContentStatsChange}
           onBacklinksClose={() => setShowBacklinks(false)}
+          onSecondaryDocumentClose={closeSecondaryDocument}
+          onSecondaryDocumentChange={setSecondaryDocumentId}
         />
       </MainLayout>
       
