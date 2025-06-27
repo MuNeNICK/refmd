@@ -15,14 +15,14 @@ services:
       timeout: 5s
       retries: 5
 
-  backend:
+  api:
     build:
       context: ./api
       dockerfile: Dockerfile
     ports:
       - "8888:8888"
     environment:
-      FRONTEND_URL=http://localhost:3000
+      FRONTEND_URL: http://localhost:3000
       DATABASE_URL: postgresql://refmd:refmd@postgres:5432/refmd
       PORT: 8888
       JWT_SECRET: your-secret-key-change-this-in-production
@@ -30,7 +30,7 @@ services:
       REFRESH_TOKEN_EXPIRY: 604800
       BCRYPT_COST: 10
       UPLOAD_MAX_SIZE: 10485760
-      UPLOAD_DIR: ./documents
+      UPLOAD_DIR: ./refmd
       GIT_SYNC_ENABLED: true
       GIT_AUTO_SYNC: true
       GIT_SYNC_INTERVAL: 300
@@ -39,20 +39,21 @@ services:
       postgres:
         condition: service_healthy
     volumes:
-      - ./documents:/app/documents
+      - ./refmd:/app/refmd
 
-  frontend:
+  app:
     build:
       context: ./app
       dockerfile: Dockerfile
     ports:
       - "3000:3000"
     environment:
-      API_URL: http://localhost:8888/api
-      SOCKET_URL: http://localhost:8888
-      SITE_URL: http://localhost:3000
+    
+      NEXT_PUBLIC_API_URL: http://localhost:8888/api
+      NEXT_PUBLIC_SOCKET_URL: http://localhost:8888
+      NEXT_PUBLIC_SITE_URL: http://localhost:3000
     depends_on:
-      - backend
+      - api
 
 volumes:
   postgres_data:

@@ -20,20 +20,20 @@ services:
     ports:
       - "8888:8888"
     environment:
-      - FRONTEND_URL=http://localhost:3000
-      - DATABASE_URL=postgresql://refmd:refmd@postgres:5432/refmd
-      - PORT=8888
-      - JWT_SECRET=dev-secret-key-change-in-production
-      - JWT_EXPIRY=3600
-      - REFRESH_TOKEN_EXPIRY=604800
-      - BCRYPT_COST=12
-      - UPLOAD_MAX_SIZE=10485760
-      - UPLOAD_DIR=/app/documents
-      - GIT_SYNC_ENABLED=true
-      - GIT_AUTO_SYNC=true
-      - GIT_SYNC_INTERVAL=300
+      FRONTEND_URL: http://localhost:3000
+      DATABASE_URL: postgresql://refmd:refmd@postgres:5432/refmd
+      PORT: 8888
+      JWT_SECRET: dev-secret-key-change-in-production
+      JWT_EXPIRY: 3600
+      REFRESH_TOKEN_EXPIRY: 604800
+      BCRYPT_COST: 12
+      UPLOAD_MAX_SIZE: 10485760
+      UPLOAD_DIR: /app/refmd
+      GIT_SYNC_ENABLED: true
+      GIT_AUTO_SYNC: false
+      GIT_SYNC_INTERVAL: 300
     volumes:
-      - ./documents:/app/documents
+      - app_data:/app/refmd
     depends_on:
       postgres:
         condition: service_healthy
@@ -43,11 +43,12 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:8888/api
-      - NEXT_PUBLIC_SOCKET_URL=http://localhost:8888
-      - NEXT_PUBLIC_SITE_URL=http://localhost:3000
+      NEXT_PUBLIC_API_URL: http://localhost:8888/api
+      NEXT_PUBLIC_SOCKET_URL: http://localhost:8888
+      NEXT_PUBLIC_SITE_URL: http://localhost:3000
     depends_on:
       - api
 
 volumes:
+  app_data:
   postgres_data:
