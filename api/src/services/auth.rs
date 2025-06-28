@@ -6,7 +6,6 @@ use crate::utils::password::{hash_password, verify_password};
 use crate::db::models::User;
 use chrono::{Utc, Duration};
 use uuid::Uuid;
-use crate::config::Config;
 
 pub struct AuthService {
     user_repo: Arc<UserRepository>,
@@ -14,15 +13,10 @@ pub struct AuthService {
 }
 
 impl AuthService {
-    pub fn new(user_repo: Arc<UserRepository>, config: Config) -> Self {
-        let jwt_service = JwtService::new(
-            config.jwt_secret,
-            config.jwt_expiry,
-            config.refresh_token_expiry,
-        );
+    pub fn new(user_repo: Arc<UserRepository>, jwt_service: Arc<JwtService>) -> Self {
         Self {
             user_repo,
-            jwt_service,
+            jwt_service: (*jwt_service).clone(),
         }
     }
     

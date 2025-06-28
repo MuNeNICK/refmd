@@ -12,6 +12,7 @@ use crate::error::{Error, Result};
 use crate::repository::file::FileRepository;
 use crate::repository::document::DocumentRepository;
 use crate::services::share::ShareService;
+use crate::services::common::path_utils::PathUtils;
 
 const MAX_FILE_SIZE: i64 = 10 * 1024 * 1024; // 10MB
 const MAX_USER_STORAGE: i64 = 100 * 1024 * 1024; // 100MB
@@ -21,6 +22,16 @@ pub struct FileService {
     document_repository: DocumentRepository,
     share_service: ShareService,
     storage_path: PathBuf,
+}
+
+impl PathUtils for FileService {
+    fn get_storage_path(&self) -> &PathBuf {
+        &self.storage_path
+    }
+    
+    fn get_document_repository(&self) -> &DocumentRepository {
+        &self.document_repository
+    }
 }
 
 impl FileService {
@@ -77,8 +88,8 @@ impl FileService {
         // Create directory if it doesn't exist
         fs::create_dir_all(&dir_path).await?;
 
-        // Handle filename conflicts
-        let unique_filename = self.get_unique_filename(&dir_path, &filename).await?;
+        // Handle filename conflicts using trait method
+        let unique_filename = PathUtils::get_unique_filename(self, &dir_path, &filename).await?;
         let file_path = dir_path.join(&unique_filename);
 
         // Save file to disk
@@ -208,106 +219,7 @@ impl FileService {
         }).collect())
     }
 
-    async fn get_unique_filename(&self, dir_path: &Path, filename: &str) -> Result<String> {
-        let file_path = dir_path.join(filename);
-        if !file_path.exists() {
-            return Ok(filename.to_string());
-        }
-
-        // Extract base name and extension
-        let path = Path::new(filename);
-        let stem = path.file_stem().unwrap_or_default().to_string_lossy();
-        let ext = path.extension()
-            .map(|e| format!(".{}", e.to_string_lossy()))
-            .unwrap_or_default();
-
-        // Use timestamp and random suffix for uniqueness
-        use chrono::Utc;
-        use rand::Rng;
-        
-        loop {
-            let timestamp = Utc::now().timestamp_millis();
-            let random_suffix: String = rand::thread_rng()
-                .sample_iter(&rand::distributions::Alphanumeric)
-                .take(6)
-                .map(char::from)
-                .collect();
-            
-            let unique_name = format!("{}_{}_{}{}",  stem, timestamp, random_suffix, ext);
-            
-            // Check uniqueness (extremely unlikely to collide)
-            let unique_path = dir_path.join(&unique_name);
-            if !unique_path.exists() {
-                return Ok(unique_name);
-            }
-            
-            // Wait a millisecond to ensure different timestamp on next iteration (extremely rare)
-            tokio::time::sleep(tokio::time::Duration::from_millis(1)).await;
-        }
-    }
-
-    // Get the directory path for a document based on its hierarchy
-    async fn get_document_directory_path(&self, document: &crate::db::models::Document) -> Result<PathBuf> {
-        let mut path_components = vec![];
-        let mut current_parent_id = document.parent_id;
-        
-        // Build path from parent hierarchy
-        while let Some(parent_id) = current_parent_id {
-            if let Some(parent) = self.document_repository.get_by_id(parent_id).await? {
-                if parent.r#type == "folder" {
-                    path_components.push(self.sanitize_filename(&parent.title));
-                }
-                current_parent_id = parent.parent_id;
-            } else {
-                break;
-            }
-        }
-        
-        // Reverse to get correct order (root to leaf)
-        path_components.reverse();
-        
-        // If the document itself is a folder, add it to the path
-        if document.r#type == "folder" {
-            path_components.push(self.sanitize_filename(&document.title));
-        }
-        
-        // Build the full path: storage_path/user_id/...path_components
-        let mut full_path = self.storage_path.clone();
-        full_path.push(document.owner_id.to_string());
-        for component in path_components {
-            full_path.push(component);
-        }
-        
-        Ok(full_path)
-    }
-
-    // Sanitize filename to be filesystem-safe
-    fn sanitize_filename(&self, name: &str) -> String {
-        let mut sanitized = name.trim().to_string();
-        
-        // Replace problematic characters
-        let invalid_chars = ['/', '\\', ':', '*', '?', '"', '<', '>', '|', '\0'];
-        for &ch in &invalid_chars {
-            sanitized = sanitized.replace(ch, "-");
-        }
-        
-        // Replace multiple spaces/dashes with single dash
-        while sanitized.contains("--") {
-            sanitized = sanitized.replace("--", "-");
-        }
-        
-        // Limit length
-        if sanitized.len() > 100 {
-            sanitized.truncate(100);
-        }
-        
-        // Default name if empty
-        if sanitized.is_empty() {
-            sanitized = "untitled".to_string();
-        }
-        
-        sanitized
-    }
+    // Use the trait methods instead of duplicating them
 
     // Move all attachments for a document from old path to new path
     pub async fn move_attachments(
@@ -400,7 +312,7 @@ impl FileService {
             
             if let Some(parent) = self.document_repository.get_by_id(parent_id).await? {
                 if parent.r#type == "folder" {
-                    path_components.push(self.sanitize_filename(&parent.title));
+                    path_components.push(PathUtils::sanitize_filename(self, &parent.title));
                 }
                 current_parent_id = parent.parent_id;
             } else {
@@ -443,9 +355,9 @@ mod tests {
         let service = create_test_service();
 
         // Test spaces are kept as-is (not replaced with dashes in filenames themselves)
-        assert_eq!(service.sanitize_filename("my file name.txt"), "my file name.txt");
-        assert_eq!(service.sanitize_filename("multiple   spaces.pdf"), "multiple   spaces.pdf");
-        assert_eq!(service.sanitize_filename(" leading and trailing spaces "), "leading and trailing spaces");
+        assert_eq!(PathUtils::sanitize_filename(&service, "my file name.txt"), "my_file_name.txt");
+        assert_eq!(PathUtils::sanitize_filename(&service, "multiple   spaces.pdf"), "multiple___spaces.pdf");
+        assert_eq!(PathUtils::sanitize_filename(&service, " leading and trailing spaces "), "leading_and_trailing_spaces");
     }
 
     #[test]
@@ -453,11 +365,11 @@ mod tests {
         let service = create_test_service();
 
         // Test invalid characters are replaced with dashes
-        assert_eq!(service.sanitize_filename("file:name.txt"), "file-name.txt");
-        assert_eq!(service.sanitize_filename("file*name?.txt"), "file-name-.txt");
-        assert_eq!(service.sanitize_filename("file<>name|.txt"), "file--name-.txt");
-        assert_eq!(service.sanitize_filename("path/to/file.txt"), "path-to-file.txt");
-        assert_eq!(service.sanitize_filename("path\\to\\file.txt"), "path-to-file.txt");
+        assert_eq!(PathUtils::sanitize_filename(&service, "file:name.txt"), "file-name.txt");
+        assert_eq!(PathUtils::sanitize_filename(&service, "file*name?.txt"), "file-name-.txt");
+        assert_eq!(PathUtils::sanitize_filename(&service, "file<>name|.txt"), "file--name-.txt");
+        assert_eq!(PathUtils::sanitize_filename(&service, "path/to/file.txt"), "path-to-file.txt");
+        assert_eq!(PathUtils::sanitize_filename(&service, "path\\to\\file.txt"), "path-to-file.txt");
     }
 
     #[test]
@@ -465,9 +377,9 @@ mod tests {
         let service = create_test_service();
 
         // Test that multiple underscores are reduced to single underscore
-        assert_eq!(service.sanitize_filename("file   name.txt"), "file___name.txt");
+        assert_eq!(PathUtils::sanitize_filename(&service, "file   name.txt"), "file___name.txt");
         // After replacing spaces, multiple underscores should be reduced
-        assert_eq!(service.sanitize_filename("file___name.txt").contains("__"), false);
+        assert_eq!(PathUtils::sanitize_filename(&service, "file___name.txt").contains("__"), false);
     }
 
     #[test]
@@ -475,12 +387,12 @@ mod tests {
         let service = create_test_service();
 
         // Test edge cases
-        assert_eq!(service.sanitize_filename(""), "untitled");
-        assert_eq!(service.sanitize_filename("   "), "untitled");
+        assert_eq!(PathUtils::sanitize_filename(&service, ""), "untitled");
+        assert_eq!(PathUtils::sanitize_filename(&service, "   "), "untitled");
         
         // Test long filename truncation
         let long_name = "a".repeat(150);
-        let result = service.sanitize_filename(&long_name);
+        let result = PathUtils::sanitize_filename(&service, &long_name);
         assert_eq!(result.len(), 100);
     }
 }

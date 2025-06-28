@@ -2,8 +2,10 @@ use anyhow::Result;
 use axum::Router;
 use std::net::SocketAddr;
 use std::sync::Arc;
+use std::time::Duration;
 use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
+use tower_http::timeout::TimeoutLayer;
 use tracing::{info, warn};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use tokio::signal;
@@ -52,6 +54,8 @@ async fn main() -> Result<()> {
     // Build our application with routes
     let app = Router::new()
         .nest("/api", handlers::routes(app_state.clone()))
+        .layer(axum::middleware::from_fn(middleware::request_id::request_id_middleware))
+        .layer(TimeoutLayer::new(Duration::from_secs(30))) // 30 second timeout for requests
         .layer(CorsLayer::permissive())
         .layer(TraceLayer::new_for_http());
     

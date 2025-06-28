@@ -9,7 +9,7 @@ edition = "2021"
 axum = { version = "0.7", features = ["multipart", "macros"] }
 axum-extra = { version = "0.9", features = ["typed-header", "multipart"] }
 tower = "0.4"
-tower-http = { version = "0.5", features = ["cors", "trace"] }
+tower-http = { version = "0.5", features = ["cors", "trace", "timeout"] }
 
 # Async runtime
 tokio = { version = "1", features = ["full"] }

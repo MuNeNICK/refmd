@@ -14,8 +14,8 @@ pub mod link_resolver;
 pub mod document_links;
 pub mod public_document;
 pub mod url_generator;
+pub mod common;
 
-pub use git_sync::{GitCommit, DiffStats};
 pub use public_document::PublicDocumentService;
 pub use url_generator::UrlGeneratorService;
 

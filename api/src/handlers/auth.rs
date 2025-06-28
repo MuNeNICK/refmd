@@ -89,7 +89,7 @@ async fn register(
     }
     
     // Create services
-    let auth_service = AuthService::new(state.user_repository.clone(), state.config.clone());
+    let auth_service = AuthService::new(state.user_repository.clone(), state.jwt_service.clone());
     
     // Register user
     let (tokens, user) = auth_service.register(&req.email, &req.name, &req.password).await?;
@@ -106,7 +106,7 @@ async fn login(
     Json(req): Json<LoginRequest>,
 ) -> Result<Json<AuthResponse>> {
     // Create services
-    let auth_service = AuthService::new(state.user_repository.clone(), state.config.clone());
+    let auth_service = AuthService::new(state.user_repository.clone(), state.jwt_service.clone());
     
     // Login user
     let (tokens, user) = auth_service.login(&req.email, &req.password).await?;
@@ -123,7 +123,7 @@ async fn refresh(
     Json(req): Json<RefreshRequest>,
 ) -> Result<Json<AuthResponse>> {
     // Create services
-    let auth_service = AuthService::new(state.user_repository.clone(), state.config.clone());
+    let auth_service = AuthService::new(state.user_repository.clone(), state.jwt_service.clone());
     let jwt_service = JwtService::new(
         state.config.jwt_secret.clone(),
         state.config.jwt_expiry,
@@ -150,7 +150,7 @@ async fn logout(
     Json(req): Json<Option<RefreshRequest>>,
 ) -> Result<()> {
     // Create services
-    let auth_service = AuthService::new(state.user_repository.clone(), state.config.clone());
+    let auth_service = AuthService::new(state.user_repository.clone(), state.jwt_service.clone());
     
     // Logout user
     let refresh_token = req.and_then(|r| Some(r.refresh_token));
