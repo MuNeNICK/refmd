@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth/authContext";
+import { isSignupEnabled } from "@/lib/config";
 
 export default function SignInPage() {
   const { login } = useAuth();
@@ -87,17 +88,19 @@ export default function SignInPage() {
               {isLoading ? "Signing in..." : "Sign In"}
             </Button>
           </form>
-          <div className="mt-6 text-center">
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Don&apos;t have an account?{" "}
-              <Link
-                href="/auth/signup"
-                className="font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300"
-              >
-                Sign up
-              </Link>
-            </p>
-          </div>
+          {isSignupEnabled() && (
+            <div className="mt-6 text-center">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Don&apos;t have an account?{" "}
+                <Link
+                  href="/auth/signup"
+                  className="font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300"
+                >
+                  Sign up
+                </Link>
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

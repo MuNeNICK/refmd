@@ -15,6 +15,7 @@ pub struct Config {
     pub git_sync_enabled: bool,
     pub git_auto_sync: bool,
     pub git_sync_interval: u64,
+    pub signup_enabled: bool,
 }
 
 impl Config {
@@ -54,6 +55,10 @@ impl Config {
                 .unwrap_or_else(|_| "300".to_string())
                 .parse()
                 .unwrap_or(300),
+            signup_enabled: std::env::var("SIGNUP_ENABLED")
+                .unwrap_or_else(|_| "true".to_string())
+                .parse()
+                .unwrap_or(true),
         })
     }
 }

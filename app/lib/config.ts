@@ -6,6 +6,7 @@ const getServerConfig = () => {
     apiUrl: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8888/api',
     socketUrl: process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:8888',
     siteUrl: process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000',
+    signupEnabled: process.env.NEXT_PUBLIC_SIGNUP_ENABLED !== 'false',
   };
 };
 
@@ -17,6 +18,7 @@ const getClientConfig = () => {
     const apiUrl = env('NEXT_PUBLIC_API_URL');
     const socketUrl = env('NEXT_PUBLIC_SOCKET_URL');
     const siteUrl = env('NEXT_PUBLIC_SITE_URL');
+    const signupEnabled = env('NEXT_PUBLIC_SIGNUP_ENABLED');
     
     
     // If runtime env variables are available, use them
@@ -25,6 +27,7 @@ const getClientConfig = () => {
         apiUrl,
         socketUrl: socketUrl || 'http://localhost:8888',
         siteUrl: siteUrl || 'http://localhost:3000',
+        signupEnabled: signupEnabled !== 'false',
       };
     }
     
@@ -35,6 +38,7 @@ const getClientConfig = () => {
       apiUrl: `${protocol}//${host}:8888/api`,
       socketUrl: `${protocol}//${host}:8888`,
       siteUrl: window.location.origin,
+      signupEnabled: true,
     };
   }
   
@@ -43,6 +47,7 @@ const getClientConfig = () => {
     apiUrl: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8888/api',
     socketUrl: process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:8888',
     siteUrl: process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000',
+    signupEnabled: process.env.NEXT_PUBLIC_SIGNUP_ENABLED !== 'false',
   };
 };
 
@@ -66,4 +71,8 @@ export function getSocketUrl(): string {
 
 export function getSiteUrl(): string {
   return getConfig().siteUrl;
+}
+
+export function isSignupEnabled(): boolean {
+  return getConfig().signupEnabled;
 }

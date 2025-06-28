@@ -73,6 +73,11 @@ async fn register(
     State(state): State<Arc<AppState>>,
     Json(req): Json<RegisterRequest>,
 ) -> Result<Json<AuthResponse>> {
+    // Check if signup is enabled
+    if !state.config.signup_enabled {
+        return Err(Error::BadRequest("Sign up is currently disabled".to_string()));
+    }
+    
     // Validate input
     if req.email.trim().is_empty() || req.name.trim().is_empty() || req.password.len() < 8 {
         return Err(Error::BadRequest("Invalid input".to_string()));

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,9 +8,12 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth/authContext";
+import { isSignupEnabled } from "@/lib/config";
+import { useRouter } from "next/navigation";
 
 export default function SignUpPage() {
   const { register } = useAuth();
+  const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
@@ -18,6 +21,12 @@ export default function SignUpPage() {
     password: "",
     confirmPassword: "",
   });
+
+  useEffect(() => {
+    if (!isSignupEnabled()) {
+      router.push("/auth/signin");
+    }
+  }, [router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,6 +61,10 @@ export default function SignUpPage() {
       [e.target.name]: e.target.value,
     });
   };
+
+  if (!isSignupEnabled()) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
