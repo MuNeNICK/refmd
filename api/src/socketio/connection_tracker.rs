@@ -20,6 +20,15 @@ impl ConnectionTracker {
         }
     }
 
+    /// Generic helper to get a cloned value from DashMap
+    fn get_cloned<K, V>(&self, map: &DashMap<K, V>, key: &K) -> Option<V>
+    where
+        K: std::hash::Hash + Eq,
+        V: Clone,
+    {
+        map.get(key).map(|value| value.clone())
+    }
+
     /// Record that a socket joined a document
     pub fn join_document(&self, socket_id: &str, document_id: Uuid) {
         // Add document to socket's list
@@ -58,17 +67,13 @@ impl ConnectionTracker {
 
     /// Get all documents a socket is connected to
     pub fn get_socket_documents(&self, socket_id: &str) -> Vec<Uuid> {
-        self.socket_documents
-            .get(socket_id)
-            .map(|docs| docs.clone())
+        self.get_cloned(&self.socket_documents, &socket_id.to_string())
             .unwrap_or_default()
     }
 
     /// Get all sockets connected to a document
     pub fn get_document_sockets(&self, document_id: Uuid) -> Vec<String> {
-        self.document_sockets
-            .get(&document_id)
-            .map(|sockets| sockets.clone())
+        self.get_cloned(&self.document_sockets, &document_id)
             .unwrap_or_default()
     }
 

@@ -9,7 +9,7 @@ use axum_extra::{
 };
 use std::sync::Arc;
 use uuid::Uuid;
-use crate::{error::Error, state::AppState, utils::jwt::JwtService};
+use crate::{error::Error, state::AppState};
 
 #[derive(Clone)]
 pub struct AuthUser {
@@ -25,15 +25,8 @@ pub async fn auth_middleware(
     let auth_header = auth.ok_or(Error::Unauthorized)?;
     let token = auth_header.token();
     
-    // Create JWT service
-    let jwt_service = JwtService::new(
-        state.config.jwt_secret.clone(),
-        state.config.jwt_expiry,
-        state.config.refresh_token_expiry,
-    );
-    
-    // Validate token
-    let claims = jwt_service.verify_token(token)?;
+    // Use shared JWT service from state
+    let claims = state.jwt_service.verify_token(token)?;
     
     // Create auth user
     let auth_user = AuthUser {

@@ -37,6 +37,8 @@ export class SocketIOProvider extends Observable<string> {
   private _docUpdateHandler?: (update: Uint8Array, origin: unknown) => void;
   private _awarenessUpdateHandler?: (data: { added: number[], updated: number[], removed: number[] }) => void;
   private _pendingUpdates: Array<{ update: string; timestamp: number }> = [];
+  private _reconnectAttempts: number = 0;
+  private _maxReconnectDelay: number = 30000; // 30 seconds max delay
 
 
   constructor(
@@ -75,6 +77,8 @@ export class SocketIOProvider extends Observable<string> {
     // Handle connection
     this.socket.on('connect', () => {
       this._synced = false;
+      this._reconnectAttempts = 0; // Reset reconnect attempts on successful connection
+      
       // Don't reset _hasJoined on reconnect if we were already joined
       // This prevents rejoining on temporary disconnects
       if (!this._hasJoined) {
@@ -84,17 +88,26 @@ export class SocketIOProvider extends Observable<string> {
       this.clearError(); // Clear any previous errors
       this.emit('status', [{ status: 'connected' }]);
       
-      // Only join if not already joined
-      if (!this._hasJoined) {
+      // Only join if not already joined and not already joining
+      if (!this._hasJoined && !this._joiningInProgress) {
         this._joinDocument();
       }
     });
 
     // Handle disconnection
-    this.socket.on('disconnect', () => {
+    this.socket.on('disconnect', (reason: string) => {
       this._synced = false;
       this._hasJoined = false; // Reset join state on disconnect
+      this._joiningInProgress = false; // Reset joining state
       this.emit('status', [{ status: 'disconnected' }]);
+      
+      // Log disconnect reason for debugging
+      console.log(`[SocketIOProvider] Disconnected: ${reason}`);
+      
+      // Handle reconnection with exponential backoff
+      if (reason === 'io server disconnect' || reason === 'transport close') {
+        this._handleReconnect();
+      }
     });
 
     // Handle sync messages
@@ -376,9 +389,11 @@ export class SocketIOProvider extends Observable<string> {
   private _joinDocument(): void {
     // Prevent multiple join requests - check both _hasJoined and if we're already in the process
     if (this._hasJoined || this._joiningInProgress) {
+      console.log('[SocketIOProvider] Join already in progress or completed, skipping');
       return;
     }
     
+    console.log('[SocketIOProvider] Joining document:', this.documentId);
     this._joiningInProgress = true; // Flag to prevent concurrent joins
     const joinData: { document_id: string; shareToken?: string; auth_token?: string } = { 
       document_id: this.documentId
@@ -395,12 +410,38 @@ export class SocketIOProvider extends Observable<string> {
     }
     
     this.socket.emit('join_document', joinData);
-    // Don't set _hasJoined here - wait for server confirmation
+    
+    // Set a timeout to reset joining state if no response
+    setTimeout(() => {
+      if (this._joiningInProgress && !this._hasJoined) {
+        console.warn('[SocketIOProvider] Join timeout, resetting state');
+        this._joiningInProgress = false;
+      }
+    }, 5000); // 5 second timeout
   }
 
   private _getAuthToken(): string {
     // Get token from localStorage
     return localStorage.getItem('token') || '';
+  }
+
+  private _handleReconnect(): void {
+    // Calculate delay with exponential backoff
+    const baseDelay = 1000; // 1 second
+    const delay = Math.min(
+      baseDelay * Math.pow(2, this._reconnectAttempts),
+      this._maxReconnectDelay
+    );
+    
+    this._reconnectAttempts++;
+    
+    console.log(`[SocketIOProvider] Reconnecting in ${delay}ms (attempt ${this._reconnectAttempts})`);
+    
+    setTimeout(() => {
+      if (!this.socket.connected) {
+        this.socket.connect();
+      }
+    }, delay);
   }
 
   // Flush any pending updates immediately

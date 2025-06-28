@@ -4,6 +4,7 @@ use uuid::Uuid;
 use chrono::{DateTime, Utc};
 use crate::db::models::User;
 use crate::error::{Error, Result};
+use crate::utils::retry::retry_db;
 
 #[derive(Clone)]
 pub struct UserRepository {
@@ -53,16 +54,20 @@ impl UserRepository {
     }
     
     pub async fn get_by_id(&self, user_id: Uuid) -> Result<User> {
-        let user = sqlx::query_as!(
-            User,
-            r#"
-            SELECT id, email, name, username, password_hash, created_at as "created_at!", updated_at as "updated_at!"
-            FROM users
-            WHERE id = $1
-            "#,
-            user_id
-        )
-        .fetch_one(self.pool.as_ref())
+        let pool = self.pool.clone();
+        let user = retry_db(|| async {
+            sqlx::query_as!(
+                User,
+                r#"
+                SELECT id, email, name, username, password_hash, created_at as "created_at!", updated_at as "updated_at!"
+                FROM users
+                WHERE id = $1
+                "#,
+                user_id
+            )
+            .fetch_one(pool.as_ref())
+            .await
+        })
         .await
         .map_err(|e| match e {
             sqlx::Error::RowNotFound => Error::NotFound("User not found".to_string()),
@@ -73,16 +78,25 @@ impl UserRepository {
     }
     
     pub async fn get_by_email(&self, email: &str) -> Result<User> {
-        let user = sqlx::query_as!(
-            User,
-            r#"
-            SELECT id, email, name, username, password_hash, created_at as "created_at!", updated_at as "updated_at!"
-            FROM users
-            WHERE email = $1
-            "#,
-            email
-        )
-        .fetch_one(self.pool.as_ref())
+        let pool = self.pool.clone();
+        let email = email.to_string();
+        let user = retry_db(move || {
+            let pool = pool.clone();
+            let email = email.clone();
+            async move {
+                sqlx::query_as!(
+                    User,
+                    r#"
+                    SELECT id, email, name, username, password_hash, created_at as "created_at!", updated_at as "updated_at!"
+                    FROM users
+                    WHERE email = $1
+                    "#,
+                    email
+                )
+                .fetch_one(pool.as_ref())
+                .await
+            }
+        })
         .await
         .map_err(|e| match e {
             sqlx::Error::RowNotFound => Error::NotFound("User not found".to_string()),

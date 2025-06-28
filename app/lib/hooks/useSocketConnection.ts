@@ -36,12 +36,18 @@ export function useSocketConnection({ token, authToken }: {
       reconnection: boolean;
       reconnectionAttempts: number;
       reconnectionDelay: number;
+      reconnectionDelayMax: number;
+      randomizationFactor: number;
+      timeout: number;
       auth?: { token: string } | { shareToken: string };
     } = {
       transports: ['websocket', 'polling'],
       reconnection: true,
-      reconnectionAttempts: 5,
+      reconnectionAttempts: 10, // Increased from 5
       reconnectionDelay: 1000,
+      reconnectionDelayMax: 30000, // Max 30 seconds
+      randomizationFactor: 0.5, // Add jitter to prevent thundering herd
+      timeout: 20000, // Connection timeout 20 seconds
     };
     
     // Only add auth if we have a valid token and not using a share token

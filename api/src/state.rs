@@ -5,11 +5,13 @@ use crate::config::Config;
 use crate::crdt::{DocumentManager, AwarenessManager, DocumentPersistence};
 use crate::services::{crdt::CrdtService, document::DocumentService, file::FileService, share::ShareService, git_sync::GitSyncService, git_batch_sync::GitBatchSyncService, document_links::DocumentLinksService, PublicDocumentService, UrlGeneratorService};
 use crate::repository::{DocumentRepository, ShareRepository, UserRepository, GitConfigRepository};
+use crate::utils::jwt::JwtService;
 
 #[derive(Clone)]
 pub struct AppState {
     pub config: Config,
     pub db_pool: Arc<PgPool>,
+    pub jwt_service: Arc<JwtService>,
     pub document_manager: Arc<DocumentManager>,
     pub awareness_manager: Arc<AwarenessManager>,
     pub document_persistence: Arc<DocumentPersistence>,
@@ -31,6 +33,14 @@ pub struct AppState {
 impl AppState {
     pub fn new(config: Config, db_pool: PgPool) -> Arc<Self> {
         let db_pool = Arc::new(db_pool);
+        
+        // Create JWT service once and reuse
+        let jwt_service = Arc::new(JwtService::new(
+            config.jwt_secret.clone(),
+            config.jwt_expiry,
+            config.refresh_token_expiry,
+        ));
+        
         let document_manager = Arc::new(DocumentManager::new());
         let awareness_manager = Arc::new(AwarenessManager::new());
         let document_persistence = Arc::new(DocumentPersistence::new((*db_pool).clone()));
@@ -108,6 +118,7 @@ impl AppState {
         Arc::new(Self {
             config,
             db_pool,
+            jwt_service,
             document_manager,
             awareness_manager,
             document_persistence,
