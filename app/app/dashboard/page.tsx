@@ -1,5 +1,7 @@
+import { Suspense } from "react";
 import { cookies } from "next/headers";
 import DashboardClient from "./dashboard-client";
+import DashboardSkeleton from "./dashboard-skeleton";
 import { getApiUrl } from "@/lib/config";
 
 async function getUser() {
@@ -30,7 +32,8 @@ async function getRecentDocuments() {
         'Authorization': `Bearer ${authCookie!.value}`,
         'Content-Type': 'application/json',
       },
-      cache: 'no-store'
+      // Enable caching for 5 seconds to improve performance
+      next: { revalidate: 5 }
     });
     
     if (!response.ok) {
@@ -45,9 +48,20 @@ async function getRecentDocuments() {
   }
 }
 
-export default async function DashboardPage() {
-  const user = await getUser();
-  const initialDocuments = await getRecentDocuments();
+// Separate component for async data loading
+async function DashboardContent() {
+  const [user, initialDocuments] = await Promise.all([
+    getUser(),
+    getRecentDocuments()
+  ]);
   
   return <DashboardClient user={user} initialDocuments={initialDocuments} />;
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={<DashboardSkeleton />}>
+      <DashboardContent />
+    </Suspense>
+  );
 }

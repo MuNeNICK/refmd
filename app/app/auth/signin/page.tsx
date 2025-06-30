@@ -11,8 +11,7 @@ import { useAuth } from "@/lib/auth/authContext";
 import { isSignupEnabled } from "@/lib/config";
 
 export default function SignInPage() {
-  const { login } = useAuth();
-  const [isLoading, setIsLoading] = useState(false);
+  const { login, isLoggingIn } = useAuth();
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -20,7 +19,6 @@ export default function SignInPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
 
     try {
       await login(formData.email, formData.password);
@@ -28,8 +26,6 @@ export default function SignInPage() {
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : "Failed to sign in";
       toast.error(errorMessage);
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -42,6 +38,17 @@ export default function SignInPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
+      {isLoggingIn && (
+        <div className="fixed inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm z-50">
+          <div className="flex flex-col items-center gap-4">
+            <div className="relative">
+              <div className="h-10 w-10 rounded-full border-2 border-muted" />
+              <div className="absolute inset-0 h-10 w-10 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+            </div>
+            <p className="text-sm text-muted-foreground animate-pulse">Signing in...</p>
+          </div>
+        </div>
+      )}
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold">Welcome Back</CardTitle>
@@ -83,9 +90,9 @@ export default function SignInPage() {
             <Button
               type="submit"
               className="w-full"
-              disabled={isLoading}
+              disabled={isLoggingIn}
             >
-              {isLoading ? "Signing in..." : "Sign In"}
+              {isLoggingIn ? "Signing in..." : "Sign In"}
             </Button>
           </form>
           {isSignupEnabled() && (

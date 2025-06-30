@@ -38,16 +38,20 @@ export function useSocketConnection({ token, authToken }: {
       reconnectionDelay: number;
       reconnectionDelayMax: number;
       randomizationFactor: number;
+      pingInterval: number;
+      pingTimeout: number;
       timeout: number;
       auth?: { token: string } | { shareToken: string };
     } = {
       transports: ['websocket', 'polling'],
       reconnection: true,
-      reconnectionAttempts: 10, // Increased from 5
+      reconnectionAttempts: Infinity,  // Keep trying to reconnect indefinitely
       reconnectionDelay: 1000,
-      reconnectionDelayMax: 30000, // Max 30 seconds
-      randomizationFactor: 0.5, // Add jitter to prevent thundering herd
-      timeout: 20000, // Connection timeout 20 seconds
+      reconnectionDelayMax: 10000,     // Max delay between reconnection attempts (10s)
+      randomizationFactor: 0.5,        // Add jitter to prevent thundering herd
+      pingInterval: 25000,             // Send ping every 25 seconds
+      pingTimeout: 20000,              // Wait 20 seconds for pong response
+      timeout: 20000,                  // Initial connection timeout (20s)
     };
     
     // Only add auth if we have a valid token and not using a share token

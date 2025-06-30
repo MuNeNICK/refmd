@@ -39,6 +39,9 @@ export class SocketIOProvider extends Observable<string> {
   private _pendingUpdates: Array<{ update: string; timestamp: number }> = [];
   private _reconnectAttempts: number = 0;
   private _maxReconnectDelay: number = 30000; // 30 seconds max delay
+  private _connectionRetryCount: number = 0;
+  private _lastConnectionTime: number = Date.now();
+  private _connectionHealthTimer?: NodeJS.Timeout;
 
 
   constructor(
@@ -76,6 +79,14 @@ export class SocketIOProvider extends Observable<string> {
   private _setupSocketHandlers() {
     // Handle connection
     this.socket.on('connect', () => {
+      const now = Date.now();
+      const timeSinceLastConnection = now - this._lastConnectionTime;
+      this._lastConnectionTime = now;
+      
+      // Log connection metrics for debugging
+      console.log(`[SocketIOProvider] Connected. Time since last connection: ${timeSinceLastConnection}ms, Retry count: ${this._connectionRetryCount}`);
+      this._connectionRetryCount = 0; // Reset retry count on successful connection
+      
       this._synced = false;
       this._reconnectAttempts = 0; // Reset reconnect attempts on successful connection
       
@@ -92,22 +103,34 @@ export class SocketIOProvider extends Observable<string> {
       if (!this._hasJoined && !this._joiningInProgress) {
         this._joinDocument();
       }
+      
+      // Start connection health monitoring
+      this._startConnectionHealthCheck();
     });
 
     // Handle disconnection
     this.socket.on('disconnect', (reason: string) => {
+      this._connectionRetryCount++;
+      console.log(`[SocketIOProvider] Disconnected. Reason: ${reason}, Retry count: ${this._connectionRetryCount}`);
+      
       this._synced = false;
       this._hasJoined = false; // Reset join state on disconnect
       this._joiningInProgress = false; // Reset joining state
       this.emit('status', [{ status: 'disconnected' }]);
       
-      // Log disconnect reason for debugging
-      console.log(`[SocketIOProvider] Disconnected: ${reason}`);
-      
       // Handle reconnection with exponential backoff
       if (reason === 'io server disconnect' || reason === 'transport close') {
         this._handleReconnect();
       }
+      
+      // Stop health check on disconnect
+      this._stopConnectionHealthCheck();
+    });
+    
+    // Handle reconnect attempts
+    this.socket.on('reconnect_attempt', (attemptNumber: number) => {
+      console.log(`[SocketIOProvider] Reconnection attempt ${attemptNumber}`);
+      this.emit('status', [{ status: 'reconnecting', attempt: attemptNumber }]);
     });
 
     // Handle sync messages
@@ -465,6 +488,35 @@ export class SocketIOProvider extends Observable<string> {
     return this._pendingUpdates.length > 0;
   }
 
+  private _startConnectionHealthCheck(): void {
+    // Clear any existing timer
+    this._stopConnectionHealthCheck();
+    
+    // Check connection health every 30 seconds
+    this._connectionHealthTimer = setInterval(() => {
+      if (!this.socket.connected) {
+        console.warn('[SocketIOProvider] Connection health check failed - socket not connected');
+        // Force reconnection if socket thinks it's connected but isn't
+        if (this.socket.active) {
+          console.log('[SocketIOProvider] Forcing reconnection...');
+          this.socket.disconnect();
+          this.socket.connect();
+        }
+      } else if (!this._synced && this._hasJoined) {
+        // If we're connected and joined but not synced for too long, request sync again
+        console.log('[SocketIOProvider] Connected but not synced, requesting sync...');
+        this._requestSync();
+      }
+    }, 30000); // Check every 30 seconds
+  }
+  
+  private _stopConnectionHealthCheck(): void {
+    if (this._connectionHealthTimer) {
+      clearInterval(this._connectionHealthTimer);
+      this._connectionHealthTimer = undefined;
+    }
+  }
+
   private _destroyed = false;
 
   destroy() {
@@ -481,6 +533,9 @@ export class SocketIOProvider extends Observable<string> {
     if (this.resyncTimer) {
       clearInterval(this.resyncTimer);
     }
+    
+    // Stop connection health check
+    this._stopConnectionHealthCheck();
     
     // Leave document only if we actually joined
     if (this._hasJoined) {

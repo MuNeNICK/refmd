@@ -10,6 +10,7 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   accessToken: string | null;
+  isLoggingIn: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, name: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -21,6 +22,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
   const router = useRouter();
   const api = getApiClient();
 
@@ -75,6 +77,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 
   const login = async (email: string, password: string) => {
+    setIsLoggingIn(true);
     try {
       const response = await api.authentication.login({
         email,
@@ -84,6 +87,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (response.access_token) {
         setTokens(response.access_token, response.refresh_token || null);
         setUser(response.user || null);
+        
+        // Start navigation immediately for better perceived performance
         router.push('/dashboard');
       } else {
         throw new Error('Invalid response from server');
@@ -93,10 +98,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error('Invalid email or password');
       }
       throw new Error('Login failed. Please try again.');
+    } finally {
+      setIsLoggingIn(false);
     }
   };
 
   const register = async (email: string, password: string, name: string) => {
+    setIsLoggingIn(true);
     try {
       const response = await api.authentication.register({
         email,
@@ -114,6 +122,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error('Email already registered');
       }
       throw new Error('Registration failed. Please try again.');
+    } finally {
+      setIsLoggingIn(false);
     }
   };
 
@@ -139,6 +149,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         user,
         loading,
         accessToken: getTokens().accessToken,
+        isLoggingIn,
         login,
         register,
         logout,
