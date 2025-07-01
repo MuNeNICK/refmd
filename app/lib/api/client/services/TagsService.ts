@@ -5,6 +5,7 @@
 import type { PostsByTagResponse } from '../models/PostsByTagResponse';
 import type { Tag } from '../models/Tag';
 import type { TagListResponse } from '../models/TagListResponse';
+import type { TagWithCount } from '../models/TagWithCount';
 import type { CancelablePromise } from '../core/CancelablePromise';
 import type { BaseHttpRequest } from '../core/BaseHttpRequest';
 export class TagsService {
@@ -55,12 +56,12 @@ export class TagsService {
     /**
      * Get all tags for a scrap
      * @param id
-     * @returns Tag Tags retrieved successfully
+     * @returns TagWithCount Tags retrieved successfully
      * @throws ApiError
      */
     public getScrapTags(
         id: string,
-    ): CancelablePromise<Array<Tag>> {
+    ): CancelablePromise<Array<TagWithCount>> {
         return this.httpRequest.request({
             method: 'GET',
             url: '/tags/scraps/{id}/tags',

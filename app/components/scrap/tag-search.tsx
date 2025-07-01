@@ -41,12 +41,7 @@ export function TagSearch({
       
       if (scrapId) {
         // Load tags specific to this scrap
-        const tags = await client.tags.getScrapTags(scrapId);
-        // Convert to TagWithCount format for consistency
-        const tagsWithCount: TagWithCount[] = tags.map(tag => ({
-          ...tag,
-          count: 0 // Count not available from this endpoint
-        }));
+        const tagsWithCount = await client.tags.getScrapTags(scrapId);
         setTags(tagsWithCount);
       } else {
         // Load system-wide popular tags
@@ -67,14 +62,10 @@ export function TagSearch({
       
       if (scrapId) {
         // Search within scrap-specific tags
-        const tags = await client.tags.getScrapTags(scrapId);
-        const tagsWithCount: TagWithCount[] = tags
-          .filter(tag => tag.name.toLowerCase().includes(query.toLowerCase()))
-          .map(tag => ({
-            ...tag,
-            count: 0
-          }));
-        setTags(tagsWithCount);
+        const tagsWithCount = await client.tags.getScrapTags(scrapId);
+        const filteredTags = tagsWithCount
+          .filter(tag => tag.name.toLowerCase().includes(query.toLowerCase()));
+        setTags(filteredTags);
       } else {
         // Search all tags
         const response = await client.tags.listTags(50, 0);

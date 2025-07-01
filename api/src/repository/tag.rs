@@ -312,6 +312,31 @@ impl TagRepository {
         Ok(document_ids.into_iter().map(|r| r.id).collect())
     }
 
+    /// Get tags for a specific scrap with usage count
+    pub async fn get_scrap_tags_with_count(&self, scrap_id: Uuid) -> Result<Vec<TagWithCount>> {
+        let tags = sqlx::query_as!(
+            TagWithCount,
+            r#"
+            SELECT 
+                t.id,
+                t.name,
+                t.created_at,
+                COUNT(DISTINCT spt.scrap_post_id) as "count!"
+            FROM tags t
+            INNER JOIN scrap_post_tags spt ON t.id = spt.tag_id
+            INNER JOIN scrap_posts sp ON spt.scrap_post_id = sp.id
+            WHERE sp.document_id = $1
+            GROUP BY t.id, t.name, t.created_at
+            ORDER BY COUNT(DISTINCT spt.scrap_post_id) DESC, t.name
+            "#,
+            scrap_id
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(tags)
+    }
+
     /// Get all tags with usage count (including documents)
     pub async fn get_all_tags_with_unified_count(&self, limit: Option<i64>, offset: Option<i64>) -> Result<(Vec<TagWithCount>, i64)> {
         let limit = limit.unwrap_or(100);

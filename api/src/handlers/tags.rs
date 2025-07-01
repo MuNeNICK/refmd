@@ -49,7 +49,7 @@ async fn list_tags(
     
     let tag_repository = TagRepository::new((*state.db_pool).clone());
     
-    match tag_repository.get_all_tags_with_unified_count(Some(limit), Some(offset)).await {
+    match tag_repository.get_all_tags_with_count(Some(limit), Some(offset)).await {
         Ok((tags, total)) => {
             Json(TagListResponse { tags, total }).into_response()
         }
@@ -97,28 +97,22 @@ async fn get_scrap_tags(
     
     // Check access to scrap
     match scrap_service.get_scrap(scrap_id, user_id).await {
-        Ok(scrap_with_posts) => {
-            // Get tags for each post
-            let mut all_tags = Vec::new();
-            for post in scrap_with_posts.posts {
-                match tag_repository.get_scrap_post_tags(post.id).await {
-                    Ok(tags) => all_tags.extend(tags),
-                    Err(e) => {
-                        tracing::error!("Failed to get tags for post {}: {:?}", post.id, e);
-                    }
+        Ok(_) => {
+            // Get tags with count for this specific scrap
+            match tag_repository.get_scrap_tags_with_count(scrap_id).await {
+                Ok(tags_with_count) => {
+                    Json(tags_with_count).into_response()
+                }
+                Err(e) => {
+                    tracing::error!("Failed to get scrap tags: {:?}", e);
+                    StatusCode::INTERNAL_SERVER_ERROR.into_response()
                 }
             }
-            
-            // Deduplicate tags
-            all_tags.sort_by(|a, b| a.name.cmp(&b.name));
-            all_tags.dedup_by(|a, b| a.name == b.name);
-            
-            Json(all_tags).into_response()
         }
         Err(Error::Forbidden) => StatusCode::FORBIDDEN.into_response(),
         Err(Error::NotFound(_)) => StatusCode::NOT_FOUND.into_response(),
         Err(e) => {
-            tracing::error!("Failed to get scrap tags: {:?}", e);
+            tracing::error!("Failed to get scrap: {:?}", e);
             StatusCode::INTERNAL_SERVER_ERROR.into_response()
         }
     }
