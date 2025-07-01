@@ -19,7 +19,7 @@ const remarkHashtag: Plugin<[Options?]> = (options = {}) => {
       // - Start with # at word boundary
       // - Followed by alphanumeric characters (including Unicode)
       // - Can contain hyphens or underscores in the middle
-      const regex = /\B#([a-zA-Z0-9\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF\u3400-\u4DBF\uAC00-\uD7AF_-]+)(?:\b|$)/g;
+      const regex = /\B#([a-zA-Z0-9\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF\u3400-\u4DBF\uAC00-\uD7AF_-]+)(?=\s|$)/g;
       
       const nodes: (Text | Link)[] = [];
       let lastIndex = 0;
