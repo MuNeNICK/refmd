@@ -252,6 +252,8 @@ impl ScrapRepository {
         pool: &PgPool,
         document_id: Uuid,
     ) -> Result<Vec<ScrapPost>> {
+        use crate::repository::tag::TagRepository;
+        
         let posts = sqlx::query(
             r#"
             SELECT sp.*, u.name as author_name
@@ -266,19 +268,29 @@ impl ScrapRepository {
         .await
         .map_err(|e| Error::Database(e))?;
 
-        let posts = posts
-            .into_iter()
-            .map(|row| ScrapPost {
-                id: row.get("id"),
+        let tag_repository = TagRepository::new(pool.clone());
+        let mut result_posts = Vec::new();
+        
+        for row in posts {
+            let post_id: Uuid = row.get("id");
+            
+            // Get tags for this post
+            let tags = tag_repository.get_scrap_post_tags(post_id).await
+                .ok()
+                .map(|tags| tags.into_iter().map(|t| t.name).collect());
+            
+            result_posts.push(ScrapPost {
+                id: post_id,
                 author_id: row.get("author_id"),
                 author_name: row.get("author_name"),
                 content: row.get("content"),
                 created_at: row.get("created_at"),
                 updated_at: row.get("updated_at"),
-            })
-            .collect();
+                tags,
+            });
+        }
 
-        Ok(posts)
+        Ok(result_posts)
     }
 
     pub async fn update_scrap_post(

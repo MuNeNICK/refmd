@@ -12,6 +12,7 @@ import { ScrapCommentComponent, AddCommentForm } from './scrap-comment';
 import { ScrapCommentParser } from '@/lib/utils/scrap-comment-parser';
 import { ScrapMetadataParser } from '@/lib/utils/scrap-metadata-parser';
 import { DeleteConfirmationDialog } from '@/components/ui/delete-confirmation-dialog';
+import { ScrapTagList } from './scrap-tag-list';
 import type { ScrapPost } from '@/lib/api/client';
 
 interface ScrapPostComponentProps {
@@ -237,6 +238,18 @@ export function ScrapPostComponent({
               onNavigate={onNavigate}
             />
           </div>
+          
+          {post.tags && post.tags.length > 0 && (
+            <div className="mt-2">
+              <ScrapTagList 
+                tags={post.tags}
+                onTagClick={(tag) => {
+                  // TODO: Implement tag filtering
+                  console.log('Tag clicked:', tag);
+                }}
+              />
+            </div>
+          )}
           
           {showComments && (
             <div className="space-y-2">

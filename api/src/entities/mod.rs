@@ -4,4 +4,5 @@ pub mod file;
 pub mod scrap;
 pub mod share;
 pub mod git_config;
+pub mod tag;
 

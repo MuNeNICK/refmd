@@ -1,11 +1,16 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import { Markdown } from '@/components/markdown/markdown';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import remarkEmoji from 'remark-emoji';
+import rehypeRaw from 'rehype-raw';
 import { AuthenticatedImage } from '@/components/markdown/authenticated-image';
 import { FileAttachment } from '@/components/markdown/file-attachment';
 import { WikiLink } from '@/components/markdown/wiki-link';
+import { CodeBlock } from '@/components/markdown/code-block';
 import { getApiUrl } from '@/lib/config';
+import remarkHashtag from '@/lib/remark-hashtag';
 import type { Components } from 'react-markdown';
 
 interface ScrapMarkdownProps {
@@ -126,7 +131,115 @@ export function ScrapMarkdown({ content, documentId, onNavigate }: ScrapMarkdown
       
       return <p {...props}>{children}</p>;
     },
+    // Code block rendering
+    code({ className, children, ...props }) {
+      const match = /language-(\w+)/.exec(className || '');
+      const isInline = !match;
+      
+      if (isInline) {
+        return (
+          <code className="bg-muted px-1 py-0.5 rounded text-sm" {...props}>
+            {children}
+          </code>
+        );
+      }
+      
+      return (
+        <code className={className} {...props}>
+          {children}
+        </code>
+      );
+    },
+    pre({ children }) {
+      const childrenArray = React.Children.toArray(children);
+      const codeElement = childrenArray.find(
+        child => React.isValidElement(child) && child.type === 'code'
+      );
+      
+      if (codeElement && React.isValidElement(codeElement)) {
+        const className = (codeElement.props as { className?: string }).className || '';
+        const match = /language-(\w+)/.exec(className);
+        const language = match?.[1];
+        const codeContent = String((codeElement.props as { children?: React.ReactNode }).children).replace(/\n$/, '');
+        
+        return (
+          <CodeBlock language={language} className="not-prose">
+            {codeContent}
+          </CodeBlock>
+        );
+      }
+      
+      return <pre>{children}</pre>;
+    },
+    // Handle hashtags rendered by the plugin
+    a({ href, className, children, ...props }) {
+      const extendedProps = props as Record<string, unknown>;
+      
+      // Handle hashtag links
+      if (href?.startsWith('#tag:')) {
+        const tagName = extendedProps['data-tag'] as string || decodeURIComponent(href.replace('#tag:', ''));
+        return (
+          <a 
+            href={href} 
+            className="text-primary hover:underline cursor-pointer hashtag"
+            onClick={(e) => {
+              e.preventDefault();
+              // TODO: Implement tag filtering
+              console.log('Tag clicked:', tagName);
+            }}
+            {...props}
+          >
+            {children}
+          </a>
+        );
+      }
+      
+      // Handle wiki/mention links
+      const isWikiLink = href?.startsWith('#wiki:') || extendedProps['data-wiki-target'];
+      const isMentionLink = href?.startsWith('#mention:') || extendedProps['data-mention-target'];
+      
+      if (isWikiLink || isMentionLink) {
+        let target = '';
+        if (extendedProps['data-wiki-target']) {
+          target = extendedProps['data-wiki-target'] as string;
+        } else if (extendedProps['data-mention-target']) {
+          target = extendedProps['data-mention-target'] as string;
+        } else if (isWikiLink && href) {
+          target = decodeURIComponent(href.replace('#wiki:', ''));
+        } else if (isMentionLink && href) {
+          target = decodeURIComponent(href.replace('#mention:', ''));
+        }
+        
+        return (
+          <WikiLink 
+            href={href || '#'} 
+            className={className}
+            data-wiki-target={isWikiLink ? target : undefined}
+            data-mention-target={isMentionLink ? target : undefined}
+            onNavigate={onNavigate}
+            {...props}
+          >
+            {children}
+          </WikiLink>
+        );
+      }
+      
+      // For other links, use FileAttachment
+      return (
+        <FileAttachment href={href || '#'} documentId={documentId} {...props}>
+          {children}
+        </FileAttachment>
+      );
+    },
   }), [apiUrl, documentId, onNavigate]);
 
-  return <Markdown content={content} components={customComponents} />;
+  return (
+    <ReactMarkdown 
+      remarkPlugins={[remarkGfm, remarkEmoji, remarkHashtag]}
+      rehypePlugins={[rehypeRaw]}
+      components={customComponents}
+    >
+      {content}
+    </ReactMarkdown>
+  );
 }
