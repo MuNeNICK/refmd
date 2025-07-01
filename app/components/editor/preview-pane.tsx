@@ -253,7 +253,79 @@ function PreviewPaneComponent({
                             />
                           );
                         },
-                        a: ({ href, children, ...props }) => {
+                        a: ({ href, className, children, ...props }) => {
+                          const extendedProps = props as Record<string, unknown>;
+                          
+                          // Debug log
+                          if (href?.includes('tag') || className?.includes('hashtag')) {
+                            console.log('Preview pane link:', {
+                              href,
+                              className,
+                              dataTag: extendedProps['data-tag'],
+                              dataTagCamel: extendedProps['dataTag'],
+                              children
+                            });
+                          }
+                          
+                          // Check if this is a hashtag link
+                          const isHashtagByClass = className?.includes('hashtag');
+                          const isHashtagByHref = href?.startsWith('#tag-');
+                          const hasDataTag = !!(extendedProps['data-tag'] || extendedProps['dataTag']);
+                          
+                          if (isHashtagByClass || isHashtagByHref || hasDataTag) {
+                            let tagName = '';
+                            
+                            // Try to get tag name from data attributes first
+                            if (extendedProps['data-tag']) {
+                              tagName = String(extendedProps['data-tag']);
+                            } else if (extendedProps['dataTag']) {
+                              tagName = String(extendedProps['dataTag']);
+                            }
+                            
+                            // Extract tag name from href if not in data attributes
+                            if (!tagName && href?.startsWith('#tag-')) {
+                              const match = href.match(/#tag-(.+)/);
+                              if (match) {
+                                tagName = decodeURIComponent(match[1]);
+                              }
+                            }
+                            
+                            // Extract tag name from children if it's a hashtag
+                            if (!tagName && typeof children === 'string' && children.startsWith('#')) {
+                              tagName = children.substring(1);
+                            }
+                            
+                            if (!tagName) {
+                              console.warn('Could not extract tag name from hashtag link', {
+                                href,
+                                className,
+                                children,
+                                props: extendedProps
+                              });
+                              return (
+                                <a href={href} className={className} {...props}>
+                                  {children}
+                                </a>
+                              );
+                            }
+                            
+                            return (
+                              <a 
+                                href={`/search?tag=${encodeURIComponent(tagName)}`} 
+                                className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 cursor-pointer transition-colors no-underline"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  if (onTagClick) {
+                                    onTagClick(tagName);
+                                  }
+                                }}
+                                {...props}
+                              >
+                                {children}
+                              </a>
+                            );
+                          }
+                          
                           // Check if this is a wiki link or mention link
                           const isWikiLink = href?.startsWith('#wiki:');
                           const isMentionLink = href?.startsWith('#mention:');

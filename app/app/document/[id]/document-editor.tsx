@@ -522,6 +522,7 @@ export default function DocumentEditor({
                 contentStats={{ wordCount: 0, charCount: 0 }}
                 token={token}
                 onCheckboxChange={handleCheckboxChange}
+                onTagClick={handleTagClick}
               />
             </div>
           )}
@@ -538,6 +539,7 @@ export default function DocumentEditor({
                   contentStats={{ wordCount: 0, charCount: 0 }}
                   token={token}
                   onCheckboxChange={handleCheckboxChange}
+                  onTagClick={handleTagClick}
                 />
               </Panel>
               <PanelResizeHandle className="w-1 bg-border hover:bg-accent transition-colors" />
@@ -559,6 +561,7 @@ export default function DocumentEditor({
                   contentStats={{ wordCount: 0, charCount: 0 }}
                   token={token}
                   onCheckboxChange={handleCheckboxChange}
+                  onTagClick={handleTagClick}
                   forceFloatingToc={true}
                 />
               </Panel>

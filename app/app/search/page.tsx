@@ -6,17 +6,17 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Loader2, FileText, StickyNote, Hash } from 'lucide-react';
 import { getApiClient } from '@/lib/api';
 import { Document } from '@/lib/api/client/models/Document';
-import { ScrapPost } from '@/lib/api/client/models/ScrapPost';
 import { DocumentCard } from '@/components/document/document-card';
 import { ScrapPostComponent } from '@/components/scrap/scrap-post';
 import { useAuth } from '@/lib/auth/authContext';
 import { useRouter } from 'next/navigation';
+import MainLayout from '@/components/layout/main-layout';
 
 export default function SearchPage() {
   const searchParams = useSearchParams();
   const tagName = searchParams.get('tag');
   const [documents, setDocuments] = useState<Document[]>([]);
-  const [scrapPosts, setScrapPosts] = useState<ScrapPost[]>([]);
+  const [scrapPosts, setScrapPosts] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
@@ -45,9 +45,12 @@ export default function SearchPage() {
           setDocuments(docs);
         }
         
-        // For now, we only have IDs for scrap posts
-        // In a real implementation, we'd need to fetch full post details
-        setScrapPosts([]);
+        // Set scrap posts with their details
+        if (result.scrap_posts && result.scrap_posts.length > 0) {
+          setScrapPosts(result.scrap_posts);
+        } else {
+          setScrapPosts([]);
+        }
       } catch (err) {
         console.error('Failed to fetch tag content:', err);
         setError('Failed to load content for this tag');
@@ -84,7 +87,10 @@ export default function SearchPage() {
   const totalCount = documents.length + scrapPosts.length;
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-6xl">
+    <MainLayout
+      showEditorFeatures={false}
+    >
+      <div className="container mx-auto px-4 py-8 max-w-6xl">
       <div className="mb-8">
         <div className="flex items-center gap-2 mb-2">
           <Hash className="h-6 w-6 text-primary" />
@@ -137,6 +143,8 @@ export default function SearchPage() {
                     currentUserId={user?.id}
                     currentUserName={user?.name}
                     isViewOnly={true}
+                    scrapId={post.scrap_id}
+                    onNavigate={(scrapId) => router.push(`/scrap/${scrapId}`)}
                   />
                 ))}
               </div>
@@ -189,5 +197,6 @@ export default function SearchPage() {
         </TabsContent>
       </Tabs>
     </div>
+    </MainLayout>
   );
 }

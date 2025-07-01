@@ -137,15 +137,18 @@ export function ScrapMarkdown({ content, documentId, onNavigate, onTagClick }: S
       const extendedProps = props as Record<string, unknown>;
       
       // Check if this is a hashtag link
-      if (href?.startsWith('#tag:') || className?.includes('hashtag')) {
-        const tagName = extendedProps['data-tag'] as string || (href ? decodeURIComponent(href.replace('#tag:', '')) : '');
+      if ((href === '#' && extendedProps['data-tag']) || className?.includes('hashtag')) {
+        const tagName = extendedProps['data-tag'] as string || '';
         return (
           <a 
             href={href} 
             className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 cursor-pointer transition-colors no-underline"
             onClick={(e) => {
-              e.preventDefault();
-              onTagClick?.(tagName);
+              if (onTagClick) {
+                e.preventDefault();
+                onTagClick(tagName);
+              }
+              // If no onTagClick handler, let the default link behavior work
             }}
             {...props}
           >

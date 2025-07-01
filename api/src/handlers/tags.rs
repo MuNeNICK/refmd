@@ -150,16 +150,16 @@ async fn get_all_by_tag(
     let user_id = auth_user.user_id;
     let tag_repository = TagRepository::new((*state.db_pool).clone());
     
-    // Get both documents and scrap posts
+    // Get both documents and scrap posts with details
     let documents_result = tag_repository.get_documents_by_tag(&tag_name, user_id, query.limit, query.offset).await;
-    let posts_result = tag_repository.get_scrap_posts_by_tag(&tag_name, user_id).await;
+    let posts_result = tag_repository.get_scrap_posts_with_details_by_tag(&tag_name, user_id).await;
     
     match (documents_result, posts_result) {
-        (Ok(document_ids), Ok(post_ids)) => {
+        (Ok(document_ids), Ok(posts_with_tags)) => {
             Json(serde_json::json!({
                 "tag": tag_name,
                 "documents": document_ids,
-                "scrap_posts": post_ids,
+                "scrap_posts": posts_with_tags,
             })).into_response()
         }
         (Err(e), _) | (_, Err(e)) => {

@@ -48,7 +48,18 @@ const FULL_REMARK_PLUGINS = [
   remarkHashtag
 ]
 
-const FULL_REHYPE_PLUGINS = [rehypeRaw, rehypeKatex]
+const FULL_REHYPE_PLUGINS = [
+  [rehypeRaw, {
+    passThrough: [
+      // Preserve custom attributes
+      'element.properties.dataTag',
+      'element.properties.dataWikiTarget', 
+      'element.properties.dataMentionTarget',
+      'element.properties.dataEmbedTarget'
+    ]
+  }],
+  rehypeKatex
+]
 const SAFE_REHYPE_PLUGINS = [rehypeKatex]
 const MINIMAL_REMARK_PLUGINS = [remarkGfm]
 
@@ -74,17 +85,63 @@ const createHeadingComponent = (level: number) => {
 
 // Create components factory function
 const createDefaultComponents = (isPublic?: boolean, onTagClick?: (tagName: string) => void): import('react-markdown').Components => ({
-  a({ href, className, children, ...props }) {
+  a({ href, className, children, node, ...props }) {
+    // Debug log for all links
+    if (href === '#' || className?.includes('hashtag')) {
+      console.log('Link debug:', {
+        href,
+        className,
+        children,
+        props: Object.keys(props),
+        extendedProps: props,
+        node,
+        nodeData: (node as any)?.data,
+        hProperties: (node as any)?.data?.hProperties
+      })
+    }
+    
     // Check if this is a wiki link or mention link by URL pattern or data attributes
     const extendedProps = props as Record<string, unknown>
-    const isWikiLink = href?.startsWith('#wiki:') || extendedProps['data-wiki-target']
-    const isMentionLink = href?.startsWith('#mention:') || extendedProps['data-mention-target']
-    const isTagLink = href?.startsWith('#tag:') || extendedProps['data-tag']
+    
+    // Check node data for custom properties
+    const nodeData = (node as any)?.data || {}
+    const hProperties = nodeData.hProperties || {}
+    
+    // First check if this is a hashtag by class or data attributes
+    const hasHashtagClass = className?.includes('hashtag')
+    const hasDataTag = hProperties['data-tag'] || extendedProps['data-tag'] || extendedProps['dataTag'] || (hProperties as any)?.dataTag
+    
+    // Check if children contains hashtag text
+    const childText = typeof children === 'string' ? children : 
+                     Array.isArray(children) && children.length > 0 && typeof children[0] === 'string' ? children[0] : ''
+    const startsWithHash = childText.startsWith('#')
+    
+    // Check link types - hashtags first
+    const isTagLink = hasHashtagClass || hasDataTag || (href === '#' && startsWithHash) || href?.startsWith('#tag-')
+    const isWikiLink = !isTagLink && (href?.startsWith('#wiki:') || extendedProps['data-wiki-target'])
+    const isMentionLink = !isTagLink && !isWikiLink && (href?.startsWith('#mention:') || extendedProps['data-mention-target'])
     
     if (isTagLink) {
-      // Extract tag name from URL or data attribute
-      const tagName = extendedProps['data-tag'] as string || 
-                     (href ? decodeURIComponent(href.replace('#tag:', '')) : '')
+      // Extract tag name from various sources
+      let tagName = ''
+      
+      // Try to get tag name from data attributes
+      if (typeof hasDataTag === 'string' && hasDataTag) {
+        tagName = hasDataTag
+      }
+      // If no data-tag, try to extract from children text
+      else if (childText.startsWith('#')) {
+        tagName = childText.substring(1)
+      }
+      
+      // Ensure we have a tag name
+      if (!tagName) {
+        console.warn('Tag link detected but no tag name found', { href, className, children, hProperties, extendedProps })
+        return null
+      }
+      
+      // Remove target prop if exists
+      const { target, ...restProps } = props as any;
       
       return (
         <a 
@@ -92,11 +149,12 @@ const createDefaultComponents = (isPublic?: boolean, onTagClick?: (tagName: stri
           className={cn("hashtag", className)}
           onClick={(e) => {
             e.preventDefault()
+            e.stopPropagation()
             if (onTagClick && tagName) {
               onTagClick(tagName)
             }
           }}
-          {...props}
+          {...restProps}
         >
           {children}
         </a>
@@ -131,6 +189,24 @@ const createDefaultComponents = (isPublic?: boolean, onTagClick?: (tagName: stri
     }
     
     // Regular link
+    // Prevent # links from opening in new tab
+    if (href === '#') {
+      const { target, ...restProps } = props as any;
+      return (
+        <a 
+          href={href} 
+          className={className} 
+          onClick={(e) => {
+            e.preventDefault()
+            console.warn('Unhandled # link clicked', { className, children, props })
+          }}
+          {...restProps}
+        >
+          {children}
+        </a>
+      )
+    }
+    
     return (
       <a href={href} className={className} {...props}>
         {children}

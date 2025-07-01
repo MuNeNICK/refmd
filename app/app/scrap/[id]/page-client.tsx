@@ -324,10 +324,9 @@ export function ScrapPageClient({ initialData, scrapId, shareToken }: ScrapPageC
   };
   
   const handleTagClick = useCallback((tag: string) => {
-    if (!selectedTags.includes(tag)) {
-      setSelectedTags(prev => [...prev, tag]);
-    }
-  }, [selectedTags]);
+    // Navigate to the search page for this tag
+    window.location.href = `/search?tag=${encodeURIComponent(tag)}`;
+  }, []);
   
   const handleOpenDocumentInSecondary = useCallback((docId: string, type: 'document' | 'scrap' = 'document') => {
     openSecondaryViewer(docId, type);

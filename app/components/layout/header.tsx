@@ -28,12 +28,14 @@ import {
   WifiOff,
   Users,
   Link2,
+  Search,
   FileCode
 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import type { SaveStatus } from "@/lib/types/save-status";
 import { SidebarTrigger } from "@/components/ui/sidebar";
+import { SearchDialog } from "@/components/layout/search-dialog";
 
 export type ViewMode = "editor" | "split" | "preview";
 
@@ -79,10 +81,24 @@ export function Header({
   const { isDarkMode, toggleTheme } = useTheme();
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
   const [mounted, setMounted] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
 
   // Avoid hydration mismatch by only rendering theme-dependent content after mount
   useEffect(() => {
     setMounted(true);
+  }, []);
+
+  // Keyboard shortcut for search (Cmd/Ctrl + K)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setSearchOpen(true);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
   }, []);
 
   const handleSignOut = useCallback(() => {
@@ -324,6 +340,17 @@ export function Header({
             </div>
           )}
           
+          {/* Search button */}
+          <Button
+            onClick={() => setSearchOpen(true)}
+            variant="ghost"
+            size="icon"
+            className="h-9 w-9"
+            title="Search (⌘K)"
+          >
+            <Search className="h-4 w-4" />
+          </Button>
+          
           <Button
             onClick={toggleTheme}
             variant="ghost"
@@ -554,6 +581,9 @@ export function Header({
           </div>
         </>
       )}
+      
+      {/* Search Dialog */}
+      <SearchDialog open={searchOpen} onOpenChange={setSearchOpen} />
     </>
   );
 }
