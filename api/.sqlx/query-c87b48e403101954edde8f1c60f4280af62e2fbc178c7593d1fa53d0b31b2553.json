@@ -1,0 +1,41 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT \n                t.id,\n                t.name,\n                t.created_at,\n                (\n                    COALESCE(COUNT(DISTINCT spt.scrap_post_id), 0) + \n                    COALESCE(COUNT(DISTINCT dt.document_id), 0)\n                ) as \"count!\"\n            FROM tags t\n            LEFT JOIN scrap_post_tags spt ON t.id = spt.tag_id\n            LEFT JOIN document_tags dt ON t.id = dt.tag_id\n            GROUP BY t.id, t.name, t.created_at\n            ORDER BY (\n                COALESCE(COUNT(DISTINCT spt.scrap_post_id), 0) + \n                COALESCE(COUNT(DISTINCT dt.document_id), 0)\n            ) DESC, t.name\n            LIMIT $1 OFFSET $2\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 3,
+        "name": "count!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      null
+    ]
+  },
+  "hash": "c87b48e403101954edde8f1c60f4280af62e2fbc178c7593d1fa53d0b31b2553"
+}

@@ -11,7 +11,7 @@ import {
   CommandList,
   CommandSeparator,
 } from '@/components/ui/command';
-import { FileText, Hash, Search, StickyNote, Folder } from 'lucide-react';
+import { FileText, Hash, StickyNote, Folder } from 'lucide-react';
 import { getApiClient } from '@/lib/api';
 import { useDebounce } from '@/hooks/use-debounce';
 import type { Document, TagWithCount } from '@/lib/api/client';
@@ -48,11 +48,11 @@ export function SearchDialog({ open, onOpenChange }: SearchDialogProps) {
       const tagsPromise = client.tags.listTags(20, 0);
       
       const [docsResponse, tagsResponse] = await Promise.all([
-        docsPromise.catch(() => ({ documents: [], total: 0 })),
+        docsPromise.catch(() => []),
         tagsPromise.catch(() => ({ tags: [], total: 0 }))
       ]);
       
-      setDocuments(docsResponse.documents || []);
+      setDocuments(docsResponse || []);
       
       // Filter tags by search query
       const filteredTags = (tagsResponse.tags || []).filter(tag =>

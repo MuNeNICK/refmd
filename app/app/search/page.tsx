@@ -12,11 +12,23 @@ import { useAuth } from '@/lib/auth/authContext';
 import { useRouter } from 'next/navigation';
 import MainLayout from '@/components/layout/main-layout';
 
+interface ScrapPostWithDetails {
+  id: string;
+  scrap_id: string;
+  scrap_title: string;
+  author_id: string;
+  author_name: string | null;
+  content: string;
+  created_at: string;
+  updated_at: string;
+  tags: string[];
+}
+
 export default function SearchPage() {
   const searchParams = useSearchParams();
   const tagName = searchParams.get('tag');
   const [documents, setDocuments] = useState<Document[]>([]);
-  const [scrapPosts, setScrapPosts] = useState<any[]>([]);
+  const [scrapPosts, setScrapPosts] = useState<ScrapPostWithDetails[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
@@ -45,9 +57,10 @@ export default function SearchPage() {
           setDocuments(docs);
         }
         
-        // Set scrap posts with their details
+        // result.scrap_posts contains full objects, not just IDs
         if (result.scrap_posts && result.scrap_posts.length > 0) {
-          setScrapPosts(result.scrap_posts);
+          // Cast to unknown first, then to the correct type
+          setScrapPosts(result.scrap_posts as unknown as ScrapPostWithDetails[]);
         } else {
           setScrapPosts([]);
         }
@@ -145,6 +158,8 @@ export default function SearchPage() {
                     isViewOnly={true}
                     scrapId={post.scrap_id}
                     onNavigate={(scrapId) => router.push(`/scrap/${scrapId}`)}
+                    onUpdate={async () => {}}
+                    onDelete={async () => {}}
                   />
                 ))}
               </div>
@@ -186,6 +201,10 @@ export default function SearchPage() {
                   currentUserId={user?.id}
                   currentUserName={user?.name}
                   isViewOnly={true}
+                  scrapId={post.scrap_id}
+                  onNavigate={(scrapId) => router.push(`/scrap/${scrapId}`)}
+                  onUpdate={async () => {}}
+                  onDelete={async () => {}}
                 />
               ))}
             </div>

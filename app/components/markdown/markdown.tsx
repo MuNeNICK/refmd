@@ -48,7 +48,8 @@ const FULL_REMARK_PLUGINS = [
   remarkHashtag
 ]
 
-const FULL_REHYPE_PLUGINS = [
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const FULL_REHYPE_PLUGINS: any[] = [
   [rehypeRaw, {
     passThrough: [
       // Preserve custom attributes
@@ -95,8 +96,8 @@ const createDefaultComponents = (isPublic?: boolean, onTagClick?: (tagName: stri
         props: Object.keys(props),
         extendedProps: props,
         node,
-        nodeData: (node as any)?.data,
-        hProperties: (node as any)?.data?.hProperties
+        nodeData: (node as { data?: unknown })?.data,
+        hProperties: (node as { data?: { hProperties?: unknown } })?.data?.hProperties
       })
     }
     
@@ -104,12 +105,12 @@ const createDefaultComponents = (isPublic?: boolean, onTagClick?: (tagName: stri
     const extendedProps = props as Record<string, unknown>
     
     // Check node data for custom properties
-    const nodeData = (node as any)?.data || {}
+    const nodeData = (node as { data?: { hProperties?: Record<string, unknown> } })?.data || {}
     const hProperties = nodeData.hProperties || {}
     
     // First check if this is a hashtag by class or data attributes
     const hasHashtagClass = className?.includes('hashtag')
-    const hasDataTag = hProperties['data-tag'] || extendedProps['data-tag'] || extendedProps['dataTag'] || (hProperties as any)?.dataTag
+    const hasDataTag = hProperties['data-tag'] || extendedProps['data-tag'] || extendedProps['dataTag'] || (hProperties as Record<string, unknown>)?.dataTag
     
     // Check if children contains hashtag text
     const childText = typeof children === 'string' ? children : 
@@ -141,7 +142,8 @@ const createDefaultComponents = (isPublic?: boolean, onTagClick?: (tagName: stri
       }
       
       // Remove target prop if exists
-      const { target, ...restProps } = props as any;
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { target, ...restProps } = props as Record<string, unknown>;
       
       return (
         <a 
@@ -191,7 +193,8 @@ const createDefaultComponents = (isPublic?: boolean, onTagClick?: (tagName: stri
     // Regular link
     // Prevent # links from opening in new tab
     if (href === '#') {
-      const { target, ...restProps } = props as any;
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { target, ...restProps } = props as Record<string, unknown>;
       return (
         <a 
           href={href} 

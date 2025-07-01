@@ -4,11 +4,10 @@ import { Text, Parent, Link } from 'mdast';
 
 interface Options {
   className?: string;
-  linkPrefix?: string;
 }
 
 const remarkHashtag: Plugin<[Options?]> = (options = {}) => {
-  const { className = 'hashtag', linkPrefix = '/search?tag=' } = options;
+  const { className = 'hashtag' } = options;
 
   return (tree) => {
     visit(tree, 'text', (node: Text, index: number | null, parent: Parent | null) => {

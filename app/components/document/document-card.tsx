@@ -41,7 +41,7 @@ export function DocumentCard({ document, onClick }: DocumentCardProps) {
           <div className="flex items-center gap-1">
             <Calendar className="h-3 w-3" />
             <span>
-              Updated {formatDistanceToNow(new Date(document.updated_at), { addSuffix: true })}
+              Updated {document.updated_at ? formatDistanceToNow(new Date(document.updated_at), { addSuffix: true }) : 'recently'}
             </span>
           </div>
           {document.visibility && document.visibility !== 'private' && (

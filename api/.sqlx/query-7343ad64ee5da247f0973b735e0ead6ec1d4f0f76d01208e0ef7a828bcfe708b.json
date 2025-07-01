@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT \n                t.id,\n                t.name,\n                t.created_at,\n                COUNT(DISTINCT spt.scrap_post_id) as \"count!\"\n            FROM tags t\n            INNER JOIN scrap_post_tags spt ON t.id = spt.tag_id\n            INNER JOIN scrap_posts sp ON spt.scrap_post_id = sp.id\n            WHERE sp.document_id = $1\n            GROUP BY t.id, t.name, t.created_at\n            ORDER BY COUNT(DISTINCT spt.scrap_post_id) DESC, t.name\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 3,
+        "name": "count!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      null
+    ]
+  },
+  "hash": "7343ad64ee5da247f0973b735e0ead6ec1d4f0f76d01208e0ef7a828bcfe708b"
+}
