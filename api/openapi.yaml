@@ -2195,6 +2195,93 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  # ===== Tags =====
+  /tags:
+    get:
+      tags:
+        - Tags
+      summary: List all tags
+      operationId: listTags
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 100
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Tags retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TagListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /tags/{name}/posts:
+    get:
+      tags:
+        - Tags
+      summary: Get posts by tag
+      operationId: getPostsByTag
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Posts retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostsByTagResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /tags/scraps/{id}/tags:
+    get:
+      tags:
+        - Tags
+      summary: Get all tags for a scrap
+      operationId: getScrapTags
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Tags retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Tag'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
 components:
   securitySchemes:
     bearerAuth:
@@ -2770,6 +2857,71 @@ components:
           nullable: true
           description: Manual resolution content (required if resolution_type is manual)
 
+    # ===== Tag =====
+    Tag:
+      type: object
+      required:
+        - id
+        - name
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    TagWithCount:
+      type: object
+      required:
+        - id
+        - name
+        - count
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        count:
+          type: integer
+          format: int64
+        created_at:
+          type: string
+          format: date-time
+
+    TagListResponse:
+      type: object
+      required:
+        - tags
+        - total
+      properties:
+        tags:
+          type: array
+          items:
+            $ref: '#/components/schemas/TagWithCount'
+        total:
+          type: integer
+          format: int64
+
+    PostsByTagResponse:
+      type: object
+      required:
+        - tag
+        - post_ids
+      properties:
+        tag:
+          type: string
+        post_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+
     # ===== Error =====
     ErrorResponse:
       type: object
@@ -2864,6 +3016,11 @@ components:
         updated_at:
           type: string
           format: date-time
+        tags:
+          type: array
+          items:
+            type: string
+          nullable: true
 
     ScrapWithPosts:
       type: object
@@ -3150,3 +3307,5 @@ tags:
     description: Real-time collaboration statistics
   - name: Scraps
     description: Scrap (thread-based memo) management
+  - name: Tags
+    description: Tag management for scraps

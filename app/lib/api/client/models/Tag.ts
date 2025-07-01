@@ -2,13 +2,9 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-export type ScrapPost = {
+export type Tag = {
     id: string;
-    author_id: string;
-    author_name?: string | null;
-    content: string;
+    name: string;
     created_at: string;
-    updated_at: string;
-    tags?: Array<string> | null;
 };
 

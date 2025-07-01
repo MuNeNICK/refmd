@@ -17,9 +17,10 @@ interface ScrapMarkdownProps {
   content: string;
   documentId?: string;
   onNavigate?: (documentId: string, type?: 'document' | 'scrap') => void;
+  onTagClick?: (tag: string) => void;
 }
 
-export function ScrapMarkdown({ content, documentId, onNavigate }: ScrapMarkdownProps) {
+export function ScrapMarkdown({ content, documentId, onNavigate, onTagClick }: ScrapMarkdownProps) {
   const apiUrl = getApiUrl();
 
   const customComponents: Components = useMemo(() => ({
@@ -72,46 +73,6 @@ export function ScrapMarkdown({ content, documentId, onNavigate }: ScrapMarkdown
           className="max-w-full h-auto rounded-md shadow-md my-2"
           {...props}
         />
-      );
-    },
-    a: ({ href, children, className, ...props }) => {
-      // Check if this is a wiki link or mention link
-      const extendedProps = props as Record<string, unknown>;
-      const isWikiLink = href?.startsWith('#wiki:') || extendedProps['data-wiki-target'];
-      const isMentionLink = href?.startsWith('#mention:') || extendedProps['data-mention-target'];
-      
-      if (isWikiLink || isMentionLink) {
-        // Extract target from URL or data attribute
-        let target = '';
-        if (extendedProps['data-wiki-target']) {
-          target = extendedProps['data-wiki-target'] as string;
-        } else if (extendedProps['data-mention-target']) {
-          target = extendedProps['data-mention-target'] as string;
-        } else if (isWikiLink && href) {
-          target = decodeURIComponent(href.replace('#wiki:', ''));
-        } else if (isMentionLink && href) {
-          target = decodeURIComponent(href.replace('#mention:', ''));
-        }
-        
-        return (
-          <WikiLink 
-            href={href || '#'} 
-            className={className}
-            data-wiki-target={isWikiLink ? target : undefined}
-            data-mention-target={isMentionLink ? target : undefined}
-            onNavigate={onNavigate}
-            {...props}
-          >
-            {children}
-          </WikiLink>
-        );
-      }
-      
-      // For other links, use FileAttachment
-      return (
-        <FileAttachment href={href || '#'} documentId={documentId} {...props}>
-          {children}
-        </FileAttachment>
       );
     },
     p: ({ children, ...props }) => {
@@ -171,21 +132,20 @@ export function ScrapMarkdown({ content, documentId, onNavigate }: ScrapMarkdown
       
       return <pre>{children}</pre>;
     },
-    // Handle hashtags rendered by the plugin
-    a({ href, className, children, ...props }) {
+    // Handle all link types: hashtags, wiki links, and regular links
+    a: ({ href, className, children, ...props }) => {
       const extendedProps = props as Record<string, unknown>;
       
-      // Handle hashtag links
-      if (href?.startsWith('#tag:')) {
+      // Check if this is a hashtag link
+      if (href?.startsWith('#tag:') || className?.includes('hashtag')) {
         const tagName = extendedProps['data-tag'] as string || decodeURIComponent(href.replace('#tag:', ''));
         return (
           <a 
             href={href} 
-            className="text-primary hover:underline cursor-pointer hashtag"
+            className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 cursor-pointer transition-colors no-underline"
             onClick={(e) => {
               e.preventDefault();
-              // TODO: Implement tag filtering
-              console.log('Tag clicked:', tagName);
+              onTagClick?.(tagName);
             }}
             {...props}
           >
@@ -194,11 +154,12 @@ export function ScrapMarkdown({ content, documentId, onNavigate }: ScrapMarkdown
         );
       }
       
-      // Handle wiki/mention links
+      // Check if this is a wiki link or mention link
       const isWikiLink = href?.startsWith('#wiki:') || extendedProps['data-wiki-target'];
       const isMentionLink = href?.startsWith('#mention:') || extendedProps['data-mention-target'];
       
       if (isWikiLink || isMentionLink) {
+        // Extract target from URL or data attribute
         let target = '';
         if (extendedProps['data-wiki-target']) {
           target = extendedProps['data-wiki-target'] as string;
@@ -231,7 +192,7 @@ export function ScrapMarkdown({ content, documentId, onNavigate }: ScrapMarkdown
         </FileAttachment>
       );
     },
-  }), [apiUrl, documentId, onNavigate]);
+  }), [apiUrl, documentId, onNavigate, onTagClick]);
 
   return (
     <ReactMarkdown 

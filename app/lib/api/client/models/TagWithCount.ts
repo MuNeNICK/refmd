@@ -2,13 +2,10 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-export type ScrapPost = {
+export type TagWithCount = {
     id: string;
-    author_id: string;
-    author_name?: string | null;
-    content: string;
+    name: string;
+    count: number;
     created_at: string;
-    updated_at: string;
-    tags?: Array<string> | null;
 };
 

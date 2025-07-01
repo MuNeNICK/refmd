@@ -8,8 +8,10 @@ import { Scrap } from '@/lib/api/client';
 import MainLayout from '@/components/layout/main-layout';
 import { ScrapPostForm } from '@/components/scrap/scrap-post-form';
 import { ScrapPostComponent } from '@/components/scrap/scrap-post';
+import { TagSearch } from '@/components/scrap/tag-search';
+import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { ArrowUp, ArrowDown } from 'lucide-react';
+import { ArrowUp, ArrowDown, Search, X } from 'lucide-react';
 import { useAuth } from '@/lib/auth/authContext';
 import { getApiClient } from '@/lib/api';
 import { ScrapMetadataParser } from '@/lib/utils/scrap-metadata-parser';
@@ -34,9 +36,11 @@ export function ScrapPageClient({ initialData, scrapId, shareToken }: ScrapPageC
   const [editingPostId, setEditingPostId] = useState<string | null>(null);
   const [deletingPostId, setDeletingPostId] = useState<string | null>(null);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc'); // Default to newest first
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [userCount, setUserCount] = useState(0);
   const [isMobile, setIsMobile] = useState(false);
+  const [searchText, setSearchText] = useState('');
   
   // Secondary document state
   const {
@@ -267,9 +271,38 @@ export function ScrapPageClient({ initialData, scrapId, shareToken }: ScrapPageC
     }
   };
 
-  // Sort posts based on the current sort order and pin status
-  const sortedPosts = useMemo(() => {
-    const posts = [...scrapData.posts];
+  // Filter and sort posts based on the current sort order, pin status, selected tags, and search text
+  const filteredAndSortedPosts = useMemo(() => {
+    let posts = [...scrapData.posts];
+    
+    // Filter by search text if provided
+    if (searchText.trim()) {
+      const searchLower = searchText.toLowerCase();
+      posts = posts.filter(post => {
+        // Search in content
+        const contentMatch = post.content.toLowerCase().includes(searchLower);
+        // Search in tags (with # prefix)
+        const tagMatch = post.tags?.some(tag => 
+          tag.toLowerCase().includes(searchLower) || 
+          `#${tag}`.toLowerCase().includes(searchLower)
+        ) || false;
+        return contentMatch || tagMatch;
+      });
+    }
+    
+    // Filter by tags if any are selected
+    if (selectedTags.length > 0) {
+      posts = posts.filter(post => {
+        const postTags = post.tags || [];
+        // Show post if it has any of the selected tags
+        return selectedTags.some(selectedTag => 
+          postTags.some(postTag => 
+            postTag.toLowerCase() === selectedTag.toLowerCase()
+          )
+        );
+      });
+    }
+    
     return posts.sort((a, b) => {
       // Check if posts are pinned
       const aIsPinned = ScrapMetadataParser.isPinned(a.content);
@@ -284,11 +317,17 @@ export function ScrapPageClient({ initialData, scrapId, shareToken }: ScrapPageC
       const dateB = new Date(b.created_at).getTime();
       return sortOrder === 'desc' ? dateB - dateA : dateA - dateB;
     });
-  }, [scrapData.posts, sortOrder]);
+  }, [scrapData.posts, sortOrder, selectedTags, searchText]);
 
   const toggleSortOrder = () => {
     setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc');
   };
+  
+  const handleTagClick = useCallback((tag: string) => {
+    if (!selectedTags.includes(tag)) {
+      setSelectedTags(prev => [...prev, tag]);
+    }
+  }, [selectedTags]);
   
   const handleOpenDocumentInSecondary = useCallback((docId: string, type: 'document' | 'scrap' = 'document') => {
     openSecondaryViewer(docId, type);
@@ -340,67 +379,163 @@ export function ScrapPageClient({ initialData, scrapId, shareToken }: ScrapPageC
         <PanelGroup direction="horizontal" className="h-full w-full">
           <Panel defaultSize={50} minSize={30}>
             <div className="flex flex-col h-full overflow-y-auto">
-              <div className="max-w-4xl mx-auto w-full p-3 sm:p-6">
-                <div className="space-y-4 pb-6">
+              <div className="max-w-6xl mx-auto w-full p-3 sm:p-6">
+                <div className="flex gap-6">
+                  {/* Posts column */}
+                  <div className="flex-1 space-y-4">
+                    {/* Add post form - only visible if not view-only */}
+                    {!isViewOnly && (
+                      <ScrapPostForm
+                        onSubmit={handleAddPost}
+                        isLoading={isLoading}
+                        placeholder="Enter a new post..."
+                        documentId={scrapData.scrap.id}
+                      />
+                    )}
 
-            {/* Add post form - only visible if not view-only */}
-            {!isViewOnly && (
-              <ScrapPostForm
-                onSubmit={handleAddPost}
-                isLoading={isLoading}
-                placeholder="Enter a new post..."
-                documentId={scrapData.scrap.id}
-              />
-            )}
+                    {/* Filter and Sort Controls */}
+                    {scrapData.posts.length > 0 && (
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-muted-foreground">
+                            {(selectedTags.length > 0 || searchText) ? (
+                              <>
+                                {filteredAndSortedPosts.length} of {scrapData.posts.length} posts
+                                {(selectedTags.length > 0 || searchText) && (
+                                  <span className="ml-1">(filtered)</span>
+                                )}
+                              </>
+                            ) : (
+                              <>
+                                {scrapData.posts.length} {scrapData.posts.length === 1 ? 'post' : 'posts'}
+                              </>
+                            )}
+                          </span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={toggleSortOrder}
+                            className="h-8 px-2 text-muted-foreground hover:text-foreground"
+                          >
+                            {sortOrder === 'desc' ? (
+                              <>
+                                <ArrowDown className="h-3.5 w-3.5 mr-1" />
+                                Newest first
+                              </>
+                            ) : (
+                              <>
+                                <ArrowUp className="h-3.5 w-3.5 mr-1" />
+                                Oldest first
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+                    )}
 
-            {/* Sort button and Posts header */}
-            {scrapData.posts.length > 0 && (
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm text-muted-foreground">
-                  {scrapData.posts.length} {scrapData.posts.length === 1 ? 'post' : 'posts'}
-                </span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={toggleSortOrder}
-                  className="h-8 px-2 text-muted-foreground hover:text-foreground"
-                >
-                  {sortOrder === 'desc' ? (
-                    <>
-                      <ArrowDown className="h-3.5 w-3.5 mr-1" />
-                      Newest first
-                    </>
-                  ) : (
-                    <>
-                      <ArrowUp className="h-3.5 w-3.5 mr-1" />
-                      Oldest first
-                    </>
-                  )}
-                </Button>
-              </div>
-            )}
+                    {/* Posts */}
+                    {filteredAndSortedPosts.length === 0 ? (
+                      <div className="text-center py-12 text-muted-foreground">
+                        {(selectedTags.length > 0 || searchText) ? (
+                          <>
+                            No posts found with the selected tags.
+                            <br />
+                            <Button 
+                              variant="link" 
+                              className="mt-2 h-auto p-0" 
+                              onClick={() => {
+                                setSelectedTags([]);
+                                setSearchText('');
+                              }}
+                            >
+                              Clear filters to see all posts
+                            </Button>
+                          </>
+                        ) : scrapData.posts.length === 0 ? (
+                          'No posts yet'
+                        ) : (
+                          'No posts match the current filter'
+                        )}
+                      </div>
+                    ) : (
+                      filteredAndSortedPosts.map((post) => (
+                        <ScrapPostComponent
+                          key={`${post.id}-${post.updated_at}`}
+                          post={post}
+                          currentUserId={user?.id}
+                          currentUserName={user?.name}
+                          onUpdate={handleUpdatePost}
+                          onDelete={handleDeletePost}
+                          isUpdating={editingPostId === post.id}
+                          isDeleting={deletingPostId === post.id}
+                          scrapId={scrapId}
+                          isViewOnly={isViewOnly}
+                          onNavigate={handleOpenDocumentInSecondary}
+                        />
+                      ))
+                    )}
+                  </div>
+                  
+                  {/* Search and tags column - Sticky */}
+                  <div className="w-72 hidden lg:block">
+                    <div className="sticky top-6 space-y-6">
+                      {/* Search Section */}
+                      <div className="space-y-3">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                          type="text"
+                          placeholder="Search memos..."
+                          value={searchText}
+                          onChange={(e) => setSearchText(e.target.value)}
+                          className="pl-9 pr-8 bg-muted/50"
+                        />
+                        {searchText && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setSearchText('')}
+                            className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
 
-            {/* Posts */}
-            {scrapData.posts.length === 0 ? (
-              <div className="text-center py-12 text-muted-foreground">
-                No posts yet
-              </div>
-            ) : (
-              sortedPosts.map((post) => (
-                <ScrapPostComponent
-                  key={`${post.id}-${post.updated_at}`}
-                  post={post}
-                  currentUserId={user?.id}
-                  currentUserName={user?.name}
-                  onUpdate={handleUpdatePost}
-                  onDelete={handleDeletePost}
-                  isUpdating={editingPostId === post.id}
-                  isDeleting={deletingPostId === post.id}
-                  scrapId={scrapId}
-                  isViewOnly={isViewOnly}
-                />
-              ))
-            )}
+                    {/* Tags Section */}
+                    <div className="space-y-3">
+                      <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Tags</h3>
+                      <TagSearch
+                        selectedTags={selectedTags}
+                        onSelectedTagsChange={setSelectedTags}
+                        showPopular={true}
+                      />
+                    </div>
+                    
+                    {/* Filter Stats */}
+                    {(selectedTags.length > 0 || searchText) && (
+                      <div className="pt-3">
+                        <div className="space-y-2">
+                          <div className="text-xs text-muted-foreground">
+                            {filteredAndSortedPosts.length} / {scrapData.posts.length} memos
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedTags([]);
+                              setSearchText('');
+                            }}
+                            className="w-full text-xs"
+                          >
+                            Clear filters
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -410,7 +545,7 @@ export function ScrapPageClient({ initialData, scrapId, shareToken }: ScrapPageC
             <SecondaryViewer 
               documentId={secondaryDocumentId}
               documentType={secondaryDocumentType}
-              className="h-full border-l" 
+              className="h-full" 
               onClose={closeSecondaryViewer}
               onDocumentChange={(id, type) => {
                 setSecondaryDocumentId(id);
@@ -421,67 +556,160 @@ export function ScrapPageClient({ initialData, scrapId, shareToken }: ScrapPageC
         </PanelGroup>
       ) : (
         <div className="flex flex-col h-full overflow-y-auto">
-          <div className="max-w-4xl mx-auto w-full p-3 sm:p-6">
-            <div className="space-y-4 pb-6">
-
-              {/* Add post form - only visible if not view-only */}
-              {!isViewOnly && (
-                <ScrapPostForm
-                  onSubmit={handleAddPost}
-                  isLoading={isLoading}
-                  placeholder="Enter a new post..."
-                  documentId={scrapData.scrap.id}
-                />
-              )}
-
-              {/* Sort button and Posts header */}
-              {scrapData.posts.length > 0 && (
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-muted-foreground">
-                    {scrapData.posts.length} {scrapData.posts.length === 1 ? 'post' : 'posts'}
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={toggleSortOrder}
-                    className="h-8 px-2 text-muted-foreground hover:text-foreground"
-                  >
-                    {sortOrder === 'desc' ? (
-                      <>
-                        <ArrowDown className="h-3.5 w-3.5 mr-1" />
-                        Newest first
-                      </>
-                    ) : (
-                      <>
-                        <ArrowUp className="h-3.5 w-3.5 mr-1" />
-                        Oldest first
-                      </>
-                    )}
-                  </Button>
-                </div>
-              )}
-
-              {/* Posts */}
-              {scrapData.posts.length === 0 ? (
-                <div className="text-center py-12 text-muted-foreground">
-                  No posts yet
-                </div>
-              ) : (
-                sortedPosts.map((post) => (
-                  <ScrapPostComponent
-                    key={`${post.id}-${post.updated_at}`}
-                    post={post}
-                    currentUserId={user?.id}
-                    currentUserName={user?.name}
-                    onUpdate={handleUpdatePost}
-                    onDelete={handleDeletePost}
-                    isUpdating={editingPostId === post.id}
-                    isDeleting={deletingPostId === post.id}
-                    scrapId={scrapId}
-                    isViewOnly={isViewOnly}
+          <div className="max-w-6xl mx-auto w-full p-3 sm:p-6">
+            <div className="flex gap-6">
+              {/* Posts column */}
+              <div className="flex-1 space-y-4">
+                {/* Add post form - only visible if not view-only */}
+                {!isViewOnly && (
+                  <ScrapPostForm
+                    onSubmit={handleAddPost}
+                    isLoading={isLoading}
+                    placeholder="Enter a new post..."
+                    documentId={scrapData.scrap.id}
                   />
-                ))
-              )}
+                )}
+
+                {/* Sort button and Posts header */}
+                {scrapData.posts.length > 0 && (
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm text-muted-foreground">
+                      {(selectedTags.length > 0 || searchText) ? (
+                        <>
+                          {filteredAndSortedPosts.length} of {scrapData.posts.length} posts
+                          <span className="ml-1">(filtered)</span>
+                        </>
+                      ) : (
+                        <>
+                          {scrapData.posts.length} {scrapData.posts.length === 1 ? 'post' : 'posts'}
+                        </>
+                      )}
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={toggleSortOrder}
+                      className="h-8 px-2 text-muted-foreground hover:text-foreground"
+                    >
+                      {sortOrder === 'desc' ? (
+                        <>
+                          <ArrowDown className="h-3.5 w-3.5 mr-1" />
+                          Newest first
+                        </>
+                      ) : (
+                        <>
+                          <ArrowUp className="h-3.5 w-3.5 mr-1" />
+                          Oldest first
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                )}
+
+                {/* Posts */}
+                {filteredAndSortedPosts.length === 0 ? (
+                  <div className="text-center py-12 text-muted-foreground">
+                    {(selectedTags.length > 0 || searchText) ? (
+                      <>
+                        No posts found with the selected tags.
+                        <br />
+                        <Button 
+                          variant="link" 
+                          className="mt-2 h-auto p-0" 
+                          onClick={() => {
+                            setSelectedTags([]);
+                            setSearchText('');
+                          }}
+                        >
+                          Clear filters to see all posts
+                        </Button>
+                      </>
+                    ) : scrapData.posts.length === 0 ? (
+                      'No posts yet'
+                    ) : (
+                      'No posts match the current filter'
+                    )}
+                  </div>
+                ) : (
+                  filteredAndSortedPosts.map((post) => (
+                    <ScrapPostComponent
+                      key={`${post.id}-${post.updated_at}`}
+                      post={post}
+                      currentUserId={user?.id}
+                      currentUserName={user?.name}
+                      onUpdate={handleUpdatePost}
+                      onDelete={handleDeletePost}
+                      isUpdating={editingPostId === post.id}
+                      isDeleting={deletingPostId === post.id}
+                      scrapId={scrapId}
+                      isViewOnly={isViewOnly}
+                      onNavigate={handleOpenDocumentInSecondary}
+                      onTagClick={handleTagClick}
+                    />
+                  ))
+                )}
+              </div>
+              
+              {/* Search and tags column - Sticky */}
+              <div className="w-72 hidden lg:block">
+                <div className="sticky top-6 space-y-6">
+                  {/* Search Section */}
+                  <div className="space-y-3">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      type="text"
+                      placeholder="Search memos..."
+                      value={searchText}
+                      onChange={(e) => setSearchText(e.target.value)}
+                      className="pl-9 pr-8 bg-muted/50"
+                    />
+                    {searchText && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setSearchText('')}
+                        className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Tags Section */}
+                <div className="space-y-3">
+                  <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Tags</h3>
+                  <TagSearch
+                    selectedTags={selectedTags}
+                    onSelectedTagsChange={setSelectedTags}
+                    showPopular={true}
+                  />
+                </div>
+                
+                {/* Filter Stats */}
+                {(selectedTags.length > 0 || searchText) && (
+                  <div className="pt-3">
+                    <div className="space-y-2">
+                      <div className="text-xs text-muted-foreground">
+                        {filteredAndSortedPosts.length} / {scrapData.posts.length} memos
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedTags([]);
+                          setSearchText('');
+                        }}
+                        className="w-full text-xs"
+                      >
+                        Clear filters
+                      </Button>
+                    </div>
+                  </div>
+                )}
+                </div>
+              </div>
             </div>
           </div>
         </div>

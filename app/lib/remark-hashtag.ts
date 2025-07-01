@@ -1,19 +1,6 @@
 import { Plugin } from 'unified';
 import { visit } from 'unist-util-visit';
-import { Text, Parent } from 'mdast';
-
-export interface HashtagNode {
-  type: 'hashtag';
-  value: string;
-  data?: {
-    hName?: string;
-    hProperties?: {
-      className?: string[];
-      href?: string;
-      'data-tag'?: string;
-    };
-  };
-}
+import { Text, Parent, Link } from 'mdast';
 
 interface Options {
   className?: string;
@@ -34,7 +21,7 @@ const remarkHashtag: Plugin<[Options?]> = (options = {}) => {
       // - Can contain hyphens or underscores in the middle
       const regex = /\B#([a-zA-Z0-9\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF\u3400-\u4DBF\uAC00-\uD7AF_-]+)(?:\b|$)/g;
       
-      const nodes: (Text | HashtagNode)[] = [];
+      const nodes: (Text | Link)[] = [];
       let lastIndex = 0;
       let match;
 
@@ -50,21 +37,24 @@ const remarkHashtag: Plugin<[Options?]> = (options = {}) => {
           });
         }
 
-        // Add the hashtag node
-        const hashtagNode: HashtagNode = {
-          type: 'hashtag',
-          value: fullMatch,
+        // Create a link node for the hashtag
+        const linkNode: Link = {
+          type: 'link',
+          url: `${linkPrefix}${encodeURIComponent(tagName)}`,
+          title: null,
+          children: [{
+            type: 'text',
+            value: fullMatch,
+          }],
           data: {
-            hName: 'a',
             hProperties: {
-              className: [className],
-              href: `${linkPrefix}${encodeURIComponent(tagName)}`,
+              className: className,
               'data-tag': tagName,
             },
           },
         };
         
-        nodes.push(hashtagNode);
+        nodes.push(linkNode);
         lastIndex = startIndex + fullMatch.length;
       }
 
@@ -77,8 +67,9 @@ const remarkHashtag: Plugin<[Options?]> = (options = {}) => {
       }
 
       // Replace the original text node with the new nodes
-      if (nodes.length > 1) {
+      if (nodes.length > 0) {
         parent.children.splice(index, 1, ...nodes);
+        return index + nodes.length; // Skip the newly inserted nodes
       }
     });
   };
