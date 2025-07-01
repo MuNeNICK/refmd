@@ -13,6 +13,7 @@ import { PublicDocumentsService } from './services/PublicDocumentsService';
 import { ScrapsService } from './services/ScrapsService';
 import { SharingService } from './services/SharingService';
 import { SocketIoService } from './services/SocketIoService';
+import { TagsService } from './services/TagsService';
 import { UsersService } from './services/UsersService';
 type HttpRequestConstructor = new (config: OpenAPIConfig) => BaseHttpRequest;
 export class RefMDClient {
@@ -24,6 +25,7 @@ export class RefMDClient {
     public readonly scraps: ScrapsService;
     public readonly sharing: SharingService;
     public readonly socketIo: SocketIoService;
+    public readonly tags: TagsService;
     public readonly users: UsersService;
     public readonly request: BaseHttpRequest;
     constructor(config?: Partial<OpenAPIConfig>, HttpRequest: HttpRequestConstructor = FetchHttpRequest) {
@@ -46,6 +48,7 @@ export class RefMDClient {
         this.scraps = new ScrapsService(this.request);
         this.sharing = new SharingService(this.request);
         this.socketIo = new SocketIoService(this.request);
+        this.tags = new TagsService(this.request);
         this.users = new UsersService(this.request);
     }
 }

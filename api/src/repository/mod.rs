@@ -4,6 +4,7 @@ pub mod file;
 pub mod scrap;
 pub mod share;
 pub mod git_config;
+pub mod tag;
 
 pub use document::DocumentRepository;
 pub use user::UserRepository;

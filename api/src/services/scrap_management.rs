@@ -8,22 +8,31 @@ use crate::entities::scrap::{
 };
 use crate::error::{Error, Result};
 use crate::repository::scrap::ScrapRepository;
+use crate::repository::tag::TagRepository;
 use crate::services::document::DocumentService;
 use crate::services::crdt::CrdtService;
 use crate::services::scrap::ScrapParser;
+use crate::services::tag_parser::TagParser;
 
 pub struct ScrapService {
     pool: Arc<PgPool>,
     document_service: Arc<DocumentService>,
     crdt_service: Arc<CrdtService>,
+    tag_repository: Arc<TagRepository>,
+    tag_parser: Arc<TagParser>,
 }
 
 impl ScrapService {
     pub fn new(pool: Arc<PgPool>, document_service: Arc<DocumentService>, crdt_service: Arc<CrdtService>) -> Self {
+        let tag_repository = Arc::new(TagRepository::new(pool.as_ref().clone()));
+        let tag_parser = Arc::new(TagParser::new());
+        
         Self {
             pool,
             document_service,
             crdt_service,
+            tag_repository,
+            tag_parser,
         }
     }
 
@@ -200,6 +209,7 @@ impl ScrapService {
             content: db_post.content,
             created_at: db_post.created_at,
             updated_at: db_post.updated_at,
+            tags: None, // Will be populated after saving tags
         };
 
         // Get document within transaction
@@ -217,6 +227,18 @@ impl ScrapService {
             })?;
         
         tracing::info!("Post created successfully in DB: post_id={}, scrap_id={}", post.id, scrap_id);
+        
+        // Extract and save tags
+        let tags = self.tag_parser.extract_tags(&request.content);
+        let mut post_with_tags = post;
+        if !tags.is_empty() {
+            if let Err(e) = self.tag_repository.update_scrap_post_tags(post_with_tags.id, tags.clone()).await {
+                tracing::error!("Failed to save tags for post {}: {:?}", post_with_tags.id, e);
+                // Don't fail the entire operation if tag saving fails
+            } else {
+                post_with_tags.tags = Some(tags);
+            }
+        }
 
         // Update CRDT and file with retry mechanism
         if let Some(_file_path) = &document.file_path {
@@ -224,7 +246,7 @@ impl ScrapService {
             let mut retry_count = 0;
             
             while retry_count < max_retries {
-                match self.update_scrap_content_with_post(document.id, &post).await {
+                match self.update_scrap_content_with_post(document.id, &post_with_tags).await {
                     Ok(_) => break,
                     Err(e) => {
                         retry_count += 1;
@@ -240,7 +262,7 @@ impl ScrapService {
             }
         }
 
-        Ok(post)
+        Ok(post_with_tags)
     }
 
     async fn update_scrap_content_with_post(&self, document_id: Uuid, post: &ScrapPost) -> Result<()> {
@@ -379,6 +401,7 @@ impl ScrapService {
             content: db_post.content,
             created_at: db_post.created_at,
             updated_at: db_post.updated_at,
+            tags: None, // Will be populated after saving tags
         };
 
         // Get document within transaction
@@ -391,6 +414,16 @@ impl ScrapService {
         // Commit transaction
         tx.commit().await
             .map_err(|e| Error::InternalServerError(format!("Failed to commit transaction: {}", e)))?;
+        
+        // Extract and save tags
+        let tags = self.tag_parser.extract_tags(&request.content);
+        let mut post_with_tags = post;
+        if let Err(e) = self.tag_repository.update_scrap_post_tags(post_with_tags.id, tags.clone()).await {
+            tracing::error!("Failed to update tags for post {}: {:?}", post_with_tags.id, e);
+            // Don't fail the entire operation if tag saving fails
+        } else {
+            post_with_tags.tags = Some(tags);
+        }
 
         // Update CRDT and file with retry mechanism
         if let Some(_) = &document.file_path {
@@ -412,7 +445,7 @@ impl ScrapService {
             }
         }
 
-        Ok(post)
+        Ok(post_with_tags)
     }
 
     async fn update_scrap_content_with_post_update(&self, document_id: Uuid, post_id: Uuid, content: &str) -> Result<()> {

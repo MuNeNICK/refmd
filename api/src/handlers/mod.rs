@@ -12,6 +12,7 @@ pub mod socketio;
 pub mod git_sync;
 pub mod document_links;
 pub mod public_documents;
+pub mod tags;
 
 pub fn routes(state: Arc<AppState>) -> Router {
     // Merge document routes with public document management routes
@@ -27,6 +28,7 @@ pub fn routes(state: Arc<AppState>) -> Router {
         .nest("/shares", shares::routes(state.clone()))
         .nest("/git", git_sync::routes(state.clone()))
         .nest("/socketio", socketio::routes(state.clone()))
+        .nest("/tags", tags::routes(state.clone()))
         .merge(public_documents::routes(state.clone()))
         .merge(public_documents::my_documents_routes(state))
 }

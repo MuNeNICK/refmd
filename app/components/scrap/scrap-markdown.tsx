@@ -1,20 +1,26 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import { Markdown } from '@/components/markdown/markdown';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import remarkEmoji from 'remark-emoji';
+import rehypeRaw from 'rehype-raw';
 import { AuthenticatedImage } from '@/components/markdown/authenticated-image';
 import { FileAttachment } from '@/components/markdown/file-attachment';
 import { WikiLink } from '@/components/markdown/wiki-link';
+import { CodeBlock } from '@/components/markdown/code-block';
 import { getApiUrl } from '@/lib/config';
+import remarkHashtag from '@/lib/remark-hashtag';
 import type { Components } from 'react-markdown';
 
 interface ScrapMarkdownProps {
   content: string;
   documentId?: string;
   onNavigate?: (documentId: string, type?: 'document' | 'scrap') => void;
+  onTagClick?: (tag: string) => void;
 }
 
-export function ScrapMarkdown({ content, documentId, onNavigate }: ScrapMarkdownProps) {
+export function ScrapMarkdown({ content, documentId, onNavigate, onTagClick }: ScrapMarkdownProps) {
   const apiUrl = getApiUrl();
 
   const customComponents: Components = useMemo(() => ({
@@ -69,9 +75,86 @@ export function ScrapMarkdown({ content, documentId, onNavigate }: ScrapMarkdown
         />
       );
     },
-    a: ({ href, children, className, ...props }) => {
-      // Check if this is a wiki link or mention link
+    p: ({ children, ...props }) => {
+      // Check if the paragraph contains only an image or file attachment to avoid hydration errors
+      const childArray = React.Children.toArray(children);
+      const hasOnlyImageOrFile = childArray.length === 1 && 
+        React.isValidElement(childArray[0]) && 
+        (childArray[0].type === 'img' || 
+         childArray[0].type === AuthenticatedImage ||
+         childArray[0].type === FileAttachment ||
+         (childArray[0].props && typeof childArray[0].props === 'object' && childArray[0].props !== null && 
+          ('src' in childArray[0].props || 'href' in childArray[0].props)));
+      
+      if (hasOnlyImageOrFile) {
+        return <div className="my-2" {...props}>{children}</div>;
+      }
+      
+      return <p {...props}>{children}</p>;
+    },
+    // Code block rendering
+    code({ className, children, ...props }) {
+      const match = /language-(\w+)/.exec(className || '');
+      const isInline = !match;
+      
+      if (isInline) {
+        return (
+          <code className="bg-muted px-1 py-0.5 rounded text-sm" {...props}>
+            {children}
+          </code>
+        );
+      }
+      
+      return (
+        <code className={className} {...props}>
+          {children}
+        </code>
+      );
+    },
+    pre({ children }) {
+      const childrenArray = React.Children.toArray(children);
+      const codeElement = childrenArray.find(
+        child => React.isValidElement(child) && child.type === 'code'
+      );
+      
+      if (codeElement && React.isValidElement(codeElement)) {
+        const className = (codeElement.props as { className?: string }).className || '';
+        const match = /language-(\w+)/.exec(className);
+        const language = match?.[1];
+        const codeContent = String((codeElement.props as { children?: React.ReactNode }).children).replace(/\n$/, '');
+        
+        return (
+          <CodeBlock language={language} className="not-prose">
+            {codeContent}
+          </CodeBlock>
+        );
+      }
+      
+      return <pre>{children}</pre>;
+    },
+    // Handle all link types: hashtags, wiki links, and regular links
+    a: ({ href, className, children, ...props }) => {
       const extendedProps = props as Record<string, unknown>;
+      
+      // Check if this is a hashtag link
+      if (href?.startsWith('#tag:') || className?.includes('hashtag')) {
+        const tagName = extendedProps['data-tag'] as string || (href ? decodeURIComponent(href.replace('#tag:', '')) : '');
+        return (
+          <a 
+            href={href} 
+            className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 cursor-pointer transition-colors no-underline"
+            onClick={(e) => {
+              e.preventDefault();
+              onTagClick?.(tagName);
+            }}
+            {...props}
+          >
+            {children}
+          </a>
+        );
+      }
+      
+      // Check if this is a wiki link or mention link
       const isWikiLink = href?.startsWith('#wiki:') || extendedProps['data-wiki-target'];
       const isMentionLink = href?.startsWith('#mention:') || extendedProps['data-mention-target'];
       
@@ -109,24 +192,15 @@ export function ScrapMarkdown({ content, documentId, onNavigate }: ScrapMarkdown
         </FileAttachment>
       );
     },
-    p: ({ children, ...props }) => {
-      // Check if the paragraph contains only an image or file attachment to avoid hydration errors
-      const childArray = React.Children.toArray(children);
-      const hasOnlyImageOrFile = childArray.length === 1 && 
-        React.isValidElement(childArray[0]) && 
-        (childArray[0].type === 'img' || 
-         childArray[0].type === AuthenticatedImage ||
-         childArray[0].type === FileAttachment ||
-         (childArray[0].props && typeof childArray[0].props === 'object' && childArray[0].props !== null && 
-          ('src' in childArray[0].props || 'href' in childArray[0].props)));
-      
-      if (hasOnlyImageOrFile) {
-        return <div className="my-2" {...props}>{children}</div>;
-      }
-      
-      return <p {...props}>{children}</p>;
-    },
-  }), [apiUrl, documentId, onNavigate]);
+  }), [apiUrl, documentId, onNavigate, onTagClick]);
 
-  return <Markdown content={content} components={customComponents} />;
+  return (
+    <ReactMarkdown 
+      remarkPlugins={[remarkGfm, remarkEmoji, remarkHashtag]}
+      rehypePlugins={[rehypeRaw]}
+      components={customComponents}
+    >
+      {content}
+    </ReactMarkdown>
+  );
 }

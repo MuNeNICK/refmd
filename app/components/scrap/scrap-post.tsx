@@ -12,6 +12,7 @@ import { ScrapCommentComponent, AddCommentForm } from './scrap-comment';
 import { ScrapCommentParser } from '@/lib/utils/scrap-comment-parser';
 import { ScrapMetadataParser } from '@/lib/utils/scrap-metadata-parser';
 import { DeleteConfirmationDialog } from '@/components/ui/delete-confirmation-dialog';
+// import { ScrapTagList } from './scrap-tag-list'; // Removed - tags shown inline
 import type { ScrapPost } from '@/lib/api/client';
 
 interface ScrapPostComponentProps {
@@ -25,6 +26,7 @@ interface ScrapPostComponentProps {
   scrapId: string; // The scrap/document ID
   isViewOnly?: boolean;
   onNavigate?: (documentId: string, type?: 'document' | 'scrap') => void;
+  onTagClick?: (tag: string) => void;
 }
 
 export function ScrapPostComponent({
@@ -38,6 +40,7 @@ export function ScrapPostComponent({
   scrapId,
   isViewOnly = false,
   onNavigate,
+  onTagClick,
 }: ScrapPostComponentProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [showComments, setShowComments] = useState(true);
@@ -235,6 +238,7 @@ export function ScrapPostComponent({
               content={cleanContent} 
               documentId={scrapId}
               onNavigate={onNavigate}
+              onTagClick={onTagClick}
             />
           </div>
           

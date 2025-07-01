@@ -15,6 +15,7 @@ pub mod document_links;
 pub mod public_document;
 pub mod url_generator;
 pub mod common;
+pub mod tag_parser;
 
 pub use public_document::PublicDocumentService;
 pub use url_generator::UrlGeneratorService;

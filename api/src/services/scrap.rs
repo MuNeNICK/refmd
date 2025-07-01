@@ -40,6 +40,7 @@ impl ScrapParser {
                 content: post_content,
                 created_at,
                 updated_at: created_at, // Will be updated separately if needed
+                tags: None,
             });
         }
         
