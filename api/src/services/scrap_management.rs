@@ -423,6 +423,10 @@ impl ScrapService {
             // Don't fail the entire operation if tag saving fails
         } else {
             post_with_tags.tags = Some(tags);
+            // Cleanup unused tags after updating
+            if let Err(e) = self.tag_repository.cleanup_unused_tags().await {
+                tracing::warn!("Failed to cleanup unused tags after updating post: {:?}", e);
+            }
         }
 
         // Update CRDT and file with retry mechanism
@@ -524,6 +528,12 @@ impl ScrapService {
         // Commit transaction
         tx.commit().await
             .map_err(|e| Error::InternalServerError(format!("Failed to commit transaction: {}", e)))?;
+
+        // Cleanup unused tags after deleting the post
+        if let Err(e) = self.tag_repository.cleanup_unused_tags().await {
+            tracing::warn!("Failed to cleanup unused tags after deleting post: {:?}", e);
+            // Don't fail the operation if cleanup fails
+        }
 
         // Update CRDT and file with retry mechanism
         if let Some(_) = &document.file_path {
