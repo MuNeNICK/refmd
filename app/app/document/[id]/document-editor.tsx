@@ -15,6 +15,7 @@ import type { editor } from 'monaco-editor';
 import { useAuth } from '@/lib/auth/authContext';
 import { BacklinksPanel } from '@/components/document/backlinks-panel';
 import { SecondaryViewer } from '@/components/document/secondary-viewer';
+import { useRouter } from 'next/navigation';
 
 interface DocumentEditorProps {
   documentId: string;
@@ -63,6 +64,7 @@ export default function DocumentEditor({
   const editorContainerRef = useRef<HTMLDivElement | null>(null);
   const insertTextRef = useRef<((text: string) => void) | null>(null);
   const [isMobile, setIsMobile] = useState(false);
+  const router = useRouter();
   
   // Get user info from auth context
   let user = null;
@@ -321,6 +323,12 @@ export default function DocumentEditor({
   const handleEditorReady = useCallback((insertText: (text: string) => void) => {
     insertTextRef.current = insertText;
   }, []);
+
+  // Handle tag clicks in preview
+  const handleTagClick = useCallback((tagName: string) => {
+    // Navigate to tag search page
+    router.push(`/search?tag=${encodeURIComponent(tagName)}`);
+  }, [router]);
 
   // Handle checkbox changes in preview
   const handleCheckboxChange = useCallback((checkboxIndex: number, checked: boolean) => {
@@ -604,6 +612,7 @@ export default function DocumentEditor({
                     contentStats={{ wordCount: 0, charCount: 0 }}
                     token={token}
                     onCheckboxChange={handleCheckboxChange}
+                    onTagClick={handleTagClick}
                   />
                 </div>
               </Panel>
@@ -647,6 +656,7 @@ export default function DocumentEditor({
                     contentStats={{ wordCount: 0, charCount: 0 }}
                     token={token}
                     onCheckboxChange={handleCheckboxChange}
+                    onTagClick={handleTagClick}
                   />
                 </div>
               </Panel>
@@ -694,6 +704,7 @@ export default function DocumentEditor({
                     contentStats={{ wordCount: 0, charCount: 0 }}
                     token={token}
                     onCheckboxChange={handleCheckboxChange}
+                    onTagClick={handleTagClick}
                   />
                 </div>
               </Panel>

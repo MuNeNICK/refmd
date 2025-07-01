@@ -10,6 +10,8 @@ use crate::{
     services::git_batch_sync::GitBatchSyncService,
     services::document_links::DocumentLinksService,
     services::file::FileService,
+    services::tag_parser::TagParser,
+    repository::tag::TagRepository,
     config::Config,
 };
 
@@ -21,6 +23,7 @@ pub struct DocumentService {
     config: Arc<Config>,
     document_links_service: Option<Arc<DocumentLinksService>>,
     file_service: Option<Arc<FileService>>,
+    tag_repository: Option<Arc<TagRepository>>,
 }
 
 impl DocumentService {
@@ -39,6 +42,7 @@ impl DocumentService {
             config,
             document_links_service: None,
             file_service: None,
+            tag_repository: None,
         }
     }
     
@@ -49,6 +53,11 @@ impl DocumentService {
     
     pub fn with_file_service(mut self, file_service: Arc<FileService>) -> Self {
         self.file_service = Some(file_service);
+        self
+    }
+    
+    pub fn with_tag_repository(mut self, tag_repository: Arc<TagRepository>) -> Self {
+        self.tag_repository = Some(tag_repository);
         self
     }
     
@@ -313,6 +322,16 @@ updated_at: {}
             }
         }
         
+        // Extract and update tags
+        if let Some(ref tag_repo) = self.tag_repository {
+            let parser = TagParser::new();
+            let tags = parser.extract_tags(&content);
+            if let Err(e) = tag_repo.update_document_tags(document.id, tags).await {
+                tracing::warn!("Failed to update document tags for {}: {}", document.id, e);
+                // Don't fail the whole operation if tag parsing fails
+            }
+        }
+        
         Ok(())
     }
     
@@ -420,6 +439,16 @@ updated_at: {}
             if let Err(e) = links_service.update_document_links(document.id, &content).await {
                 tracing::warn!("Failed to update document links for {}: {}", document.id, e);
                 // Don't fail the whole operation if link parsing fails
+            }
+        }
+        
+        // Extract and update tags
+        if let Some(ref tag_repo) = self.tag_repository {
+            let parser = TagParser::new();
+            let tags = parser.extract_tags(&content);
+            if let Err(e) = tag_repo.update_document_tags(document.id, tags).await {
+                tracing::warn!("Failed to update document tags for {}: {}", document.id, e);
+                // Don't fail the whole operation if tag parsing fails
             }
         }
         

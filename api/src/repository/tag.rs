@@ -197,11 +197,162 @@ impl TagRepository {
                 SELECT 1 FROM scrap_post_tags
                 WHERE tag_id = tags.id
             )
+            AND NOT EXISTS (
+                SELECT 1 FROM document_tags
+                WHERE tag_id = tags.id
+            )
             "#
         )
         .execute(&self.pool)
         .await?;
 
         Ok(result.rows_affected())
+    }
+
+    /// Get tags for a document
+    pub async fn get_document_tags(&self, document_id: Uuid) -> Result<Vec<Tag>> {
+        let tags = sqlx::query_as!(
+            Tag,
+            r#"
+            SELECT t.id, t.name, t.created_at
+            FROM tags t
+            INNER JOIN document_tags dt ON t.id = dt.tag_id
+            WHERE dt.document_id = $1
+            ORDER BY t.name
+            "#,
+            document_id
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(tags)
+    }
+
+    /// Update tags for a document
+    pub async fn update_document_tags(&self, document_id: Uuid, tag_names: Vec<String>) -> Result<Vec<Tag>> {
+        let mut tx = self.pool.begin().await?;
+
+        // Delete existing tags
+        sqlx::query!(
+            "DELETE FROM document_tags WHERE document_id = $1",
+            document_id
+        )
+        .execute(&mut *tx)
+        .await?;
+
+        let mut tags = Vec::new();
+
+        // Insert new tags
+        for tag_name in tag_names {
+            if !TagParser::is_valid_tag(&tag_name) {
+                continue;
+            }
+
+            // Get or create tag
+            let normalized_name = TagParser::normalize_tag(&tag_name);
+            let tag = sqlx::query_as!(
+                Tag,
+                r#"
+                INSERT INTO tags (name)
+                VALUES ($1)
+                ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name
+                RETURNING id, name, created_at
+                "#,
+                &normalized_name
+            )
+            .fetch_one(&mut *tx)
+            .await?;
+
+            // Create association
+            sqlx::query!(
+                r#"
+                INSERT INTO document_tags (document_id, tag_id)
+                VALUES ($1, $2)
+                ON CONFLICT DO NOTHING
+                "#,
+                document_id,
+                tag.id
+            )
+            .execute(&mut *tx)
+            .await?;
+
+            tags.push(tag);
+        }
+
+        tx.commit().await?;
+
+        Ok(tags)
+    }
+
+    /// Get documents by tag name
+    pub async fn get_documents_by_tag(&self, tag_name: &str, user_id: Uuid, limit: Option<i64>, offset: Option<i64>) -> Result<Vec<Uuid>> {
+        let normalized_name = TagParser::normalize_tag(tag_name);
+        let limit = limit.unwrap_or(100);
+        let offset = offset.unwrap_or(0);
+        
+        let document_ids = sqlx::query!(
+            r#"
+            SELECT DISTINCT d.id, d.created_at
+            FROM documents d
+            INNER JOIN document_tags dt ON d.id = dt.document_id
+            INNER JOIN tags t ON dt.tag_id = t.id
+            WHERE LOWER(t.name) = LOWER($1)
+                AND (d.owner_id = $2 OR d.visibility = 'public')
+            ORDER BY d.created_at DESC
+            LIMIT $3 OFFSET $4
+            "#,
+            &normalized_name,
+            user_id,
+            limit,
+            offset
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(document_ids.into_iter().map(|r| r.id).collect())
+    }
+
+    /// Get all tags with usage count (including documents)
+    pub async fn get_all_tags_with_unified_count(&self, limit: Option<i64>, offset: Option<i64>) -> Result<(Vec<TagWithCount>, i64)> {
+        let limit = limit.unwrap_or(100);
+        let offset = offset.unwrap_or(0);
+
+        // Get total count
+        let total = sqlx::query_scalar!(
+            "SELECT COUNT(DISTINCT id) FROM tags"
+        )
+        .fetch_one(&self.pool)
+        .await?
+        .unwrap_or(0);
+
+        // Get tags with combined count from both scraps and documents
+        let tags = sqlx::query_as!(
+            TagWithCount,
+            r#"
+            SELECT 
+                t.id,
+                t.name,
+                t.created_at,
+                (
+                    COALESCE(COUNT(DISTINCT spt.scrap_post_id), 0) + 
+                    COALESCE(COUNT(DISTINCT dt.document_id), 0)
+                ) as "count!"
+            FROM tags t
+            LEFT JOIN scrap_post_tags spt ON t.id = spt.tag_id
+            LEFT JOIN document_tags dt ON t.id = dt.tag_id
+            GROUP BY t.id, t.name, t.created_at
+            ORDER BY (
+                COALESCE(COUNT(DISTINCT spt.scrap_post_id), 0) + 
+                COALESCE(COUNT(DISTINCT dt.document_id), 0)
+            ) DESC, t.name
+            LIMIT $1 OFFSET $2
+            "#,
+            limit,
+            offset
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok((tags, total))
     }
 }

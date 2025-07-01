@@ -4,7 +4,7 @@ use sqlx::PgPool;
 use crate::config::Config;
 use crate::crdt::{DocumentManager, AwarenessManager, DocumentPersistence};
 use crate::services::{crdt::CrdtService, document::DocumentService, file::FileService, share::ShareService, git_sync::GitSyncService, git_batch_sync::GitBatchSyncService, document_links::DocumentLinksService, PublicDocumentService, UrlGeneratorService};
-use crate::repository::{DocumentRepository, ShareRepository, UserRepository, GitConfigRepository};
+use crate::repository::{DocumentRepository, ShareRepository, UserRepository, GitConfigRepository, tag::TagRepository};
 use crate::utils::jwt::JwtService;
 
 #[derive(Clone)]
@@ -28,6 +28,7 @@ pub struct AppState {
     pub share_repository: Arc<ShareRepository>,
     pub user_repository: Arc<UserRepository>,
     pub git_config_repository: Arc<GitConfigRepository>,
+    pub tag_repository: Arc<TagRepository>,
 }
 
 impl AppState {
@@ -95,6 +96,9 @@ impl AppState {
             frontend_url.clone(),
         ));
         
+        // Create tag repository
+        let tag_repository = Arc::new(TagRepository::new((*db_pool).clone()));
+        
         // Create document service with batch sync if enabled
         let document_service = Arc::new(DocumentService::new(
             document_repository.clone(),
@@ -103,7 +107,8 @@ impl AppState {
             git_batch_sync_service.clone(),
             Arc::new(config.clone()),
         ).with_links_service(document_links_service.clone())
-         .with_file_service(file_service.clone()));
+         .with_file_service(file_service.clone())
+         .with_tag_repository(tag_repository.clone()));
         
         // Create share service with frontend URL from config
         let share_service = Arc::new(ShareService::new(
@@ -135,6 +140,7 @@ impl AppState {
             share_repository,
             user_repository,
             git_config_repository,
+            tag_repository,
         })
     }
 }

@@ -39,6 +39,7 @@ interface PreviewPaneProps {
   onCheckboxChange?: (lineIndex: number, checked: boolean) => void;
   isSecondaryViewer?: boolean;
   onNavigate?: (documentId: string, type?: 'document' | 'scrap') => void;
+  onTagClick?: (tagName: string) => void;
   className?: string;
   forceFloatingToc?: boolean;
 }
@@ -54,6 +55,7 @@ function PreviewPaneComponent({
   onCheckboxChange,
   isSecondaryViewer = false,
   onNavigate,
+  onTagClick,
   className,
   forceFloatingToc = false
 }: PreviewPaneProps) {
@@ -182,6 +184,7 @@ function PreviewPaneComponent({
                     <SafeMarkdown 
                       content={content}
                       onCheckboxChange={onCheckboxChange}
+                      onTagClick={onTagClick}
                       components={{
                         img: ({ src, alt, width, height, ...props }) => {
                           if (!src) return null;
@@ -348,7 +351,7 @@ function PreviewPaneComponent({
                 } catch {
                   return <div>Error rendering markdown</div>;
                 }
-              }, [content, headingComponents, documentId, token, onCheckboxChange, onNavigate])}
+              }, [content, headingComponents, documentId, token, onCheckboxChange, onNavigate, onTagClick])}
             </div>
           </div>
           {/* Table of Contents - only show in preview mode on desktop when not forced to floating */}
@@ -420,6 +423,7 @@ export const PreviewPane = memo(PreviewPaneComponent, (prevProps, nextProps) => 
     prevProps.onCheckboxChange === nextProps.onCheckboxChange &&
     prevProps.isSecondaryViewer === nextProps.isSecondaryViewer &&
     prevProps.onNavigate === nextProps.onNavigate &&
+    prevProps.onTagClick === nextProps.onTagClick &&
     prevProps.className === nextProps.className &&
     prevProps.forceFloatingToc === nextProps.forceFloatingToc
   );

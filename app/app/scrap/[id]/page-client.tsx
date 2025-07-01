@@ -510,6 +510,7 @@ export function ScrapPageClient({ initialData, scrapId, shareToken }: ScrapPageC
                         selectedTags={selectedTags}
                         onSelectedTagsChange={setSelectedTags}
                         showPopular={true}
+                        scrapId={scrapId}
                       />
                     </div>
                     
