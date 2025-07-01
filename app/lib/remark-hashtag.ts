@@ -4,11 +4,10 @@ import { Text, Parent, Link } from 'mdast';
 
 interface Options {
   className?: string;
-  linkPrefix?: string;
 }
 
 const remarkHashtag: Plugin<[Options?]> = (options = {}) => {
-  const { className = 'hashtag', linkPrefix = '#tag:' } = options;
+  const { className = 'hashtag' } = options;
 
   return (tree) => {
     visit(tree, 'text', (node: Text, index: number | null, parent: Parent | null) => {
@@ -40,7 +39,7 @@ const remarkHashtag: Plugin<[Options?]> = (options = {}) => {
         // Create a link node for the hashtag
         const linkNode: Link = {
           type: 'link',
-          url: `${linkPrefix}${encodeURIComponent(tagName)}`,
+          url: `#tag-${encodeURIComponent(tagName)}`, // Use unique URL to help with identification
           title: null,
           children: [{
             type: 'text',
@@ -50,6 +49,7 @@ const remarkHashtag: Plugin<[Options?]> = (options = {}) => {
             hProperties: {
               className: className,
               'data-tag': tagName,
+              dataTag: tagName, // Also add camelCase version
             },
           },
         };

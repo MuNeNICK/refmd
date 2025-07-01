@@ -16,6 +16,7 @@ interface TagSearchProps {
   onSelectedTagsChange?: (tags: string[]) => void;
   placeholder?: string;
   showPopular?: boolean;
+  scrapId?: string;
 }
 
 export function TagSearch({
@@ -23,7 +24,8 @@ export function TagSearch({
   selectedTags = [],
   onSelectedTagsChange,
   placeholder = "Search tags...",
-  showPopular = true
+  showPopular = true,
+  scrapId
 }: TagSearchProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [tags, setTags] = useState<TagWithCount[]>([]);
@@ -36,34 +38,49 @@ export function TagSearch({
   const loadPopularTags = useCallback(async () => {
     try {
       setIsLoading(true);
-      const response = await client.tags.listTags(20, 0);
-      setTags(response.tags);
+      
+      if (scrapId) {
+        // Load tags specific to this scrap
+        const tagsWithCount = await client.tags.getScrapTags(scrapId);
+        setTags(tagsWithCount);
+      } else {
+        // Load system-wide popular tags
+        const response = await client.tags.listTags(20, 0);
+        setTags(response.tags);
+      }
     } catch (error) {
       console.error('Failed to load popular tags:', error);
       setTags([]);
     } finally {
       setIsLoading(false);
     }
-  }, [client.tags]);
+  }, [client.tags, scrapId]);
 
   const searchTags = useCallback(async (query: string) => {
     try {
       setIsLoading(true);
-      const response = await client.tags.listTags(50, 0);
       
-      // Filter tags by search query
-      const filteredTags = response.tags.filter(tag =>
-        tag.name.toLowerCase().includes(query.toLowerCase())
-      );
-      
-      setTags(filteredTags);
+      if (scrapId) {
+        // Search within scrap-specific tags
+        const tagsWithCount = await client.tags.getScrapTags(scrapId);
+        const filteredTags = tagsWithCount
+          .filter(tag => tag.name.toLowerCase().includes(query.toLowerCase()));
+        setTags(filteredTags);
+      } else {
+        // Search all tags
+        const response = await client.tags.listTags(50, 0);
+        const filteredTags = response.tags.filter(tag =>
+          tag.name.toLowerCase().includes(query.toLowerCase())
+        );
+        setTags(filteredTags);
+      }
     } catch (error) {
       console.error('Failed to search tags:', error);
       setTags([]);
     } finally {
       setIsLoading(false);
     }
-  }, [client.tags]);
+  }, [client.tags, scrapId]);
 
   const handleTagClick = useCallback((tagName: string) => {
     if (onTagSelect) {

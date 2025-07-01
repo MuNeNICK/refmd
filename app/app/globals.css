@@ -545,6 +545,15 @@
   @apply overflow-x-auto whitespace-pre-wrap break-words;
 }
 
+/* Hashtag styles */
+.prose .hashtag {
+  @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-primary/10 hover:bg-primary/20 text-primary text-sm font-medium no-underline transition-colors cursor-pointer;
+}
+
+.prose .hashtag:hover {
+  @apply bg-primary/20;
+}
+
 /* Syntax highlighter specific styles */
 .prose .react-syntax-highlighter {
   @apply overflow-x-auto;

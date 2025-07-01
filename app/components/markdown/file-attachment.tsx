@@ -160,12 +160,14 @@ export function FileAttachment({ href, children, className, documentId, token }:
 
   // If it's not a file link, render as regular link
   if (!isFileLink) {
+    // Don't open # links in new tab - they might be hashtags or anchors
+    const shouldOpenInNewTab = processedHref !== '#' && !processedHref.startsWith('#');
+    
     return (
       <a 
         href={processedHref} 
         className={cn("text-primary hover:underline", className)} 
-        target="_blank" 
-        rel="noopener noreferrer"
+        {...(shouldOpenInNewTab ? { target: "_blank", rel: "noopener noreferrer" } : {})}
       >
         {children}
       </a>

@@ -15,14 +15,17 @@ import { remarkEmbed } from '@/lib/remark-embed'
 import { remarkMark, remarkRuby } from '@/lib/remark-extended'
 import { remarkBlockquoteTags } from '@/lib/remark-blockquote-tags'
 import { remarkWikiLink, remarkEmbedLink, remarkMentionLink } from '@/lib/remark-wiki-link'
+import remarkHashtag from '@/lib/remark-hashtag'
 import { CodeBlock } from '@/components/markdown/code-block'
 import { WikiLink, DocumentEmbed } from '@/components/markdown/wiki-link'
 import { generateHeadingId } from '@/lib/utils/heading-id'
+import { cn } from '@/lib/utils'
 
 interface MarkdownProps {
   content: string
   components?: import('react-markdown').Components
   onCheckboxChange?: (lineIndex: number, checked: boolean) => void
+  onTagClick?: (tagName: string) => void
   isPublic?: boolean
 }
 
@@ -41,10 +44,23 @@ const FULL_REMARK_PLUGINS = [
   remarkEmbed,
   remarkWikiLink,
   remarkEmbedLink,
-  remarkMentionLink
+  remarkMentionLink,
+  remarkHashtag
 ]
 
-const FULL_REHYPE_PLUGINS = [rehypeRaw, rehypeKatex]
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const FULL_REHYPE_PLUGINS: any[] = [
+  [rehypeRaw, {
+    passThrough: [
+      // Preserve custom attributes
+      'element.properties.dataTag',
+      'element.properties.dataWikiTarget', 
+      'element.properties.dataMentionTarget',
+      'element.properties.dataEmbedTarget'
+    ]
+  }],
+  rehypeKatex
+]
 const SAFE_REHYPE_PLUGINS = [rehypeKatex]
 const MINIMAL_REMARK_PLUGINS = [remarkGfm]
 
@@ -69,12 +85,83 @@ const createHeadingComponent = (level: number) => {
 };
 
 // Create components factory function
-const createDefaultComponents = (isPublic?: boolean): import('react-markdown').Components => ({
-  a({ href, className, children, ...props }) {
+const createDefaultComponents = (isPublic?: boolean, onTagClick?: (tagName: string) => void): import('react-markdown').Components => ({
+  a({ href, className, children, node, ...props }) {
+    // Debug log for all links
+    if (href === '#' || className?.includes('hashtag')) {
+      console.log('Link debug:', {
+        href,
+        className,
+        children,
+        props: Object.keys(props),
+        extendedProps: props,
+        node,
+        nodeData: (node as { data?: unknown })?.data,
+        hProperties: (node as { data?: { hProperties?: unknown } })?.data?.hProperties
+      })
+    }
+    
     // Check if this is a wiki link or mention link by URL pattern or data attributes
     const extendedProps = props as Record<string, unknown>
-    const isWikiLink = href?.startsWith('#wiki:') || extendedProps['data-wiki-target']
-    const isMentionLink = href?.startsWith('#mention:') || extendedProps['data-mention-target']
+    
+    // Check node data for custom properties
+    const nodeData = (node as { data?: { hProperties?: Record<string, unknown> } })?.data || {}
+    const hProperties = nodeData.hProperties || {}
+    
+    // First check if this is a hashtag by class or data attributes
+    const hasHashtagClass = className?.includes('hashtag')
+    const hasDataTag = hProperties['data-tag'] || extendedProps['data-tag'] || extendedProps['dataTag'] || (hProperties as Record<string, unknown>)?.dataTag
+    
+    // Check if children contains hashtag text
+    const childText = typeof children === 'string' ? children : 
+                     Array.isArray(children) && children.length > 0 && typeof children[0] === 'string' ? children[0] : ''
+    const startsWithHash = childText.startsWith('#')
+    
+    // Check link types - hashtags first
+    const isTagLink = hasHashtagClass || hasDataTag || (href === '#' && startsWithHash) || href?.startsWith('#tag-')
+    const isWikiLink = !isTagLink && (href?.startsWith('#wiki:') || extendedProps['data-wiki-target'])
+    const isMentionLink = !isTagLink && !isWikiLink && (href?.startsWith('#mention:') || extendedProps['data-mention-target'])
+    
+    if (isTagLink) {
+      // Extract tag name from various sources
+      let tagName = ''
+      
+      // Try to get tag name from data attributes
+      if (typeof hasDataTag === 'string' && hasDataTag) {
+        tagName = hasDataTag
+      }
+      // If no data-tag, try to extract from children text
+      else if (childText.startsWith('#')) {
+        tagName = childText.substring(1)
+      }
+      
+      // Ensure we have a tag name
+      if (!tagName) {
+        console.warn('Tag link detected but no tag name found', { href, className, children, hProperties, extendedProps })
+        return null
+      }
+      
+      // Remove target prop if exists
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { target, ...restProps } = props as Record<string, unknown>;
+      
+      return (
+        <a 
+          href={href || '#'} 
+          className={cn("hashtag", className)}
+          onClick={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            if (onTagClick && tagName) {
+              onTagClick(tagName)
+            }
+          }}
+          {...restProps}
+        >
+          {children}
+        </a>
+      )
+    }
     
     if (isWikiLink || isMentionLink) {
       // Extract target from URL or data attribute
@@ -104,6 +191,25 @@ const createDefaultComponents = (isPublic?: boolean): import('react-markdown').C
     }
     
     // Regular link
+    // Prevent # links from opening in new tab
+    if (href === '#') {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { target, ...restProps } = props as Record<string, unknown>;
+      return (
+        <a 
+          href={href} 
+          className={className} 
+          onClick={(e) => {
+            e.preventDefault()
+            console.warn('Unhandled # link clicked', { className, children, props })
+          }}
+          {...restProps}
+        >
+          {children}
+        </a>
+      )
+    }
+    
     return (
       <a href={href} className={className} {...props}>
         {children}
@@ -212,7 +318,7 @@ const createDefaultComponents = (isPublic?: boolean): import('react-markdown').C
   }
 })
 
-function MarkdownComponent({ content, components, onCheckboxChange, isPublic }: MarkdownProps) {
+function MarkdownComponent({ content, components, onCheckboxChange, onTagClick, isPublic }: MarkdownProps) {
   const [renderingMode, setRenderingMode] = useState<'full' | 'safe' | 'minimal'>('full')
   const [hasError, setHasError] = useState(false)
   
@@ -252,7 +358,7 @@ function MarkdownComponent({ content, components, onCheckboxChange, isPublic }: 
   
   // Create enhanced components
   const enhancedComponents = useMemo(() => {
-    const defaultComponents = createDefaultComponents(isPublic)
+    const defaultComponents = createDefaultComponents(isPublic, onTagClick)
     return {
       ...defaultComponents,
       ...components,
@@ -296,7 +402,7 @@ function MarkdownComponent({ content, components, onCheckboxChange, isPublic }: 
       // Filter out unrecognized tags
       'anonymous': () => null,
     }
-  }, [components, onCheckboxChange, isPublic])
+  }, [components, onCheckboxChange, onTagClick, isPublic])
   
   // Full rendering with all plugins
   if (renderingMode === 'full' && !hasError) {
