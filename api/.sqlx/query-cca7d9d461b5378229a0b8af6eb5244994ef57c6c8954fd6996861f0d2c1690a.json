@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM scrap_post_tags WHERE scrap_post_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "cca7d9d461b5378229a0b8af6eb5244994ef57c6c8954fd6996861f0d2c1690a"
+}

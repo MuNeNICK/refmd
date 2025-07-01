@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                INSERT INTO scrap_post_tags (scrap_post_id, tag_id)\n                VALUES ($1, $2)\n                ON CONFLICT DO NOTHING\n                ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "261b67f7801145345e6b139d4e50787cf04e27c0ddf9c38a0979ccabe62b7c76"
+}

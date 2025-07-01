@@ -30,7 +30,6 @@ interface MainLayoutProps {
   showEditorFeatures?: boolean;
   hideFileTree?: boolean;
   isViewOnly?: boolean;
-  sidebarExtraContent?: React.ReactNode;
 }
 
 export default function MainLayout({ 
@@ -51,8 +50,7 @@ export default function MainLayout({
   onOpenDocumentInSecondary,
   showEditorFeatures = false,
   hideFileTree = false,
-  isViewOnly = false,
-  sidebarExtraContent
+  isViewOnly = false
 }: MainLayoutProps) {
   const router = useRouter();
   const sidebarPanelRef = useRef<ImperativePanelHandle>(null);
@@ -136,7 +134,6 @@ export default function MainLayout({
                   onDocumentSelect={handleDocumentSelect}
                   selectedDocumentId={selectedDocumentId}
                   onOpenInSecondary={onOpenDocumentInSecondary}
-                  extraContent={sidebarExtraContent}
                 />
               </Sidebar>
             )}
@@ -169,7 +166,6 @@ export default function MainLayout({
                     onDocumentSelect={handleDocumentSelect}
                     selectedDocumentId={selectedDocumentId}
                     onOpenInSecondary={onOpenDocumentInSecondary}
-                    extraContent={sidebarExtraContent}
                   />
                 </div>
               </Panel>

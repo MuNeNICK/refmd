@@ -138,7 +138,7 @@ export function ScrapMarkdown({ content, documentId, onNavigate, onTagClick }: S
       
       // Check if this is a hashtag link
       if (href?.startsWith('#tag:') || className?.includes('hashtag')) {
-        const tagName = extendedProps['data-tag'] as string || decodeURIComponent(href.replace('#tag:', ''));
+        const tagName = extendedProps['data-tag'] as string || (href ? decodeURIComponent(href.replace('#tag:', '')) : '');
         return (
           <a 
             href={href} 
