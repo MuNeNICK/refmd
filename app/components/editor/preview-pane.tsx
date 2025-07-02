@@ -256,16 +256,6 @@ function PreviewPaneComponent({
                         a: ({ href, className, children, ...props }) => {
                           const extendedProps = props as Record<string, unknown>;
                           
-                          // Debug log
-                          if (href?.includes('tag') || className?.includes('hashtag')) {
-                            console.log('Preview pane link:', {
-                              href,
-                              className,
-                              dataTag: extendedProps['data-tag'],
-                              dataTagCamel: extendedProps['dataTag'],
-                              children
-                            });
-                          }
                           
                           // Check if this is a hashtag link
                           const isHashtagByClass = className?.includes('hashtag');
@@ -296,12 +286,6 @@ function PreviewPaneComponent({
                             }
                             
                             if (!tagName) {
-                              console.warn('Could not extract tag name from hashtag link', {
-                                href,
-                                className,
-                                children,
-                                props: extendedProps
-                              });
                               return (
                                 <a href={href} className={className} {...props}>
                                   {children}

@@ -87,19 +87,6 @@ const createHeadingComponent = (level: number) => {
 // Create components factory function
 const createDefaultComponents = (isPublic?: boolean, onTagClick?: (tagName: string) => void): import('react-markdown').Components => ({
   a({ href, className, children, node, ...props }) {
-    // Debug log for all links
-    if (href === '#' || className?.includes('hashtag')) {
-      console.log('Link debug:', {
-        href,
-        className,
-        children,
-        props: Object.keys(props),
-        extendedProps: props,
-        node,
-        nodeData: (node as { data?: unknown })?.data,
-        hProperties: (node as { data?: { hProperties?: unknown } })?.data?.hProperties
-      })
-    }
     
     // Check if this is a wiki link or mention link by URL pattern or data attributes
     const extendedProps = props as Record<string, unknown>
@@ -137,7 +124,6 @@ const createDefaultComponents = (isPublic?: boolean, onTagClick?: (tagName: stri
       
       // Ensure we have a tag name
       if (!tagName) {
-        console.warn('Tag link detected but no tag name found', { href, className, children, hProperties, extendedProps })
         return null
       }
       
@@ -201,7 +187,6 @@ const createDefaultComponents = (isPublic?: boolean, onTagClick?: (tagName: stri
           className={className} 
           onClick={(e) => {
             e.preventDefault()
-            console.warn('Unhandled # link clicked', { className, children, props })
           }}
           {...restProps}
         >
@@ -270,12 +255,13 @@ const createDefaultComponents = (isPublic?: boolean, onTagClick?: (tagName: stri
     const childrenArray = React.Children.toArray(children);
     
     // Check if we have a code element
+    // Note: When custom components are provided, child.type will be the component function,
+    // not the string 'code'. We need to check the props for className pattern.
     const codeElement = childrenArray.find(
       child => React.isValidElement(child) && 
-              child.props &&
-              typeof child.props === 'object' &&
-              'className' in child.props && 
-              'children' in child.props
+              (child.type === 'code' || 
+               (child.props as Record<string, unknown>)?.mdxType === 'code' ||
+               typeof (child.props as { className?: unknown })?.className === 'string')
     );
     
     if (codeElement && React.isValidElement(codeElement)) {

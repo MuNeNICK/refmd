@@ -113,8 +113,14 @@ export function ScrapMarkdown({ content, documentId, onNavigate, onTagClick }: S
     },
     pre({ children }) {
       const childrenArray = React.Children.toArray(children);
+      // Check if we have a code element
+      // Note: When custom components are provided, child.type will be the component function,
+      // not the string 'code'. We need to check the props for className pattern.
       const codeElement = childrenArray.find(
-        child => React.isValidElement(child) && child.type === 'code'
+        child => React.isValidElement(child) && 
+                (child.type === 'code' || 
+                 (child.props as Record<string, unknown>)?.mdxType === 'code' ||
+                 typeof (child.props as { className?: unknown })?.className === 'string')
       );
       
       if (codeElement && React.isValidElement(codeElement)) {
