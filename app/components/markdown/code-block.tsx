@@ -45,7 +45,7 @@ export function CodeBlock({ language, children, className }: CodeBlockProps) {
   };
 
   return (
-    <div className="relative group">
+    <div className="relative group max-w-full">
       <Button
         variant="outline"
         size="icon"
@@ -71,7 +71,14 @@ export function CodeBlock({ language, children, className }: CodeBlockProps) {
             fontSize: '0.875rem',
             lineHeight: '1.5',
             borderRadius: '0.5rem',
-            overflow: 'auto',
+            overflow: 'hidden',
+            overflowWrap: 'break-word',
+            wordBreak: 'break-all',
+            whiteSpace: 'pre-wrap',
+            maxWidth: '100%',
+            width: '100%',
+            display: 'block',
+            boxSizing: 'border-box',
           }}
           codeTagProps={{
             style: {
@@ -79,6 +86,10 @@ export function CodeBlock({ language, children, className }: CodeBlockProps) {
               fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace',
               fontSize: '0.875rem',
               lineHeight: '1.5',
+              display: 'inline',
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-all',
+              overflowWrap: 'break-word',
             },
           }}
           className={`syntax-highlighter ${className || ''}`}
