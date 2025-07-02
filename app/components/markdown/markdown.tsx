@@ -7,10 +7,9 @@ import remarkEmoji from 'remark-emoji'
 import remarkMath from 'remark-math'
 import remarkSupersub from 'remark-supersub'
 import remarkIns from 'remark-ins'
-import remarkDirective from 'remark-directive'
 import rehypeRaw from 'rehype-raw'
 import rehypeKatex from 'rehype-katex'
-import { remarkAlert } from '@/lib/remark-alert'
+import remarkGithubBlockquoteAlert from 'remark-github-blockquote-alert'
 import { remarkEmbed } from '@/lib/remark-embed'
 import { remarkMark, remarkRuby } from '@/lib/remark-extended'
 import { remarkBlockquoteTags } from '@/lib/remark-blockquote-tags'
@@ -32,15 +31,14 @@ interface MarkdownProps {
 // Memoize plugin arrays to prevent recreation on every render
 const FULL_REMARK_PLUGINS = [
   remarkGfm, 
-  remarkEmoji, 
+  remarkEmoji,
   remarkMath, 
   remarkSupersub,
   remarkIns,
   remarkMark,
   remarkRuby,
   remarkBlockquoteTags,
-  remarkDirective, 
-  remarkAlert, 
+  remarkGithubBlockquoteAlert, // GitHub-style alerts
   remarkEmbed,
   remarkWikiLink,
   remarkEmbedLink,
