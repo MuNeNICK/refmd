@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "refmd.fullname" . }}
+  labels:
+    {{- include "refmd.labels" . | nindent 4 }}
+data:
+  # API Server configuration
+  PORT: {{ .Values.service.api.port | int | quote }}
+  JWT_EXPIRY: {{ .Values.refmd.api.jwtExpiry | int | quote }}
+  REFRESH_TOKEN_EXPIRY: {{ .Values.refmd.api.refreshTokenExpiry | int | quote }}
+  BCRYPT_COST: {{ .Values.refmd.api.bcryptCost | int | quote }}
+  UPLOAD_MAX_SIZE: {{ .Values.refmd.api.uploadMaxSize | int | quote }}
+  UPLOAD_DIR: "{{ .Values.refmd.api.uploadDir }}"
+  GIT_SYNC_ENABLED: {{ .Values.refmd.api.gitSyncEnabled | quote }}
+  GIT_AUTO_SYNC: {{ .Values.refmd.api.gitAutoSync | quote }}
+  GIT_SYNC_INTERVAL: {{ .Values.refmd.api.gitSyncInterval | int | quote }}
+  SIGNUP_ENABLED: {{ .Values.refmd.api.signupEnabled | quote }}
+  FRONTEND_URL: {{ regexReplaceAll "^[\n\r]+" (include "refmd.siteUrl" .) "" | quote }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "refmd.fullname" . }}-app
+  labels:
+    {{- include "refmd.app.labels" . | nindent 4 }}
+data:
+  # App configuration
+  NEXT_PUBLIC_API_URL: {{ regexReplaceAll "^[\n\r]+" (include "refmd.apiUrl" .) "" | quote }}
+  NEXT_PUBLIC_SOCKET_URL: {{ regexReplaceAll "^[\n\r]+" (include "refmd.socketUrl" .) "" | quote }}
+  NEXT_PUBLIC_SITE_URL: {{ regexReplaceAll "^[\n\r]+" (include "refmd.siteUrl" .) "" | quote }}
+  NEXT_PUBLIC_SIGNUP_ENABLED: {{ .Values.refmd.app.signupEnabled | quote }}

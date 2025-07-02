@@ -1,0 +1,12 @@
+apiVersion: v2
+name: refmd
+description: A Helm chart for RefMD application
+type: application
+version: 0.1.0
+appVersion: "latest"
+
+dependencies:
+  - name: postgresql
+    version: 12.12.10
+    repository: https://charts.bitnami.com/bitnami
+    condition: postgresql.enabled

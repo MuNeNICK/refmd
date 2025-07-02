@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "refmd.fullname" . }}-app
+  labels:
+    {{- include "refmd.labels" . | nindent 4 }}
+    app.kubernetes.io/component: app
+spec:
+  type: {{ .Values.service.app.type }}
+  ports:
+    - port: {{ .Values.service.app.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "refmd.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: app
