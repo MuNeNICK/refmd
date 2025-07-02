@@ -48,6 +48,9 @@ function FileTreeComponent({ onDocumentSelect, selectedDocumentId, onOpenInSecon
   const { user } = useAuth();
   const [showGitDiff, setShowGitDiff] = React.useState(false);
 
+  // Stable empty functions for loading state
+  const noop = useCallback(() => {}, []);
+
   // Expand parent folders when a document is selected
   React.useEffect(() => {
     if (selectedDocumentId && !loading) {
@@ -402,12 +405,12 @@ function FileTreeComponent({ onDocumentSelect, selectedDocumentId, onOpenInSecon
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-foreground">Files</span>
             <FileTreeActions
-              onCreateDocument={() => {}}
-              onCreateFolder={() => {}}
-              onCreateScrap={() => {}}
-              onExport={() => {}}
-              onSync={() => {}}
-              onRefresh={() => {}}
+              onCreateDocument={noop}
+              onCreateFolder={noop}
+              onCreateScrap={noop}
+              onExport={noop}
+              onSync={noop}
+              onRefresh={noop}
             />
           </div>
         </SidebarHeader>

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/auth/authContext';
 import { getApiClient } from '@/lib/api';
@@ -113,9 +113,44 @@ function buildTree(documents: DatabaseDocument[]): DocumentNode[] {
 
 export function FileTreeProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
-  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
   const queryClient = useQueryClient();
   const api = getApiClient();
+  
+  // Initialize with empty Set
+  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  // Load from localStorage when component mounts or user changes
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
+    const storageKey = `file-tree-expanded-${user?.id || 'default'}`;
+    try {
+      const saved = localStorage.getItem(storageKey);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setExpandedFolders(new Set(parsed));
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load expanded folders from localStorage:', error);
+    }
+    setIsInitialized(true);
+  }, [user?.id]);
+
+  // Save to localStorage when expandedFolders changes
+  useEffect(() => {
+    if (typeof window === 'undefined' || !isInitialized) return;
+    
+    try {
+      const storageKey = `file-tree-expanded-${user?.id || 'default'}`;
+      const foldersArray = Array.from(expandedFolders);
+      localStorage.setItem(storageKey, JSON.stringify(foldersArray));
+    } catch (error) {
+      console.error('Failed to save expanded folders to localStorage:', error);
+    }
+  }, [expandedFolders, user?.id, isInitialized]);
 
   // Use React Query for fetching documents
   const { data: documents = [], isLoading: loading, refetch } = useQuery({

@@ -18,7 +18,6 @@ import {
 import { 
   Tooltip, 
   TooltipContent, 
-  TooltipProvider, 
   TooltipTrigger 
 } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
@@ -210,23 +209,21 @@ export const FolderNode = memo(function FolderNode({
               "flex items-center gap-1 transition-opacity",
               isMobile ? "opacity-100" : "opacity-0 group-hover/folder:opacity-100"
             )}>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-5 w-5"
-                      onClick={handleCreateDocument}
-                    >
-                      <Plus className="h-3 w-3" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Add document</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-5 w-5"
+                    onClick={handleCreateDocument}
+                  >
+                    <Plus className="h-3 w-3" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Add document</p>
+                </TooltipContent>
+              </Tooltip>
               
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>

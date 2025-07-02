@@ -5,7 +5,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Tooltip,
   TooltipContent,
-  TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import {
@@ -156,35 +155,33 @@ export function GitSyncButton({ className, onShowDiff, currentDocumentPath }: Gi
   return (
     <>
       <div className="flex items-center gap-1">
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <SidebarMenuButton
-                size="lg"
-                onClick={handleMainClick}
-                disabled={syncMutation.isPending || initMutation.isPending || statusLoading}
-                className={`data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground flex-1 ${className}`}
-              >
-                <div className="flex items-center gap-2 min-w-0 flex-1">
-                  {getStatusIcon()}
-                  
-                  <div className="grid flex-1 text-left text-sm leading-tight min-w-0">
-                    <span className="truncate font-medium">
-                      Git Sync
-                    </span>
-                    <span className="truncate text-xs text-muted-foreground">
-                      {getStatusText()}
-                    </span>
-                  </div>
-                  
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <SidebarMenuButton
+              size="lg"
+              onClick={handleMainClick}
+              disabled={syncMutation.isPending || initMutation.isPending || statusLoading}
+              className={`data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground flex-1 ${className}`}
+            >
+              <div className="flex items-center gap-2 min-w-0 flex-1">
+                {getStatusIcon()}
+                
+                <div className="grid flex-1 text-left text-sm leading-tight min-w-0">
+                  <span className="truncate font-medium">
+                    Git Sync
+                  </span>
+                  <span className="truncate text-xs text-muted-foreground">
+                    {getStatusText()}
+                  </span>
                 </div>
-              </SidebarMenuButton>
-            </TooltipTrigger>
-            <TooltipContent side={isMobile ? "top" : "right"}>
-              {getTooltipText()}
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+                
+              </div>
+            </SidebarMenuButton>
+          </TooltipTrigger>
+          <TooltipContent side={isMobile ? "top" : "right"}>
+            {getTooltipText()}
+          </TooltipContent>
+        </Tooltip>
         
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

@@ -12,7 +12,6 @@ import {
 import { 
   Tooltip, 
   TooltipContent, 
-  TooltipProvider, 
   TooltipTrigger 
 } from '@/components/ui/tooltip';
 
@@ -51,60 +50,54 @@ export const FileTreeActions = memo(function FileTreeActions({
 
   return (
     <div className="flex items-center space-x-1">
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6"
-              onClick={onCreateDocument}
-            >
-              <Plus className="h-3 w-3 text-muted-foreground" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>New document</p>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6"
+            onClick={onCreateDocument}
+          >
+            <Plus className="h-3 w-3 text-muted-foreground" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>New document</p>
+        </TooltipContent>
+      </Tooltip>
 
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6"
-              onClick={onCreateFolder}
-            >
-              <Folder className="h-3 w-3 text-muted-foreground" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>New folder</p>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6"
+            onClick={onCreateFolder}
+          >
+            <Folder className="h-3 w-3 text-muted-foreground" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>New folder</p>
+        </TooltipContent>
+      </Tooltip>
 
       {onCreateScrap && (
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6"
-                onClick={onCreateScrap}
-              >
-                <NotebookText className="h-3 w-3 text-muted-foreground" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>New scrap</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6"
+              onClick={onCreateScrap}
+            >
+              <NotebookText className="h-3 w-3 text-muted-foreground" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>New scrap</p>
+          </TooltipContent>
+        </Tooltip>
       )}
 
       <DropdownMenu>
