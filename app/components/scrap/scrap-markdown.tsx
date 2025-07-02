@@ -11,6 +11,7 @@ import { WikiLink } from '@/components/markdown/wiki-link';
 import { CodeBlock } from '@/components/markdown/code-block';
 import { getApiUrl } from '@/lib/config';
 import remarkHashtag from '@/lib/remark-hashtag';
+import { remarkWikiLink, remarkEmbedLink, remarkMentionLink } from '@/lib/remark-wiki-link';
 import type { Components } from 'react-markdown';
 
 interface ScrapMarkdownProps {
@@ -225,7 +226,7 @@ export function ScrapMarkdown({ content, documentId, onNavigate, onTagClick }: S
 
   return (
     <ReactMarkdown 
-      remarkPlugins={[remarkGfm, remarkEmoji, remarkHashtag]}
+      remarkPlugins={[remarkGfm, remarkEmoji, remarkHashtag, remarkWikiLink, remarkEmbedLink, remarkMentionLink]}
       rehypePlugins={[rehypeRaw]}
       components={customComponents}
     >
