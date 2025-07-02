@@ -559,7 +559,7 @@ export function ScrapPageClient({ initialData, scrapId, shareToken }: ScrapPageC
           <div className="max-w-6xl mx-auto w-full p-3 sm:p-6">
             <div className="flex gap-6">
               {/* Posts column */}
-              <div className="flex-1 space-y-4">
+              <div className="flex-1 space-y-4 min-w-0">
                 {/* Add post form - only visible if not view-only */}
                 {!isViewOnly && (
                   <ScrapPostForm

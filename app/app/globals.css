@@ -149,6 +149,7 @@
 
   .prose {
     @apply max-w-none text-foreground leading-relaxed;
+    min-width: 0;
   }
 
   .prose h1 {
@@ -210,11 +211,13 @@
   /* Style pre elements that don't have syntax highlighting */
   .prose pre:not(:has(.syntax-highlighter)) {
     @apply mb-4 overflow-x-auto bg-gray-900 text-gray-100 p-4 rounded-lg;
+    max-width: 100%;
   }
 
   /* Remove padding when pre contains syntax highlighter */
   .prose pre:has(.syntax-highlighter) {
     @apply p-0 bg-transparent m-0;
+    max-width: 100%;
   }
 
   /* Remove prose styles from syntax highlighter */
@@ -224,13 +227,13 @@
 
   /* Code styling for non-highlighted blocks */
   .prose pre:not(:has(.syntax-highlighter)) code {
-    @apply whitespace-pre-wrap break-words bg-transparent;
+    @apply whitespace-pre bg-transparent;
   }
 
   /* Remove basic syntax highlighting - handled by react-syntax-highlighter */
 
   .prose :not(pre) > code {
-    @apply bg-muted px-1.5 py-0.5 rounded text-sm font-mono break-words;
+    @apply bg-muted px-1.5 py-0.5 rounded text-sm font-mono;
   }
 
   /* Clean text rendering for syntax highlighter */
