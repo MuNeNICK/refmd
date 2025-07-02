@@ -3,6 +3,8 @@ use std::collections::HashSet;
 
 pub struct TagParser {
     tag_regex: Regex,
+    code_block_regex: Regex,
+    inline_code_regex: Regex,
 }
 
 impl TagParser {
@@ -14,14 +16,40 @@ impl TagParser {
         // - Must not end with punctuation
         let tag_regex = Regex::new(r"\B#([a-zA-Z0-9\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF\u3400-\u4DBF\uAC00-\uD7AF_-]+)(?:\b|$)").unwrap();
         
-        Self { tag_regex }
+        // Match code blocks (``` or ~~~)
+        let code_block_regex = Regex::new(r"(?s)(```[\s\S]*?```|~~~[\s\S]*?~~~)").unwrap();
+        
+        // Match inline code (`code`)
+        let inline_code_regex = Regex::new(r"`[^`]+`").unwrap();
+        
+        Self { 
+            tag_regex,
+            code_block_regex,
+            inline_code_regex,
+        }
     }
 
-    /// Extract all hashtags from the given content
+    /// Extract all hashtags from the given content, excluding those in code blocks
     pub fn extract_tags(&self, content: &str) -> Vec<String> {
         let mut tags = HashSet::new();
         
-        for capture in self.tag_regex.captures_iter(content) {
+        // First, replace all code blocks and inline code with placeholders
+        let mut cleaned_content = content.to_string();
+        
+        // Replace code blocks
+        for mat in self.code_block_regex.find_iter(content) {
+            let placeholder = " ".repeat(mat.as_str().len());
+            cleaned_content.replace_range(mat.start()..mat.end(), &placeholder);
+        }
+        
+        // Replace inline code
+        for mat in self.inline_code_regex.find_iter(&cleaned_content.clone()) {
+            let placeholder = " ".repeat(mat.as_str().len());
+            cleaned_content.replace_range(mat.start()..mat.end(), &placeholder);
+        }
+        
+        // Now extract tags from the cleaned content
+        for capture in self.tag_regex.captures_iter(&cleaned_content) {
             if let Some(tag) = capture.get(1) {
                 let tag_text = tag.as_str().to_lowercase();
                 // Skip tags that are too short or too long
@@ -84,6 +112,63 @@ mod tests {
         let content = "End with a tag #endtag. New sentence #newtag!";
         let tags = parser.extract_tags(content);
         assert_eq!(tags, vec!["endtag", "newtag"]);
+    }
+    
+    #[test]
+    fn test_extract_tags_with_code_blocks() {
+        let parser = TagParser::new();
+        
+        // Test tags in code blocks should be ignored
+        let content = r#"
+This is a #real-tag
+
+```bash
+# This is a comment in code
+echo "Using #cloud-init here"
+#another-tag-in-code
+```
+
+And here's another #valid-tag
+"#;
+        let tags = parser.extract_tags(content);
+        assert_eq!(tags, vec!["real-tag", "valid-tag"]);
+        
+        // Test with triple tilde code blocks
+        let content = r##"
+#tag-before-code
+
+~~~python
+# Python comment with #hash
+def function():
+    return "#not-a-tag"
+~~~
+
+#tag-after-code
+"##;
+        let tags = parser.extract_tags(content);
+        assert_eq!(tags, vec!["tag-after-code", "tag-before-code"]);
+        
+        // Test inline code
+        let content = "This has a #real-tag and `#code-tag` and another #valid-tag";
+        let tags = parser.extract_tags(content);
+        assert_eq!(tags, vec!["real-tag", "valid-tag"]);
+        
+        // Test mixed code blocks and inline code
+        let content = r#"
+#start-tag and `#inline-code`
+
+```
+#code-block-tag
+```
+
+More text with #middle-tag
+
+`Another #inline example`
+
+#end-tag
+"#;
+        let tags = parser.extract_tags(content);
+        assert_eq!(tags, vec!["end-tag", "middle-tag", "start-tag"]);
     }
 
     #[test]

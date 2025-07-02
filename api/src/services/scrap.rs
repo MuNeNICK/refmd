@@ -182,6 +182,7 @@ This is the second post.
                 content: "First post".to_string(),
                 created_at: DateTime::parse_from_rfc3339("2024-01-15T10:30:00Z").unwrap().with_timezone(&Utc),
                 updated_at: DateTime::parse_from_rfc3339("2024-01-15T10:30:00Z").unwrap().with_timezone(&Utc),
+                tags: None,
             }
         ];
         
