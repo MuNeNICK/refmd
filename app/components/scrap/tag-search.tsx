@@ -17,6 +17,7 @@ interface TagSearchProps {
   placeholder?: string;
   showPopular?: boolean;
   scrapId?: string;
+  refreshTrigger?: number;
 }
 
 export function TagSearch({
@@ -25,7 +26,8 @@ export function TagSearch({
   onSelectedTagsChange,
   placeholder = "Search tags...",
   showPopular = true,
-  scrapId
+  scrapId,
+  refreshTrigger
 }: TagSearchProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [tags, setTags] = useState<TagWithCount[]>([]);
@@ -108,12 +110,12 @@ export function TagSearch({
     return tags.filter(tag => !selectedTags.includes(tag.name));
   }, [tags, selectedTags]);
 
-  // Fetch popular tags on mount
+  // Fetch popular tags on mount and when refreshTrigger changes
   useEffect(() => {
     if (showPopular) {
       loadPopularTags();
     }
-  }, [showPopular, loadPopularTags]);
+  }, [showPopular, loadPopularTags, refreshTrigger]);
 
   // Search tags when query changes
   useEffect(() => {

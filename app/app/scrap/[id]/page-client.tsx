@@ -41,6 +41,7 @@ export function ScrapPageClient({ initialData, scrapId, shareToken }: ScrapPageC
   const [userCount, setUserCount] = useState(0);
   const [isMobile, setIsMobile] = useState(false);
   const [searchText, setSearchText] = useState('');
+  const [tagRefreshTrigger, setTagRefreshTrigger] = useState(0);
   
   // Secondary document state
   const {
@@ -169,6 +170,11 @@ export function ScrapPageClient({ initialData, scrapId, shareToken }: ScrapPageC
       // Form stays visible, just clear content
       toast.success('Post added');
       
+      // Refresh tags if post contains hashtags
+      if (newPost.tags && newPost.tags.length > 0) {
+        setTagRefreshTrigger(prev => prev + 1);
+      }
+      
       // Emit real-time event to other connected clients
       emitPostAdded(newPost);
     } catch (error) {
@@ -224,6 +230,13 @@ export function ScrapPageClient({ initialData, scrapId, shareToken }: ScrapPageC
         toast.success('Post updated');
       }
       
+      // Refresh tags if tags have changed
+      const oldPost = scrapData.posts.find(p => p.id === postId);
+      const tagsChanged = JSON.stringify(oldPost?.tags || []) !== JSON.stringify(updatedPost.tags || []);
+      if (tagsChanged) {
+        setTagRefreshTrigger(prev => prev + 1);
+      }
+      
       // Emit real-time event to other connected clients
       emitPostUpdated(updatedPost);
     } catch {
@@ -256,11 +269,19 @@ export function ScrapPageClient({ initialData, scrapId, shareToken }: ScrapPageC
         await client.scraps.deleteScrapPost(scrapId, postId);
       }
       
+      // Get the post before deleting to check if it had tags
+      const deletedPost = scrapData.posts.find(p => p.id === postId);
+      
       setScrapData(prev => ({
         ...prev,
         posts: prev.posts.filter(post => post.id !== postId)
       }));
       toast.success('Post deleted');
+      
+      // Refresh tags if deleted post had tags
+      if (deletedPost?.tags && deletedPost.tags.length > 0) {
+        setTagRefreshTrigger(prev => prev + 1);
+      }
       
       // Emit real-time event to other connected clients
       emitPostDeleted(postId);
@@ -510,6 +531,7 @@ export function ScrapPageClient({ initialData, scrapId, shareToken }: ScrapPageC
                         onSelectedTagsChange={setSelectedTags}
                         showPopular={true}
                         scrapId={scrapId}
+                        refreshTrigger={tagRefreshTrigger}
                       />
                     </div>
                     
@@ -685,6 +707,7 @@ export function ScrapPageClient({ initialData, scrapId, shareToken }: ScrapPageC
                     onSelectedTagsChange={setSelectedTags}
                     showPopular={true}
                     scrapId={scrapId}
+                    refreshTrigger={tagRefreshTrigger}
                   />
                 </div>
                 
