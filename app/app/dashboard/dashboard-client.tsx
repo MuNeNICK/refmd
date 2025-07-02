@@ -19,8 +19,14 @@ export default function DashboardClient({ user, initialDocuments }: DashboardCli
   const router = useRouter();
   const [documents] = useState<Document[]>(initialDocuments);
 
-  const handleDocumentClick = (documentId: string) => {
-    router.push(`/document/${documentId}`);
+  const handleDocumentClick = (document: Document) => {
+    if (!document.id) return;
+    
+    if (document.type === 'scrap') {
+      router.push(`/scrap/${document.id}`);
+    } else {
+      router.push(`/document/${document.id}`);
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -67,7 +73,7 @@ export default function DashboardClient({ user, initialDocuments }: DashboardCli
                     <div 
                       key={doc.id}
                       className="p-4 border rounded-lg hover:bg-accent cursor-pointer transition-colors bg-card"
-                      onClick={() => doc.id && handleDocumentClick(doc.id)}
+                      onClick={() => handleDocumentClick(doc)}
                     >
                       <div className="flex items-start gap-3">
                         <FileText className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
@@ -136,7 +142,7 @@ export default function DashboardClient({ user, initialDocuments }: DashboardCli
                     <div 
                       key={doc.id}
                       className="p-3 border rounded hover:bg-accent cursor-pointer transition-colors"
-                      onClick={() => doc.id && handleDocumentClick(doc.id)}
+                      onClick={() => handleDocumentClick(doc)}
                     >
                       <div className="flex items-start gap-3">
                         <FileText className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
