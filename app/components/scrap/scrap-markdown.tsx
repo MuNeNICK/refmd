@@ -136,7 +136,27 @@ export function ScrapMarkdown({ content, documentId, onNavigate, onTagClick }: S
         );
       }
       
-      return <pre>{children}</pre>;
+      // For pre elements without code element (happens when ``` has no language)
+      // Extract all text content including nested elements
+      const extractText = (node: React.ReactNode): string => {
+        if (typeof node === 'string') return node;
+        if (React.isValidElement(node) && node.props && typeof node.props === 'object' && 'children' in node.props) {
+          return String((node.props as { children?: React.ReactNode }).children);
+        }
+        return '';
+      };
+      
+      const textContent = childrenArray
+        .map(child => extractText(child))
+        .join('')
+        .replace(/\n$/, '');
+      
+      // Render as CodeBlock without language for consistent styling
+      return (
+        <CodeBlock language={undefined} className="not-prose">
+          {textContent}
+        </CodeBlock>
+      );
     },
     // Handle all link types: hashtags, wiki links, and regular links
     a: ({ href, className, children, ...props }) => {
