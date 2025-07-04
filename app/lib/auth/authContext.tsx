@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { getApiClient, setTokens, clearTokens, getTokens } from '@/lib/api';
 import type { User } from '@/lib/api/client';
 import { ApiError } from '@/lib/api/client/core/ApiError';
+import { getApiUrl } from '@/lib/config';
 
 interface AuthContextType {
   user: User | null;
@@ -129,7 +130,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     try {
-      await api.authentication.logout();
+      // Manually call the logout endpoint with proper headers
+      const { accessToken } = getTokens();
+      if (accessToken) {
+        await fetch(`${getApiUrl()}/auth/logout`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(null), // Send null as the body
+        });
+      }
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
