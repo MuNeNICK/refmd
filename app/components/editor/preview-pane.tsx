@@ -16,6 +16,7 @@ import { FileAttachment } from "@/components/markdown/file-attachment";
 import { AuthenticatedImage } from "@/components/markdown/authenticated-image";
 import { WikiLink } from "@/components/markdown/wiki-link";
 import { getApiUrl } from "@/lib/config";
+import { ImageModal } from "@/components/ui/image-modal";
 
 // Stable references for dynamic imports
 const MermaidDiagram = dynamic(() => import("@/components/markdown/mermaid-diagram").then(mod => ({ default: mod.MermaidDiagram })), {
@@ -62,6 +63,7 @@ function PreviewPaneComponent({
 }: PreviewPaneProps) {
   const [showFloatingToc, setShowFloatingToc] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [modalImage, setModalImage] = useState<{ src: string; alt?: string } | null>(null);
   const scrollRafId = useRef<number | null>(null);
   const tocButtonRef = useRef<HTMLButtonElement>(null);
   const floatingTocRef = useRef<HTMLDivElement>(null);
@@ -172,9 +174,10 @@ function PreviewPaneComponent({
           alt={alt || ""}
           width={typeof width === 'number' ? width : 800}
           height={typeof height === 'number' ? height : 600}
-          className="max-w-full h-auto rounded-md shadow-md"
+          className="max-w-full h-auto rounded-md shadow-md cursor-pointer transition-transform hover:scale-[1.02]"
           style={{ width: 'auto', height: 'auto' }}
           unoptimized={typeof imageSrc === 'string' && (imageSrc.startsWith('data:') || imageSrc.startsWith('blob:'))}
+          onClick={() => setModalImage({ src: imageSrc, alt: alt || undefined })}
           {...props}
         />
       );
@@ -469,6 +472,14 @@ function PreviewPaneComponent({
               </div>
             </div>
           )}
+      {modalImage && (
+        <ImageModal
+          src={modalImage.src}
+          alt={modalImage.alt}
+          isOpen={!!modalImage}
+          onClose={() => setModalImage(null)}
+        />
+      )}
     </div>
   );
 }

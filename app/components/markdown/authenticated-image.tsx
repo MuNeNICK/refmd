@@ -3,6 +3,7 @@
 import { useState, useEffect, memo } from 'react';
 import { getTokens } from '@/lib/api';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ImageModal } from '@/components/ui/image-modal';
 
 // Global cache for loaded images
 const imageCache = new Map<string, string>();
@@ -29,6 +30,7 @@ function AuthenticatedImageComponent({
   const [imageSrc, setImageSrc] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [showModal, setShowModal] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -122,15 +124,24 @@ function AuthenticatedImageComponent({
   }
 
   return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={imageSrc}
-      alt={alt}
-      className={className}
-      width={width}
-      height={height}
-      style={style}
-    />
+    <>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={imageSrc}
+        alt={alt}
+        className={`${className} cursor-pointer transition-transform hover:scale-[1.02]`}
+        width={width}
+        height={height}
+        style={style}
+        onClick={() => setShowModal(true)}
+      />
+      <ImageModal
+        src={imageSrc}
+        alt={alt}
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+      />
+    </>
   );
 }
 
