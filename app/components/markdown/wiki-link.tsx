@@ -384,7 +384,7 @@ export function WikiLink({
     )
   }
   
-  // Fallback while metadata is loading
+  // Fallback while metadata is loading - show loading state instead of raw ID
   return (
     <Link 
       href={href}
@@ -395,7 +395,11 @@ export function WikiLink({
         "border rounded-md bg-card hover:bg-accent/50 transition-colors no-underline"
       )}
     >
-      <span className="text-foreground">{children || target}</span>
+      <Loader2 className={cn(
+        "animate-spin",
+        displayVariant === 'inline' ? "h-3 w-3" : "h-4 w-4"
+      )} />
+      <span className="text-foreground">Loading...</span>
     </Link>
   )
 }
