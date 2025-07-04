@@ -17,6 +17,7 @@ import { AuthenticatedImage } from "@/components/markdown/authenticated-image";
 import { WikiLink } from "@/components/markdown/wiki-link";
 import { getApiUrl } from "@/lib/config";
 
+// Stable references for dynamic imports
 const MermaidDiagram = dynamic(() => import("@/components/markdown/mermaid-diagram").then(mod => ({ default: mod.MermaidDiagram })), {
   ssr: false,
   loading: () => <div className="animate-pulse bg-muted h-32 rounded-md" />
@@ -106,6 +107,227 @@ function PreviewPaneComponent({
       h6: createHeadingComponent(6),
     };
   }, [createHeadingComponent]);
+  
+  // Memoize the markdown components to prevent recreation on every render
+  const markdownComponents = useMemo(() => ({
+    img: ({ src, alt, width, height, ...props }: React.ImgHTMLAttributes<HTMLImageElement>) => {
+      if (!src) return null;
+      
+      let imageSrc = src as string;
+      
+      // Handle empty or placeholder URLs
+      if (imageSrc === '' || imageSrc === 'url' || imageSrc === '()') {
+        return (
+          <span className="inline-flex items-center justify-center bg-muted text-muted-foreground text-xs p-4 rounded-md">
+            [Please enter image URL]
+          </span>
+        );
+      }
+      const apiUrl = getApiUrl();
+      
+      if (imageSrc.startsWith('./attachments/')) {
+        // Handle new relative path format: ./attachments/{filename}
+        const filename = imageSrc.substring(14); // Remove './attachments/'
+        // Don't encode if already encoded (contains %)
+        const encodedFilename = filename.includes('%') ? filename : encodeURIComponent(filename);
+        imageSrc = `${apiUrl}/files/documents/${encodedFilename}`;
+        if (documentId) {
+          imageSrc += `?document_id=${documentId}`;
+        }
+      } else if (imageSrc.startsWith('./')) {
+        // Handle legacy relative paths
+        const filename = imageSrc.substring(2);
+        // Don't encode if already encoded (contains %)
+        const encodedFilename = filename.includes('%') ? filename : encodeURIComponent(filename);
+        imageSrc = `${apiUrl}/files/documents/${encodedFilename}`;
+        if (documentId) {
+          imageSrc += `?document_id=${documentId}`;
+        }
+      } else if (imageSrc.startsWith('/api/')) {
+        // Convert relative API path to absolute URL
+        imageSrc = imageSrc.replace('/api/', `${apiUrl}/`);
+      }
+      
+      // Use authenticated image for internal files
+      if (imageSrc.includes('/api/files/')) {
+        return (
+          <AuthenticatedImage
+            key={imageSrc}
+            src={imageSrc}
+            alt={alt || ""}
+            width={typeof width === 'number' ? width : undefined}
+            height={typeof height === 'number' ? height : undefined}
+            className="max-w-full h-auto rounded-md shadow-md"
+            style={{ width: 'auto', height: 'auto' }}
+            token={token}
+          />
+        );
+      }
+      
+      // Use regular Image component for external images
+      return (
+        <Image
+          key={imageSrc}
+          src={imageSrc}
+          alt={alt || ""}
+          width={typeof width === 'number' ? width : 800}
+          height={typeof height === 'number' ? height : 600}
+          className="max-w-full h-auto rounded-md shadow-md"
+          style={{ width: 'auto', height: 'auto' }}
+          unoptimized={typeof imageSrc === 'string' && (imageSrc.startsWith('data:') || imageSrc.startsWith('blob:'))}
+          {...props}
+        />
+      );
+    },
+    a: ({ href, className, children, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement>) => {
+      const extendedProps = props as Record<string, unknown>;
+      
+      
+      // Check if this is a hashtag link
+      const isHashtagByClass = className?.includes('hashtag');
+      const isHashtagByHref = href?.startsWith('#tag-');
+      const hasDataTag = !!(extendedProps['data-tag'] || extendedProps['dataTag']);
+      
+      if (isHashtagByClass || isHashtagByHref || hasDataTag) {
+        let tagName = '';
+        
+        // Try to get tag name from data attributes first
+        if (extendedProps['data-tag']) {
+          tagName = String(extendedProps['data-tag']);
+        } else if (extendedProps['dataTag']) {
+          tagName = String(extendedProps['dataTag']);
+        }
+        
+        // Extract tag name from href if not in data attributes
+        if (!tagName && href?.startsWith('#tag-')) {
+          const match = href.match(/#tag-(.+)/);
+          if (match) {
+            tagName = decodeURIComponent(match[1]);
+          }
+        }
+        
+        // Extract tag name from children if it's a hashtag
+        if (!tagName && typeof children === 'string' && children.startsWith('#')) {
+          tagName = children.substring(1);
+        }
+        
+        if (!tagName) {
+          return (
+            <a href={href} className={className} {...props}>
+              {children}
+            </a>
+          );
+        }
+        
+        return (
+          <a 
+            href={`/search?tag=${encodeURIComponent(tagName)}`} 
+            className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 cursor-pointer transition-colors no-underline"
+            onClick={(e) => {
+              e.preventDefault();
+              if (onTagClick) {
+                onTagClick(tagName);
+              }
+            }}
+            {...props}
+          >
+            {children}
+          </a>
+        );
+      }
+      
+      // Check if this is a wiki link or mention link
+      const isWikiLink = href?.startsWith('#wiki:');
+      const isMentionLink = href?.startsWith('#mention:');
+      
+      if (isWikiLink || isMentionLink) {
+        // Extract target from URL
+        let target = '';
+        if (isWikiLink && href) {
+          target = decodeURIComponent(href.replace('#wiki:', ''));
+        } else if (isMentionLink && href) {
+          target = decodeURIComponent(href.replace('#mention:', ''));
+        }
+        
+        return (
+          <WikiLink 
+            href={href || '#'} 
+            data-wiki-target={isWikiLink ? target : undefined}
+            data-mention-target={isMentionLink ? target : undefined}
+            onNavigate={onNavigate}
+            {...props}
+          >
+            {children}
+          </WikiLink>
+        );
+      }
+      
+      // For non-wiki links, use FileAttachment as before
+      return (
+        <FileAttachment href={href || '#'} documentId={documentId} token={token} {...props}>
+          {children}
+        </FileAttachment>
+      );
+    },
+    p: ({ children, ...props }: React.HTMLAttributes<HTMLParagraphElement>) => {
+      // Check if the paragraph contains only an image or file attachment
+      const childArray = React.Children.toArray(children);
+      const hasOnlyImageOrFile = childArray.length === 1 && 
+        React.isValidElement(childArray[0]) && 
+        (childArray[0].type === 'img' || 
+         childArray[0].type === AuthenticatedImage ||
+         childArray[0].type === FileAttachment ||
+         (typeof childArray[0].type === 'function' && 
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          ((childArray[0].type as any).displayName === 'AuthenticatedImage' ||
+           // eslint-disable-next-line @typescript-eslint/no-explicit-any
+           (childArray[0].type as any).displayName === 'FileAttachment')) ||
+         // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         (childArray[0].props && ((childArray[0].props as any).src || (childArray[0].props as any).href)));
+      
+      // If paragraph contains only an image or file attachment, render as div to avoid hydration errors
+      if (hasOnlyImageOrFile) {
+        return <div className="my-4" {...props}>{children}</div>;
+      }
+      
+      return <p {...props}>{children}</p>;
+    },
+    code: ({ className, children, ...props }: React.HTMLAttributes<HTMLElement> & { children?: React.ReactNode }) => {
+      const inline = !className;
+      const match = /language-(\w+)(=(\+)?(\d+)?)?/.exec(className || '');
+      
+      if (match && match[1] === 'csvpreview') {
+        const fullClassName = className || '';
+        const optionsMatch = fullClassName.match(/\{([^}]+)\}/);
+        const options = optionsMatch ? optionsMatch[1] : '';
+        return <CsvPreview content={String(children)} options={options} />;
+      }
+      
+      if (match && match[1] === 'mermaid') {
+        return <MermaidDiagram content={String(children)} />;
+      }
+      
+      if (match && match[1] === 'plantuml') {
+        return <PlantUMLDiagram code={String(children)} />;
+      }
+      
+      return !inline && match ? (
+        <CodeBlock language={match[1]}>
+          {String(children).replace(/\n$/, '')}
+        </CodeBlock>
+      ) : (
+        <code className={className} {...props}>
+          {children}
+        </code>
+      );
+    },
+    table: ({ ...props }) => (
+      <div className="overflow-x-auto mb-4 -mx-4 px-4">
+        <table className="table-auto" {...props} />
+      </div>
+    ),
+    ...headingComponents,
+  }), [documentId, token, onTagClick, onNavigate, headingComponents]);
 
   // Handle click outside for floating TOC
   useEffect(() => {
@@ -182,232 +404,17 @@ function PreviewPaneComponent({
                 try {
                   return (
                     <SafeMarkdown 
+                      key={documentId || 'preview'}
                       content={content}
                       onCheckboxChange={onCheckboxChange}
                       onTagClick={onTagClick}
-                      components={{
-                        img: ({ src, alt, width, height, ...props }) => {
-                          if (!src) return null;
-                          
-                          let imageSrc = src as string;
-                          
-                          // Handle empty or placeholder URLs
-                          if (imageSrc === '' || imageSrc === 'url' || imageSrc === '()') {
-                            return (
-                              <span className="inline-flex items-center justify-center bg-muted text-muted-foreground text-xs p-4 rounded-md">
-                                [Please enter image URL]
-                              </span>
-                            );
-                          }
-                          const apiUrl = getApiUrl();
-                          
-                          if (imageSrc.startsWith('./attachments/')) {
-                            // Handle new relative path format: ./attachments/{filename}
-                            const filename = imageSrc.substring(14); // Remove './attachments/'
-                            // Don't encode if already encoded (contains %)
-                            const encodedFilename = filename.includes('%') ? filename : encodeURIComponent(filename);
-                            imageSrc = `${apiUrl}/files/documents/${encodedFilename}`;
-                            if (documentId) {
-                              imageSrc += `?document_id=${documentId}`;
-                            }
-                          } else if (imageSrc.startsWith('./')) {
-                            // Handle legacy relative paths
-                            const filename = imageSrc.substring(2);
-                            // Don't encode if already encoded (contains %)
-                            const encodedFilename = filename.includes('%') ? filename : encodeURIComponent(filename);
-                            imageSrc = `${apiUrl}/files/documents/${encodedFilename}`;
-                            if (documentId) {
-                              imageSrc += `?document_id=${documentId}`;
-                            }
-                          } else if (imageSrc.startsWith('/api/')) {
-                            // Convert relative API path to absolute URL
-                            imageSrc = imageSrc.replace('/api/', `${apiUrl}/`);
-                          }
-                          
-                          // Use authenticated image for internal files
-                          if (imageSrc.includes('/api/files/')) {
-                            return (
-                              <AuthenticatedImage
-                                src={imageSrc}
-                                alt={alt || ""}
-                                width={typeof width === 'number' ? width : undefined}
-                                height={typeof height === 'number' ? height : undefined}
-                                className="max-w-full h-auto rounded-md shadow-md"
-                                style={{ width: 'auto', height: 'auto' }}
-                                token={token}
-                              />
-                            );
-                          }
-                          
-                          // Use regular Image component for external images
-                          return (
-                            <Image
-                              src={imageSrc}
-                              alt={alt || ""}
-                              width={typeof width === 'number' ? width : 800}
-                              height={typeof height === 'number' ? height : 600}
-                              className="max-w-full h-auto rounded-md shadow-md"
-                              style={{ width: 'auto', height: 'auto' }}
-                              unoptimized={typeof imageSrc === 'string' && (imageSrc.startsWith('data:') || imageSrc.startsWith('blob:'))}
-                              {...props}
-                            />
-                          );
-                        },
-                        a: ({ href, className, children, ...props }) => {
-                          const extendedProps = props as Record<string, unknown>;
-                          
-                          
-                          // Check if this is a hashtag link
-                          const isHashtagByClass = className?.includes('hashtag');
-                          const isHashtagByHref = href?.startsWith('#tag-');
-                          const hasDataTag = !!(extendedProps['data-tag'] || extendedProps['dataTag']);
-                          
-                          if (isHashtagByClass || isHashtagByHref || hasDataTag) {
-                            let tagName = '';
-                            
-                            // Try to get tag name from data attributes first
-                            if (extendedProps['data-tag']) {
-                              tagName = String(extendedProps['data-tag']);
-                            } else if (extendedProps['dataTag']) {
-                              tagName = String(extendedProps['dataTag']);
-                            }
-                            
-                            // Extract tag name from href if not in data attributes
-                            if (!tagName && href?.startsWith('#tag-')) {
-                              const match = href.match(/#tag-(.+)/);
-                              if (match) {
-                                tagName = decodeURIComponent(match[1]);
-                              }
-                            }
-                            
-                            // Extract tag name from children if it's a hashtag
-                            if (!tagName && typeof children === 'string' && children.startsWith('#')) {
-                              tagName = children.substring(1);
-                            }
-                            
-                            if (!tagName) {
-                              return (
-                                <a href={href} className={className} {...props}>
-                                  {children}
-                                </a>
-                              );
-                            }
-                            
-                            return (
-                              <a 
-                                href={`/search?tag=${encodeURIComponent(tagName)}`} 
-                                className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 cursor-pointer transition-colors no-underline"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  if (onTagClick) {
-                                    onTagClick(tagName);
-                                  }
-                                }}
-                                {...props}
-                              >
-                                {children}
-                              </a>
-                            );
-                          }
-                          
-                          // Check if this is a wiki link or mention link
-                          const isWikiLink = href?.startsWith('#wiki:');
-                          const isMentionLink = href?.startsWith('#mention:');
-                          
-                          if (isWikiLink || isMentionLink) {
-                            // Extract target from URL
-                            let target = '';
-                            if (isWikiLink && href) {
-                              target = decodeURIComponent(href.replace('#wiki:', ''));
-                            } else if (isMentionLink && href) {
-                              target = decodeURIComponent(href.replace('#mention:', ''));
-                            }
-                            
-                            return (
-                              <WikiLink 
-                                href={href || '#'} 
-                                data-wiki-target={isWikiLink ? target : undefined}
-                                data-mention-target={isMentionLink ? target : undefined}
-                                onNavigate={onNavigate}
-                                {...props}
-                              >
-                                {children}
-                              </WikiLink>
-                            );
-                          }
-                          
-                          // For non-wiki links, use FileAttachment as before
-                          return (
-                            <FileAttachment href={href || '#'} documentId={documentId} token={token} {...props}>
-                              {children}
-                            </FileAttachment>
-                          );
-                        },
-                        p: ({ children, ...props }) => {
-                          // Check if the paragraph contains only an image or file attachment
-                          const childArray = React.Children.toArray(children);
-                          const hasOnlyImageOrFile = childArray.length === 1 && 
-                            React.isValidElement(childArray[0]) && 
-                            (childArray[0].type === 'img' || 
-                             childArray[0].type === AuthenticatedImage ||
-                             childArray[0].type === FileAttachment ||
-                             (typeof childArray[0].type === 'function' && 
-                              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                              ((childArray[0].type as any).displayName === 'AuthenticatedImage' ||
-                               // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                               (childArray[0].type as any).displayName === 'FileAttachment')) ||
-                             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                             (childArray[0].props && ((childArray[0].props as any).src || (childArray[0].props as any).href)));
-                          
-                          // If paragraph contains only an image or file attachment, render as div to avoid hydration errors
-                          if (hasOnlyImageOrFile) {
-                            return <div className="my-4" {...props}>{children}</div>;
-                          }
-                          
-                          return <p {...props}>{children}</p>;
-                        },
-                        code: ({ className, children, ...props }: React.HTMLAttributes<HTMLElement> & { children?: React.ReactNode }) => {
-                          const inline = !className;
-                          const match = /language-(\w+)(=(\+)?(\d+)?)?/.exec(className || '');
-                          
-                          if (match && match[1] === 'csvpreview') {
-                            const fullClassName = className || '';
-                            const optionsMatch = fullClassName.match(/\{([^}]+)\}/);
-                            const options = optionsMatch ? optionsMatch[1] : '';
-                            return <CsvPreview content={String(children)} options={options} />;
-                          }
-                          
-                          if (match && match[1] === 'mermaid') {
-                            return <MermaidDiagram content={String(children)} />;
-                          }
-                          
-                          if (match && match[1] === 'plantuml') {
-                            return <PlantUMLDiagram code={String(children)} />;
-                          }
-                          
-                          return !inline && match ? (
-                            <CodeBlock language={match[1]}>
-                              {String(children).replace(/\n$/, '')}
-                            </CodeBlock>
-                          ) : (
-                            <code className={className} {...props}>
-                              {children}
-                            </code>
-                          );
-                        },
-                        table: ({ ...props }) => (
-                          <div className="overflow-x-auto mb-4 -mx-4 px-4">
-                            <table className="table-auto" {...props} />
-                          </div>
-                        ),
-                        ...headingComponents,
-                      }}
+                      components={markdownComponents}
                     />
                   );
                 } catch {
                   return <div>Error rendering markdown</div>;
                 }
-              }, [content, headingComponents, documentId, token, onCheckboxChange, onNavigate, onTagClick])}
+              }, [content, markdownComponents, onCheckboxChange, onTagClick])}
             </div>
           </div>
           {/* Table of Contents - only show in preview mode on desktop when not forced to floating */}

@@ -1,8 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, memo } from 'react';
 import { getTokens } from '@/lib/api';
 import { Skeleton } from '@/components/ui/skeleton';
+
+// Global cache for loaded images
+const imageCache = new Map<string, string>();
 
 interface AuthenticatedImageProps {
   src: string;
@@ -32,6 +35,19 @@ function AuthenticatedImageComponent({
 
     async function loadImage() {
       try {
+        // Create cache key from src and token
+        const cacheKey = `${src}${token ? `?token=${token}` : ''}`;
+        
+        // Check if image is already cached
+        const cachedUrl = imageCache.get(cacheKey);
+        if (cachedUrl) {
+          if (!cancelled) {
+            setImageSrc(cachedUrl);
+            setLoading(false);
+          }
+          return;
+        }
+        
         const { accessToken } = getTokens();
         
         // If there's a share token, append it to the URL
@@ -54,15 +70,13 @@ function AuthenticatedImageComponent({
         const blob = await response.blob();
         const objectUrl = URL.createObjectURL(blob);
         
+        // Cache the object URL
+        imageCache.set(cacheKey, objectUrl);
+        
         if (!cancelled) {
           setImageSrc(objectUrl);
           setLoading(false);
         }
-
-        // Cleanup function to revoke the object URL
-        return () => {
-          URL.revokeObjectURL(objectUrl);
-        };
       } catch (err) {
         console.error('Failed to load image:', err);
         if (!cancelled) {
@@ -122,4 +136,5 @@ function AuthenticatedImageComponent({
 
 AuthenticatedImageComponent.displayName = 'AuthenticatedImage';
 
-export const AuthenticatedImage = AuthenticatedImageComponent;
+// Memoize the component to prevent unnecessary re-renders
+export const AuthenticatedImage = memo(AuthenticatedImageComponent);

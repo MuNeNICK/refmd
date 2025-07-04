@@ -140,7 +140,7 @@ export default function DocumentEditor({
           setContent(newContent);
           onContentChange?.(newContent);
         });
-      }, 50); // Reduced debounce to 50ms for faster response
+      }, 150); // Increased debounce to 150ms to reduce re-renders
     };
 
     // Initial content
