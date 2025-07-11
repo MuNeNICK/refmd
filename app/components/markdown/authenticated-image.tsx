@@ -16,6 +16,7 @@ interface AuthenticatedImageProps {
   height?: number | string;
   style?: React.CSSProperties;
   token?: string;
+  isPublic?: boolean;
 }
 
 function AuthenticatedImageComponent({ 
@@ -25,7 +26,8 @@ function AuthenticatedImageComponent({
   width,
   height,
   style = {},
-  token
+  token,
+  isPublic = false
 }: AuthenticatedImageProps) {
   const [imageSrc, setImageSrc] = useState<string>('');
   const [loading, setLoading] = useState(true);
@@ -59,11 +61,13 @@ function AuthenticatedImageComponent({
           fetchUrl = `${src}${separator}token=${token}`;
         }
         
-        const response = await fetch(fetchUrl, {
-          headers: accessToken ? {
-            'Authorization': `Bearer ${accessToken}`
-          } : {}
-        });
+        // For public pages, don't send authorization header if no token
+        const headers: HeadersInit = {};
+        if (!isPublic && accessToken) {
+          headers['Authorization'] = `Bearer ${accessToken}`;
+        }
+        
+        const response = await fetch(fetchUrl, { headers });
 
         if (!response.ok) {
           throw new Error(`Failed to load image: ${response.status}`);
@@ -93,7 +97,7 @@ function AuthenticatedImageComponent({
     return () => {
       cancelled = true;
     };
-  }, [src, token]);
+  }, [src, token, isPublic]);
 
   if (loading) {
     return (

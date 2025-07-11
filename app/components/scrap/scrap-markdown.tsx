@@ -19,9 +19,10 @@ interface ScrapMarkdownProps {
   documentId?: string;
   onNavigate?: (documentId: string, type?: 'document' | 'scrap') => void;
   onTagClick?: (tag: string) => void;
+  isPublic?: boolean;
 }
 
-export function ScrapMarkdown({ content, documentId, onNavigate, onTagClick }: ScrapMarkdownProps) {
+export function ScrapMarkdown({ content, documentId, onNavigate, onTagClick, isPublic = false }: ScrapMarkdownProps) {
   const apiUrl = getApiUrl();
 
   const customComponents: Components = useMemo(() => ({
@@ -61,6 +62,7 @@ export function ScrapMarkdown({ content, documentId, onNavigate, onTagClick }: S
             height={typeof height === 'number' ? height : undefined}
             className="max-w-full h-auto rounded-md shadow-md my-2"
             style={{ width: 'auto', height: 'auto' }}
+            isPublic={isPublic}
           />
         );
       }
@@ -222,7 +224,7 @@ export function ScrapMarkdown({ content, documentId, onNavigate, onTagClick }: S
         </FileAttachment>
       );
     },
-  }), [apiUrl, documentId, onNavigate, onTagClick]);
+  }), [apiUrl, documentId, onNavigate, onTagClick, isPublic]);
 
   return (
     <ReactMarkdown 
