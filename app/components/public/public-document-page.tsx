@@ -8,7 +8,6 @@ import { Menu, X } from 'lucide-react';
 import { PublicPageLayout } from './PublicPageLayout';
 import { formatPublicDate } from '@/lib/utils/date';
 import { Button } from '@/components/ui/button';
-import { AuthenticatedImage } from '@/components/markdown/authenticated-image';
 import Image from 'next/image';
 import { ImageModal } from '@/components/ui/image-modal';
 
@@ -75,18 +74,21 @@ export function PublicDocumentPage({ document }: PublicDocumentPageProps) {
           imageSrc = imageSrc.replace('/api/', `${apiUrl}/`);
         }
         
-        // Use authenticated image for internal files
+        // For public pages, use regular img tag for API files
+        // This is a temporary workaround until the backend properly handles public document file access
         if (imageSrc.includes('/api/files/')) {
           return (
-            <AuthenticatedImage
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
               key={imageSrc}
               src={imageSrc}
               alt={alt || ""}
               width={typeof width === 'number' ? width : undefined}
               height={typeof height === 'number' ? height : undefined}
-              className="max-w-full h-auto rounded-md shadow-md"
+              className="max-w-full h-auto rounded-md shadow-md cursor-pointer transition-transform hover:scale-[1.02]"
               style={{ width: 'auto', height: 'auto' }}
-              isPublic={true}
+              onClick={() => setModalImage({ src: imageSrc, alt: alt || undefined })}
+              {...props}
             />
           );
         }
