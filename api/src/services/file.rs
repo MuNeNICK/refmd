@@ -157,21 +157,29 @@ impl FileService {
         user_id: Option<Uuid>,
         share_token: Option<String>
     ) -> Result<(Attachment, Bytes)> {
-        // Check if user has access via authentication or share token
-        let has_access = if let Some(token) = share_token {
-            // Check share token
-            self.share_service.verify_share_token(&token, document_id).await?
-        } else if let Some(uid) = user_id {
-            // Check user access
-            self.document_repository.get_by_id_and_user(document_id, uid).await?
-                .is_some()
+        // First check if the document is public
+        let is_public = self.document_repository.is_document_public(document_id).await?;
+        
+        if is_public {
+            // Public documents allow file access without authentication
+            // Continue to download the file
         } else {
-            // No authentication and no share token - deny access
-            false
-        };
+            // For non-public documents, check access via authentication or share token
+            let has_access = if let Some(token) = share_token {
+                // Check share token
+                self.share_service.verify_share_token(&token, document_id).await?
+            } else if let Some(uid) = user_id {
+                // Check user access
+                self.document_repository.get_by_id_and_user(document_id, uid).await?
+                    .is_some()
+            } else {
+                // No authentication and no share token - deny access
+                false
+            };
 
-        if !has_access {
-            return Err(Error::Unauthorized);
+            if !has_access {
+                return Err(Error::Unauthorized);
+            }
         }
 
         // Get file record by document_id and filename

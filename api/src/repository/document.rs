@@ -266,4 +266,15 @@ impl DocumentRepository {
         
         Ok(documents)
     }
+    
+    pub async fn is_document_public(&self, id: Uuid) -> Result<bool> {
+        let result = sqlx::query_scalar::<_, Option<String>>(
+            "SELECT visibility FROM documents WHERE id = $1"
+        )
+        .bind(id)
+        .fetch_optional(self.pool.as_ref())
+        .await?;
+        
+        Ok(result.flatten().map(|v| v == "public").unwrap_or(false))
+    }
 }

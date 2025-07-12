@@ -54,19 +54,6 @@ export function ScrapMarkdown({ content, documentId, onNavigate, onTagClick, isP
       
       // Use authenticated image for internal files
       if (imageSrc.includes('/api/files/') || imageSrc.includes('/files/')) {
-        // For public pages, use regular img tag as a temporary workaround
-        if (isPublic) {
-          return (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={imageSrc}
-              alt={alt || ""}
-              className="max-w-full h-auto rounded-md shadow-md my-2"
-              {...props}
-            />
-          );
-        }
-        
         return (
           <AuthenticatedImage
             src={imageSrc}
